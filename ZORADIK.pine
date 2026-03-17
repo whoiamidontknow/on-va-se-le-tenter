@@ -46,38 +46,38 @@ hei_close     = ta.ema(hei_close_raw, 6)
 var float hei_op = na
 hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
 
-// Double validation : attend N bougies HA consécutives avant de changer de couleur
-// Version J — 1 bougie HA pour la direction contre-tendance (facile), 2 pour la direction tendance (difficile)
-// Ruban BAISSIER (M1 < M2) : bleu = contre-tendance (1 HA bull) | rouge = tendance (2 HA bear consécutives)
-// Ruban HAUSSIER (M1 > M2) : rouge = contre-tendance (1 HA bear) | bleu = tendance (2 HA bull consécutives)
+// Version K — momentum HA (hei_close vs hei_close[1]), sans M1 pour la couleur
+// Ruban BAISSIER : bleu FACILE (1 barre HA montante) | rouge DIFFICILE (2 barres HA descendantes)
+// Ruban HAUSSIER : rouge FACILE (1 barre HA descendante) | bleu DIFFICILE (2 barres HA montantes)
 moy_bear_ribbon = ema_m1 < ema_m2
-ha_bull         = hei_close >= hei_op
+ha_rising       = hei_close > hei_close[1]
+ha_falling      = hei_close < hei_close[1]
 
-var int bull_count = 0
-var int bear_count = 0
+var int rising_count  = 0
+var int falling_count = 0
 
-if ha_bull
-    bull_count += 1
-    bear_count := 0
-else
-    bear_count += 1
-    bull_count := 0
+if ha_rising
+    rising_count  += 1
+    falling_count := 0
+else if ha_falling
+    falling_count += 1
+    rising_count  := 0
 
 var bool col_bull = false
 var bool col_bear = true
 
 if moy_bear_ribbon
-    if col_bear and bull_count >= 1     // rouge→bleu : 1 HA haussière suffit (contre-tendance = facile)
+    if col_bear and rising_count >= 1      // rouge→bleu : 1 barre HA montante (facile)
         col_bull := true
         col_bear := false
-    else if col_bull and bear_count >= 2 // bleu→rouge : 2 HA baissières consécutives (tendance = double validation)
+    else if col_bull and falling_count >= 2 // bleu→rouge : 2 barres HA descendantes (difficile)
         col_bear := true
         col_bull := false
 else
-    if col_bull and bear_count >= 1     // bleu→rouge : 1 HA baissière suffit (contre-tendance = facile)
+    if col_bull and falling_count >= 1     // bleu→rouge : 1 barre HA descendante (facile)
         col_bear := true
         col_bull := false
-    else if col_bear and bull_count >= 2 // rouge→bleu : 2 HA haussières consécutives (tendance = double validation)
+    else if col_bear and rising_count >= 2  // rouge→bleu : 2 barres HA montantes (difficile)
         col_bull := true
         col_bear := false
 
