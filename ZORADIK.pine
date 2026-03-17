@@ -47,25 +47,26 @@ var float hei_op = na
 hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
 
 // Hystérésis asymétrique basée sur l'état du ruban Moyenator
-// Ruban BAISSIER (M1 < M2) : rouge→bleu si hei_close touche M1 | bleu→rouge si mèche entière sous M1
-// Ruban HAUSSIER (M1 > M2) : logique miroir
+// Version H — double confirmation pour la direction lente
+// Ruban BAISSIER (M1 < M2) : bleu FACILE (close brut touche M1) | rouge DIFFICILE (close ET hei_close sous M1)
+// Ruban HAUSSIER (M1 > M2) : rouge FACILE (close brut passe sous M1) | bleu DIFFICILE (close ET hei_close au-dessus M1)
 moy_bear_ribbon = ema_m1 < ema_m2
 
 var bool col_bull = false
 var bool col_bear = true
 
 if moy_bear_ribbon
-    if col_bear and hei_close >= ema_m1
+    if col_bear and close >= ema_m1
         col_bull := true
         col_bear := false
-    else if col_bull and high < ema_m1
+    else if col_bull and close < ema_m1 and hei_close < ema_m1
         col_bear := true
         col_bull := false
 else
-    if col_bull and hei_close < ema_m1
+    if col_bull and close < ema_m1
         col_bear := true
         col_bull := false
-    else if col_bear and low > ema_m1
+    else if col_bear and close > ema_m1 and hei_close > ema_m1
         col_bull := true
         col_bear := false
 
