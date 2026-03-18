@@ -48,32 +48,36 @@ ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
 // Tendance déterminée par la position relative des deux moyennators
-is_bear_trend = ema_m1 < ema_m2  // MA50 < MA60 = baissier
+is_bull_trend = ema_m1 >= ema_m2  // MA50 >= MA60 = haussier
 
-// Validation asymétrique selon la tendance (mèches) :
-//   Tendance BAISSIÈRE : bleu en 1 mèche (rapide), rouge en 2 mèches (lent)
-//   Tendance HAUSSIÈRE : rouge en 1 mèche (rapide), bleu en 2 mèches (lent)
+// Asymétrie selon la tendance :
+//   Tendance HAUSSIÈRE :
+//     BLEU→ROUGE : 1 touche directe (facile, dans le sens de la tendance)
+//     ROUGE→BLEU : la bougie précédente traverse le moyenator → switch à la suivante (lent)
+//   Tendance BAISSIÈRE (symétrique) :
+//     ROUGE→BLEU : 1 touche directe (facile)
+//     BLEU→ROUGE : la bougie précédente traverse le moyenator → switch à la suivante (lent)
 var bool col_bull = false
 var bool col_bear = true
 
-if col_bull
-    if is_bear_trend
-        if ha_bear and ha_bear[1]   // baissier → rouge lent (2 mèches)
+if is_bull_trend
+    if col_bull
+        if ha_bear                  // BLEU→ROUGE : 1 touch direct
             col_bull := false
             col_bear := true
     else
-        if ha_bear                   // haussier → rouge rapide (1 mèche)
-            col_bull := false
-            col_bear := true
+        if ha_bull[1]               // ROUGE→BLEU : traverse bar[1] → switch maintenant
+            col_bear := false
+            col_bull := true
 else
-    if is_bear_trend
-        if ha_bull                   // baissier → bleu rapide (1 mèche)
+    if col_bear
+        if ha_bull                  // ROUGE→BLEU : 1 touch direct
             col_bear := false
             col_bull := true
     else
-        if ha_bull and ha_bull[1]   // haussier → bleu lent (2 mèches)
-            col_bear := false
-            col_bull := true
+        if ha_bear[1]               // BLEU→ROUGE : traverse bar[1] → switch maintenant
+            col_bull := false
+            col_bear := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
