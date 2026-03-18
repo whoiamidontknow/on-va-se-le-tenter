@@ -46,42 +46,24 @@ hei_close     = ta.ema(hei_close_raw, 6)
 var float hei_op = na
 hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
 
-// Version K — momentum HA (hei_close vs hei_close[1]), sans M1 pour la couleur
-// Ruban BAISSIER : bleu FACILE (1 barre HA montante) | rouge DIFFICILE (2 barres HA descendantes)
-// Ruban HAUSSIER : rouge FACILE (1 barre HA descendante) | bleu DIFFICILE (2 barres HA montantes)
-moy_bear_ribbon = ema_m1 < ema_m2
-ha_rising       = hei_close > hei_close[1]
-ha_falling      = hei_close < hei_close[1]
+// Bougie HA haussière si hei_close > hei_op, baissière sinon
+ha_bull_candle = hei_close > hei_op
+ha_bear_candle = hei_close < hei_op
 
-var int rising_count  = 0
-var int falling_count = 0
-
-if ha_rising
-    rising_count  += 1
-    falling_count := 0
-else if ha_falling
-    falling_count += 1
-    rising_count  := 0
-
+// Double validation symétrique : 2 bougies consécutives pour changer de couleur
 var bool col_bull = false
 var bool col_bear = true
 
-if moy_bear_ribbon
-    if col_bear and rising_count >= 1      // rouge→bleu : 1 barre HA montante (facile)
-        col_bull := true
-        col_bear := false
-    else if col_bull and falling_count >= 2 // bleu→rouge : 2 barres HA descendantes (difficile)
-        col_bear := true
+if col_bull
+    if ha_bear_candle and ha_bear_candle[1]
         col_bull := false
+        col_bear := true
 else
-    if col_bull and falling_count >= 1     // bleu→rouge : 1 barre HA descendante (facile)
-        col_bear := true
-        col_bull := false
-    else if col_bear and rising_count >= 2  // rouge→bleu : 2 barres HA montantes (difficile)
-        col_bull := true
+    if ha_bull_candle and ha_bull_candle[1]
         col_bear := false
+        col_bull := true
 
-barcolor(col_bull ? hei_bull_color_final : col_bear ? hei_bear_color_final : col_bull[1] ? hei_bull_color_final : hei_bear_color_final)
+barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — TRACÉ
