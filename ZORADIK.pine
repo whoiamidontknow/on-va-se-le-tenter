@@ -50,36 +50,34 @@ ha_bear = low  <= ema_m1
 // Tendance déterminée par la position relative des deux moyennators
 is_bull_trend = ema_m1 >= ema_m2  // MA50 >= MA60 = haussier
 
-// Conditions basées sur le CLOSE (évite les oscillations dues aux mèches)
-close_above = close > ema_m1   // close au-dessus du moyenator
-close_below = close < ema_m1   // close en dessous du moyenator
-
-// Asymétrie selon la tendance :
+// Direction FACILE  : wick-based (ultra-réactif, dès que le wick touche MA50)
+// Direction DIFFICILE : close[1]-based (le close de la bougie qui traverse, +1 bar)
+//
 //   Tendance HAUSSIÈRE :
-//     BLEU→ROUGE : close passe sous MA50 (facile, immédiat)
+//     BLEU→ROUGE : wick bas touche MA50 (facile, immédiat)
 //     ROUGE→BLEU : le close PRÉCÉDENT était au-dessus de MA50 (difficile, +1 bougie)
 //   Tendance BAISSIÈRE (symétrique) :
-//     ROUGE→BLEU : close passe au-dessus de MA50 (facile, immédiat)
+//     ROUGE→BLEU : wick haut touche MA50 (facile, immédiat)
 //     BLEU→ROUGE : le close PRÉCÉDENT était en dessous de MA50 (difficile, +1 bougie)
 var bool col_bull = false
 var bool col_bear = true
 
 if is_bull_trend
     if col_bull
-        if close_below              // BLEU→ROUGE : close sous MA50 (facile)
+        if ha_bear                  // BLEU→ROUGE : wick bas (facile)
             col_bull := false
             col_bear := true
     else
-        if close_above[1]           // ROUGE→BLEU : close[1] au-dessus → switch maintenant
+        if close[1] > ema_m1[1]     // ROUGE→BLEU : close[1] au-dessus → switch maintenant
             col_bear := false
             col_bull := true
 else
     if col_bear
-        if close_above              // ROUGE→BLEU : close au-dessus MA50 (facile)
+        if ha_bull                  // ROUGE→BLEU : wick haut (facile)
             col_bear := false
             col_bull := true
     else
-        if close_below[1]           // BLEU→ROUGE : close[1] en dessous → switch maintenant
+        if close[1] < ema_m1[1]     // BLEU→ROUGE : close[1] en dessous → switch maintenant
             col_bull := false
             col_bear := true
 
