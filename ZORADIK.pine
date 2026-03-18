@@ -41,10 +41,12 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — CALCUL & COULEUR
 // ══════════════════════════════════════════════════════════════
-// Couleur = position de la clôture vs Moyenator 1 (réactif, sans lag EMA)
-// Une mèche seule ne suffit pas — seule la clôture compte
-ha_bull = close > ema_m1
-ha_bear = close < ema_m1
+// EMA(3) de OHLC4 : plus réactif que EMA(6), moins bruité que close brut
+hei_close = ta.ema((open + high + low + close) / 4, 3)
+
+// Couleur = position de hei_close vs Moyenator 1
+ha_bull = hei_close > ema_m1
+ha_bear = hei_close < ema_m1
 
 // Double validation : 2 clôtures consécutives du même côté pour changer de couleur
 var bool col_bull = false
