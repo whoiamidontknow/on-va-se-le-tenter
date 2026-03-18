@@ -42,10 +42,10 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // HEISHINATOR V4 — CALCUL & COULEUR
 // ══════════════════════════════════════════════════════════════
 // EMA(3) de OHLC4 : plus réactif que EMA(6), moins bruité que close brut
-hei_close = ta.ema((open + high + low + close) / 4, 3)
-
-ha_bull = hei_close > ema_m1
-ha_bear = hei_close < ema_m1
+// Mèche : le high touche ou dépasse MA50 → signal haussier
+//         le low  touche ou descend sous MA50 → signal baissier
+ha_bull = high >= ema_m1
+ha_bear = low  <= ema_m1
 
 // Tendance déterminée par la position relative des deux moyennators
 is_bear_trend = ema_m1 < ema_m2  // MA50 < MA60 = baissier
