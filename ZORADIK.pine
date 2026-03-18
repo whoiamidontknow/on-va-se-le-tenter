@@ -47,20 +47,23 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// Logique de coloration — close uniquement :
-//   BLEU→ROUGE : close < MA50 (immédiat, dès le premier close en dessous)
-//   ROUGE→BLEU : 2 closes consécutifs au-dessus de MA50
-//               → close[1] > MA50 ET close[2] > MA50
-//               = la couleur change sur la 2ème bougie qui suit le franchissement
+// Source : EMA(3) de OHLC4 — lissée, réactive, moins bruité que le close brut
+// (design original du Heishinator, tel que décrit dans les commentaires)
+hei_src = ta.ema(ohlc4, 3)
+
+// Logique de coloration :
+//   BLEU→ROUGE : hei_src < MA50 (immédiat)
+//   ROUGE→BLEU : 2 valeurs consécutives de hei_src au-dessus de MA50
+//               = moins de faux positifs qu'avec le close brut
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if close < ema_m1                                        // BLEU→ROUGE : immédiat
+    if hei_src < ema_m1                                          // BLEU→ROUGE : immédiat
         col_bull := false
         col_bear := true
 else
-    if close[1] > ema_m1[1] and close[2] > ema_m1[2]        // ROUGE→BLEU : 2 closes consécutifs
+    if hei_src[1] > ema_m1[1] and hei_src[2] > ema_m1[2]        // ROUGE→BLEU : 2 consécutifs
         col_bear := false
         col_bull := true
 
