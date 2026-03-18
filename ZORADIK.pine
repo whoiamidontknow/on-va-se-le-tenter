@@ -47,39 +47,25 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// Tendance déterminée par la position relative des deux moyennators
-is_bull_trend = ema_m1 >= ema_m2  // MA50 >= MA60 = haussier
-
-// Direction FACILE  : wick-based (ultra-réactif, dès que le wick touche MA50)
-// Direction DIFFICILE : close[1]-based (le close de la bougie qui traverse, +1 bar)
+// Logique de coloration universelle (sans condition de tendance) :
+//   BLEU→ROUGE : wick bas touche MA50 (facile, ultra-réactif)
+//   ROUGE→BLEU : le close de la bougie précédente était au-dessus de MA50 (+1 bougie)
 //
-//   Tendance HAUSSIÈRE :
-//     BLEU→ROUGE : wick bas touche MA50 (facile, immédiat)
-//     ROUGE→BLEU : le close PRÉCÉDENT était au-dessus de MA50 (difficile, +1 bougie)
-//   Tendance BAISSIÈRE (symétrique) :
-//     ROUGE→BLEU : wick haut touche MA50 (facile, immédiat)
-//     BLEU→ROUGE : le close PRÉCÉDENT était en dessous de MA50 (difficile, +1 bougie)
+// Résultat :
+//   - Tendance baissière : wicks qui remontent vers MA50 restent ROUGE (close < MA50)
+//                          → switch BLEU uniquement si le close précédent a dépassé MA50
+//   - Tendance haussière : wick qui dip vers MA50 → 1 bougie ROUGE, retour BLEU dès close[1] > MA50
 var bool col_bull = false
 var bool col_bear = true
 
-if is_bull_trend
-    if col_bull
-        if ha_bear                  // BLEU→ROUGE : wick bas (facile)
-            col_bull := false
-            col_bear := true
-    else
-        if close[1] > ema_m1[1]     // ROUGE→BLEU : close[1] au-dessus → switch maintenant
-            col_bear := false
-            col_bull := true
+if col_bull
+    if ha_bear                  // BLEU→ROUGE : low <= MA50 (wick, immédiat)
+        col_bull := false
+        col_bear := true
 else
-    if col_bear
-        if ha_bull                  // ROUGE→BLEU : wick haut (facile)
-            col_bear := false
-            col_bull := true
-    else
-        if close[1] < ema_m1[1]     // BLEU→ROUGE : close[1] en dessous → switch maintenant
-            col_bull := false
-            col_bear := true
+    if close[1] > ema_m1[1]     // ROUGE→BLEU : close[1] au-dessus MA50 → switch maintenant
+        col_bear := false
+        col_bull := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
