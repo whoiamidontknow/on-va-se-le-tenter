@@ -47,18 +47,33 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// 2 mèches consécutives qui touchent MA50 pour changer de couleur
+// Tendance déterminée par la position relative des deux moyennators
+is_bear_trend = ema_m1 < ema_m2  // MA50 < MA60 = baissier
+
+// Validation asymétrique selon la tendance (mèches) :
+//   Tendance BAISSIÈRE : bleu en 1 mèche (rapide), rouge en 2 mèches (lent)
+//   Tendance HAUSSIÈRE : rouge en 1 mèche (rapide), bleu en 2 mèches (lent)
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if ha_bear and ha_bear[1]
-        col_bull := false
-        col_bear := true
+    if is_bear_trend
+        if ha_bear and ha_bear[1]   // baissier → rouge lent (2 mèches)
+            col_bull := false
+            col_bear := true
+    else
+        if ha_bear                   // haussier → rouge rapide (1 mèche)
+            col_bull := false
+            col_bear := true
 else
-    if ha_bull and ha_bull[1]
-        col_bear := false
-        col_bull := true
+    if is_bear_trend
+        if ha_bull                   // baissier → bleu rapide (1 mèche)
+            col_bear := false
+            col_bull := true
+    else
+        if ha_bull and ha_bull[1]   // haussier → bleu lent (2 mèches)
+            col_bear := false
+            col_bull := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
