@@ -41,25 +41,22 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — CALCUL & COULEUR
 // ══════════════════════════════════════════════════════════════
-hei_close_raw = (open + high + low + close) / 4
-hei_close     = ta.ema(hei_close_raw, 6)
-var float hei_op = na
-hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
+// Critère asymétrique basé sur la position par rapport au Moyenator 1 :
+//   Haussier (bleu)  : le high touche ou dépasse le Moyenator 1
+//   Baissier (rouge) : bougie entière sous le Moyenator 1 (high compris)
+bull_candle = high >= ema_m1
+bear_candle = high <  ema_m1
 
-// Bougie HA haussière si hei_close > hei_op, baissière sinon
-ha_bull_candle = hei_close > hei_op
-ha_bear_candle = hei_close < hei_op
-
-// Double validation symétrique : 2 bougies consécutives pour changer de couleur
+// Double validation : 2 bougies consécutives pour changer de couleur
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if ha_bear_candle and ha_bear_candle[1]
+    if bear_candle and bear_candle[1]
         col_bull := false
         col_bear := true
 else
-    if ha_bull_candle and ha_bull_candle[1]
+    if bull_candle and bull_candle[1]
         col_bear := false
         col_bull := true
 
