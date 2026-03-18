@@ -41,24 +41,43 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — CALCUL & COULEUR
 // ══════════════════════════════════════════════════════════════
-// Critère asymétrique basé sur la position par rapport au Moyenator 1 :
-//   Haussier (bleu)  : le high touche ou dépasse le Moyenator 1
-//   Baissier (rouge) : bougie entière sous le Moyenator 1 (high compris)
-bull_candle = high >= ema_m1
-bear_candle = high <  ema_m1
+// Formule HA lissée (particulière)
+hei_close_raw = (open + high + low + close) / 4
+hei_close     = ta.ema(hei_close_raw, 6)
+var float hei_op = na
+hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
 
-// Double validation : 2 bougies consécutives pour changer de couleur
+ha_bull = hei_close > hei_op
+ha_bear = hei_close < hei_op
+
+// Validation asymétrique adaptée au contexte de tendance (50 vs 60) :
+//   Tendance baissière (50 < 60) : 1 bougie pour aller au bleu, 2 pour aller au rouge
+//   Tendance haussière (50 > 60) : 1 bougie pour aller au rouge, 2 pour aller au bleu
+is_bear_trend = ema_m1 < ema_m2
+
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if bear_candle and bear_candle[1]
-        col_bull := false
-        col_bear := true
+    // Pour quitter le bleu → rouge
+    if is_bear_trend
+        if ha_bear and ha_bear[1]   // tendance baissière : difficile d'aller au rouge → 2 bougies
+            col_bull := false
+            col_bear := true
+    else
+        if ha_bear                  // tendance haussière : facile d'aller au rouge → 1 bougie
+            col_bull := false
+            col_bear := true
 else
-    if bull_candle and bull_candle[1]
-        col_bear := false
-        col_bull := true
+    // Pour quitter le rouge → bleu
+    if is_bear_trend
+        if ha_bull                  // tendance baissière : facile d'aller au bleu → 1 bougie
+            col_bear := false
+            col_bull := true
+    else
+        if ha_bull and ha_bull[1]   // tendance haussière : difficile d'aller au bleu → 2 bougies
+            col_bear := false
+            col_bull := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
