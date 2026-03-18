@@ -47,13 +47,11 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// Logique de coloration — close uniquement (plus de wick) :
-//   BLEU→ROUGE : close < MA50 (immédiat — le wick seul ne suffit pas)
-//   ROUGE→BLEU : close[1] > MA50 (+1 bougie de confirmation)
+// Logique de coloration — close uniquement :
+//   BLEU→ROUGE : close < MA50 (immédiat)
+//   ROUGE→BLEU : close[2] > MA50 (+2 bougies — la bougie traverse + la suivante confirme)
 //
-// Résultat :
-//   Un wick qui dip vers MA50 sans clôturer en dessous → RESTE BLEU
-//   Un wick qui remonte vers MA50 sans clôturer au-dessus → RESTE ROUGE
+// "C'est la deuxième bougie qui suit le franchissement qui change de couleur"
 var bool col_bull = false
 var bool col_bear = true
 
@@ -62,7 +60,7 @@ if col_bull
         col_bull := false
         col_bear := true
 else
-    if close[1] > ema_m1[1]         // ROUGE→BLEU : close[1] au-dessus MA50
+    if close[2] > ema_m1[2]         // ROUGE→BLEU : il y a 2 bars le close était au-dessus
         col_bear := false
         col_bull := true
 
