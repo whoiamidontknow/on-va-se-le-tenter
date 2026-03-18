@@ -47,23 +47,22 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// Logique de coloration universelle (sans condition de tendance) :
-//   BLEU→ROUGE : wick bas touche MA50 (facile, ultra-réactif)
-//   ROUGE→BLEU : le close de la bougie précédente était au-dessus de MA50 (+1 bougie)
+// Logique de coloration — close uniquement (plus de wick) :
+//   BLEU→ROUGE : close < MA50 (immédiat — le wick seul ne suffit pas)
+//   ROUGE→BLEU : close[1] > MA50 (+1 bougie de confirmation)
 //
 // Résultat :
-//   - Tendance baissière : wicks qui remontent vers MA50 restent ROUGE (close < MA50)
-//                          → switch BLEU uniquement si le close précédent a dépassé MA50
-//   - Tendance haussière : wick qui dip vers MA50 → 1 bougie ROUGE, retour BLEU dès close[1] > MA50
+//   Un wick qui dip vers MA50 sans clôturer en dessous → RESTE BLEU
+//   Un wick qui remonte vers MA50 sans clôturer au-dessus → RESTE ROUGE
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if ha_bear                  // BLEU→ROUGE : low <= MA50 (wick, immédiat)
+    if close < ema_m1               // BLEU→ROUGE : close sous MA50
         col_bull := false
         col_bear := true
 else
-    if close[1] > ema_m1[1]     // ROUGE→BLEU : close[1] au-dessus MA50 → switch maintenant
+    if close[1] > ema_m1[1]         // ROUGE→BLEU : close[1] au-dessus MA50
         col_bear := false
         col_bull := true
 
