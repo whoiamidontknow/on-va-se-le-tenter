@@ -44,22 +44,36 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // EMA(3) de OHLC4 : plus réactif que EMA(6), moins bruité que close brut
 hei_close = ta.ema((open + high + low + close) / 4, 3)
 
-// Couleur = position de hei_close vs Moyenator 1
 ha_bull = hei_close > ema_m1
 ha_bear = hei_close < ema_m1
 
-// Double validation : 2 clôtures consécutives du même côté pour changer de couleur
+// Tendance déterminée par la position relative des deux moyennators
+is_bear_trend = ema_m1 < ema_m2  // MA50 < MA60 = baissier
+
+// Validation asymétrique selon la tendance :
+//   Tendance BAISSIÈRE : bleu en 1 clôture (rapide), rouge en 2 clôtures (lent)
+//   Tendance HAUSSIÈRE : rouge en 1 clôture (rapide), bleu en 2 clôtures (lent)
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if ha_bear and ha_bear[1]
-        col_bull := false
-        col_bear := true
+    if is_bear_trend
+        if ha_bear and ha_bear[1]   // baissier → rouge lent (2 bougies)
+            col_bull := false
+            col_bear := true
+    else
+        if ha_bear                   // haussier → rouge rapide (1 bougie)
+            col_bull := false
+            col_bear := true
 else
-    if ha_bull and ha_bull[1]
-        col_bear := false
-        col_bull := true
+    if is_bear_trend
+        if ha_bull                   // baissier → bleu rapide (1 bougie)
+            col_bear := false
+            col_bull := true
+    else
+        if ha_bull and ha_bull[1]   // haussier → bleu lent (2 bougies)
+            col_bear := false
+            col_bull := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
