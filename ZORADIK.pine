@@ -44,40 +44,24 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // Formule HA lissée (particulière)
 hei_close_raw = (open + high + low + close) / 4
 hei_close     = ta.ema(hei_close_raw, 6)
-var float hei_op = na
-hei_op := na(hei_op[1]) ? (open + close) / 2 : (hei_op[1] * 5 + hei_close[1]) / 6
 
-ha_bull = hei_close > hei_op
-ha_bear = hei_close < hei_op
+// Couleur = position de la clôture HA vs Moyenator 1
+// Une mèche seule ne suffit pas — seule la clôture HA compte
+ha_bull = hei_close > ema_m1
+ha_bear = hei_close < ema_m1
 
-// Validation asymétrique adaptée au contexte de tendance (50 vs 60) :
-//   Tendance baissière (50 < 60) : 1 bougie pour aller au bleu, 2 pour aller au rouge
-//   Tendance haussière (50 > 60) : 1 bougie pour aller au rouge, 2 pour aller au bleu
-is_bear_trend = ema_m1 < ema_m2
-
+// Double validation : 2 clôtures HA consécutives du même côté pour changer de couleur
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    // Pour quitter le bleu → rouge
-    if is_bear_trend
-        if ha_bear and ha_bear[1]   // tendance baissière : difficile d'aller au rouge → 2 bougies
-            col_bull := false
-            col_bear := true
-    else
-        if ha_bear                  // tendance haussière : facile d'aller au rouge → 1 bougie
-            col_bull := false
-            col_bear := true
+    if ha_bear and ha_bear[1]
+        col_bull := false
+        col_bear := true
 else
-    // Pour quitter le rouge → bleu
-    if is_bear_trend
-        if ha_bull                  // tendance baissière : facile d'aller au bleu → 1 bougie
-            col_bear := false
-            col_bull := true
-    else
-        if ha_bull and ha_bull[1]   // tendance haussière : difficile d'aller au bleu → 2 bougies
-            col_bear := false
-            col_bull := true
+    if ha_bull and ha_bull[1]
+        col_bear := false
+        col_bull := true
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
