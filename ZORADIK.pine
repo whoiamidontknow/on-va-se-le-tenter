@@ -49,17 +49,17 @@ ha_bear = low  <= ema_m1
 
 // Logique de coloration — close uniquement :
 //   BLEU→ROUGE : close < MA50 (immédiat)
-//   ROUGE→BLEU : 2 closes consécutifs au-dessus de MA50
-//               → close[1] > MA50 ET close[2] > MA50
+//   ROUGE→BLEU : 3 closes consécutifs au-dessus de MA50
+//               → filtre les petits rebonds qui ne sont pas soutenus
 var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if close < ema_m1                                        // BLEU→ROUGE : immédiat
+    if close < ema_m1                                                              // BLEU→ROUGE : immédiat
         col_bull := false
         col_bear := true
 else
-    if close[1] > ema_m1[1] and close[2] > ema_m1[2]        // ROUGE→BLEU : 2 closes consécutifs
+    if close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3]    // ROUGE→BLEU : 3 closes consécutifs
         col_bear := false
         col_bull := true
 
