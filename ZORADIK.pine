@@ -11,7 +11,7 @@ hei_bull_color = input.color(color.blue, "Couleur Bougie Haussiere", group=grp_h
 hei_bear_color = input.color(color.red,  "Couleur Bougie Baissiere", group=grp_hei)
 hei_bull_color_final = hei_custom ? hei_bull_color : color.new(color.blue, 0)
 hei_bear_color_final = hei_custom ? hei_bear_color : color.new(color.red,  0)
-hei_struct_bars    = input.int(5, "Barres confirmation structure (EMA50>EMA60)", group=grp_hei, minval=1, maxval=20, tooltip="Nombre de barres consécutives où EMA50 doit être au-dessus de EMA60 avant d'autoriser les bougies bleues. Augmenter pour filtrer les bounces.")
+hei_slope_bars     = input.int(5, "Pente EMA60 — confirmation structure (barres)", group=grp_hei, minval=1, maxval=20, tooltip="EMA60 doit monter depuis N barres pour valider une structure haussière. Filtre les bounces en downtrend où l'EMA60 est encore en descente.")
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — INPUTS
@@ -52,9 +52,10 @@ ha_bear = low  <= ema_m1
 //   BLEU→ROUGE : close < MA50 (immédiat)
 //   ROUGE→BLEU : 3 closes consécutifs au-dessus de MA50
 //               → filtre les petits rebonds qui ne sont pas soutenus
-// Structure haussière confirmée : EMA50 > EMA60 depuis N barres consécutives (N = hei_struct_bars)
-// math.sum compte les barres où EMA50 > EMA60 sur les N dernières → doit toutes les avoir
-bull_structure = math.sum(ema_m1 > ema_m2 ? 1 : 0, hei_struct_bars) >= hei_struct_bars
+// Structure haussière : EMA50 > EMA60 ET EMA60 monte depuis N barres (pente positive)
+// → en bounce downtrend, EMA60 est encore en descente → bull_structure = false
+// → en vrai uptrend, EMA60 monte aussi (inertie de 60 périodes) → bull_structure = true
+bull_structure = ema_m1 > ema_m2 and ema_m2 > ema_m2[hei_slope_bars]
 
 var bool col_bull = false
 var bool col_bear = true
