@@ -51,6 +51,10 @@ ha_bear = low  <= ema_m1
 //   BLEU→ROUGE : close < MA50 (immédiat)
 //   ROUGE→BLEU : 3 closes consécutifs au-dessus de MA50
 //               → filtre les petits rebonds qui ne sont pas soutenus
+// Structure haussière confirmée : EMA50 > EMA60 depuis au moins 3 barres consécutives
+// → filtre les croisements brefs et les bounces en downtrend
+bull_structure = ema_m1 > ema_m2 and ema_m1[1] > ema_m2[1] and ema_m1[2] > ema_m2[2]
+
 var bool col_bull = false
 var bool col_bear = true
 
@@ -59,13 +63,12 @@ if col_bull
         col_bull := false
         col_bear := true
 else
-    if close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3] and ema_m1 > ema_m2  // ROUGE→BLEU : 3 closes > EMA50 + structure haussière (EMA50 > EMA60)
+    if close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3] and bull_structure  // ROUGE→BLEU : 3 closes > EMA50 + structure confirmée 3 barres
         col_bear := false
         col_bull := true
 
-// Afficher BLEU uniquement si col_bull ET zone cyan (EMA50 > EMA60)
-// → les bounces en downtrend restent ROUGES même si col_bull est vrai
-barcolor(col_bull and ema_m1 > ema_m2 ? hei_bull_color_final : hei_bear_color_final)
+// Afficher BLEU uniquement si col_bull ET structure confirmée (évite bleu en début de zone ou bounce bref)
+barcolor(col_bull and bull_structure ? hei_bull_color_final : hei_bear_color_final)
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — TRACÉ
