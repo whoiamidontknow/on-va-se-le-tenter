@@ -55,15 +55,17 @@ var bool col_bull = false
 var bool col_bear = true
 
 if col_bull
-    if close < ema_m1 or ema_m1 <= ema_m2                                         // BLEU→ROUGE : close < EMA50 OU structure baissière (EMA50 ≤ EMA60)
+    if close < ema_m1                                                              // BLEU→ROUGE : immédiat dès que close < EMA50
         col_bull := false
         col_bear := true
 else
-    if close > ema_m1 and close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3] and ema_m1 > ema_m2  // ROUGE→BLEU : 4 closes > EMA50 (barre courante incluse) + EMA50 > EMA60 (zone cyan)
+    if close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3] and ema_m1 > ema_m2  // ROUGE→BLEU : 3 closes > EMA50 + structure haussière (EMA50 > EMA60)
         col_bear := false
         col_bull := true
 
-barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
+// Afficher BLEU uniquement si col_bull ET zone cyan (EMA50 > EMA60)
+// → les bounces en downtrend restent ROUGES même si col_bull est vrai
+barcolor(col_bull and ema_m1 > ema_m2 ? hei_bull_color_final : hei_bear_color_final)
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — TRACÉ
