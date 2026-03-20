@@ -41,17 +41,36 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — CALCUL & COULEUR
 // ══════════════════════════════════════════════════════════════
-// EMA(3) de OHLC4 : plus réactif que EMA(6), moins bruité que close brut
-// Mèche : le high touche ou dépasse MA50 → signal haussier
-//         le low  touche ou descend sous MA50 → signal baissier
-ha_bull = high >= ema_m1
-ha_bear = low  <= ema_m1
+// Logique de coloration — machine à états symétrique selon la tendance :
+//
+// ZONE HAUSSIÈRE (EMA50 > EMA60) :
+//   BLEU→ROUGE : 2 bougies consécutives touchent EMA50 par le bas (low <= EMA50)
+//   ROUGE→BLEU : clôture au-dessus de EMA50
+//
+// ZONE BAISSIÈRE (EMA50 < EMA60) — règles inversées :
+//   ROUGE→BLEU : 2 bougies consécutives touchent EMA50 par le haut (high >= EMA50)
+//   BLEU→ROUGE : clôture en-dessous de EMA50
 
-// Coloration barre par barre :
-//   BLEU  : EMA50 > EMA60 (zone cyan) ET close > EMA50
-//   ROUGE : tout autre cas (zone rouge, ou close < EMA50 même en zone cyan)
-// Le filtre EMA50>EMA60 garantit que les bounces en zone rouge restent TOUJOURS ROUGES
-barcolor(ema_m1 > ema_m2 and close > ema_m1 ? hei_bull_color_final : hei_bear_color_final)
+var bool col_bull = false
+
+if ema_m1 > ema_m2
+    // === TENDANCE HAUSSIÈRE ===
+    if col_bull
+        if low <= ema_m1 and low[1] <= ema_m1[1]          // 2 mèches touchent EMA50 → ROUGE
+            col_bull := false
+    else
+        if close > ema_m1                                  // clôture au-dessus EMA50 → BLEU
+            col_bull := true
+else
+    // === TENDANCE BAISSIÈRE (règles inversées) ===
+    if not col_bull
+        if high >= ema_m1 and high[1] >= ema_m1[1]        // 2 mèches touchent EMA50 → BLEU
+            col_bull := true
+    else
+        if close < ema_m1                                  // clôture en-dessous EMA50 → ROUGE
+            col_bull := false
+
+barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — TRACÉ
