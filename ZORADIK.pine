@@ -53,13 +53,12 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 
 var bool col_bull = false
 
-// Reset à chaque transition de tendance (évite le carry-over d'état entre zones)
-// → Entrée en zone HAUSSIÈRE : rouge par défaut (doit prouver close > EMA50 pour aller bleu)
-// → Entrée en zone BAISSIÈRE : bleu par défaut (doit prouver close < EMA50 pour aller rouge)
-if ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]
+// Reset à chaque transition de tendance → toujours ROUGE par défaut dans les deux zones
+// La couleur confirmatrice (BLEU) doit être "gagnée" :
+//   Zone HAUSSIÈRE : close > EMA50 → BLEU
+//   Zone BAISSIÈRE : 2 mèches consécutives high >= EMA50 → BLEU
+if (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
     col_bull := false
-else if ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1]
-    col_bull := true
 
 if ema_m1 > ema_m2
     // === TENDANCE HAUSSIÈRE ===
