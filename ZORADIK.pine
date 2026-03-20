@@ -11,7 +11,6 @@ hei_bull_color = input.color(color.blue, "Couleur Bougie Haussiere", group=grp_h
 hei_bear_color = input.color(color.red,  "Couleur Bougie Baissiere", group=grp_hei)
 hei_bull_color_final = hei_custom ? hei_bull_color : color.new(color.blue, 0)
 hei_bear_color_final = hei_custom ? hei_bear_color : color.new(color.red,  0)
-hei_slope_bars     = input.int(5, "Pente EMA60 — confirmation structure (barres)", group=grp_hei, minval=1, maxval=20, tooltip="EMA60 doit monter depuis N barres pour valider une structure haussière. Filtre les bounces en downtrend où l'EMA60 est encore en descente.")
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — INPUTS
@@ -48,29 +47,11 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 ha_bull = high >= ema_m1
 ha_bear = low  <= ema_m1
 
-// Logique de coloration — close uniquement :
-//   BLEU→ROUGE : close < MA50 (immédiat)
-//   ROUGE→BLEU : 3 closes consécutifs au-dessus de MA50
-//               → filtre les petits rebonds qui ne sont pas soutenus
-// Structure haussière : EMA50 > EMA60 ET EMA60 monte depuis N barres (pente positive)
-// → en bounce downtrend, EMA60 est encore en descente → bull_structure = false
-// → en vrai uptrend, EMA60 monte aussi (inertie de 60 périodes) → bull_structure = true
-bull_structure = ema_m1 > ema_m2 and ema_m2 > ema_m2[hei_slope_bars]
-
-var bool col_bull = false
-var bool col_bear = true
-
-if col_bull
-    if close < ema_m1                                                              // BLEU→ROUGE : immédiat dès que close < EMA50
-        col_bull := false
-        col_bear := true
-else
-    if close[1] > ema_m1[1] and close[2] > ema_m1[2] and close[3] > ema_m1[3] and bull_structure  // ROUGE→BLEU : 3 closes > EMA50 + structure confirmée 3 barres
-        col_bear := false
-        col_bull := true
-
-// Afficher BLEU uniquement si col_bull ET structure confirmée (évite bleu en début de zone ou bounce bref)
-barcolor(col_bull and bull_structure ? hei_bull_color_final : hei_bear_color_final)
+// Coloration barre par barre :
+//   BLEU  : EMA50 > EMA60 (zone cyan) ET close > EMA50
+//   ROUGE : tout autre cas (zone rouge, ou close < EMA50 même en zone cyan)
+// Le filtre EMA50>EMA60 garantit que les bounces en zone rouge restent TOUJOURS ROUGES
+barcolor(ema_m1 > ema_m2 and close > ema_m1 ? hei_bull_color_final : hei_bear_color_final)
 
 // ══════════════════════════════════════════════════════════════
 // MOYENATOR V5 — TRACÉ
