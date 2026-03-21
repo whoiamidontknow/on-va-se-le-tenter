@@ -41,16 +41,12 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — COLORATION HEIKEN ASHI
 // ══════════════════════════════════════════════════════════════
-// Pine Script utilise toujours les vraies valeurs OHLC, même sur chart HA.
-// On recalcule les valeurs HA manuellement :
-//   HA_close = (O + H + L + C) / 4
-//   HA_open  = (HA_open[1] + HA_close[1]) / 2
-// Bougie BLEUE si corps HA haussier (HA_close > HA_open)
-// Bougie ROUGE si corps HA baissier (HA_close ≤ HA_open)
-ha_close = (open + high + low + close) / 4
-var float ha_open = na
-ha_open := na(ha_open[1]) ? (open + close) / 2 : (ha_open[1] + ha_close[1]) / 2
-col_bull = ha_close > ha_open
+// Sur chart natif Heiken Ashi, close = HA_close et open = HA_open nativement.
+// Règle : bougie BLEUE si HA_close > EMA(HA_close, 33)
+//         bougie ROUGE sinon
+// EMA 33 identifiée par analyse diagnostique comparative (périodes 25-45).
+ema_hei  = ta.ema(close, 33)
+col_bull = close > ema_hei
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
