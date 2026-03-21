@@ -73,7 +73,7 @@ barcolor(col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0), title = "Cand
 // TRANSITION DETECTION
 // ──────────────────────────────────────────────────────────
 // A transition occurs on bar N when col_bull[0] != col_bull[1]
-is_transition = not na(col_bull[1]) and col_bull != col_bull[1]
+is_transition = bar_index > 0 and col_bull != col_bull[1]
 
 // Short rule tag for labels (strip the long prefix)
 rule_tag =
