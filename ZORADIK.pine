@@ -9,8 +9,6 @@ grp_hei        = "=== EPHORE HEISHINATOR V4 ==="
 hei_custom     = input.bool(false, "Personnaliser Couleurs",         group=grp_hei)
 hei_bull_color = input.color(color.blue, "Couleur Bougie Haussiere", group=grp_hei)
 hei_bear_color = input.color(color.red,  "Couleur Bougie Baissiere", group=grp_hei)
-hei_ref_len    = input.int(35, "EMA Référence Heishinator", group=grp_hei, minval=1, tooltip="EMA utilisée pour la coloration des bougies (séparée des Moyenators)")
-hei_conf_gap   = input.float(0.0, "Confirmation EMA (% écart min)", group=grp_hei, minval=0.0, step=0.01, tooltip="Ecart minimum requis entre la clôture et l'EMA pour valider le signal. Ex: 0.05 = la clôture doit être à 0.05% au-dessus/dessous. 0 = n'importe quelle clôture au-dessus/dessous.")
 hei_bull_color_final = hei_custom ? hei_bull_color : color.new(color.blue, 0)
 hei_bear_color_final = hei_custom ? hei_bear_color : color.new(color.red,  0)
 
@@ -37,143 +35,16 @@ moy_no_fill_eq = input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2
 // ══════════════════════════════════════════════════════════════
 // EMAs — calculées ici car utilisées par HEISHINATOR et MOYENATOR
 // ══════════════════════════════════════════════════════════════
-ema_m1    = ta.ema(moy_src1, moy_len1)
-ema_m2    = ta.ema(moy_src2, moy_len2)
-ema_hei   = ta.ema(close, hei_ref_len)
-dema_hei  = 2 * ema_hei - ta.ema(ema_hei, hei_ref_len)   // Double EMA (moins de lag)
-hei_gap   = ema_hei[1] * hei_conf_gap / 100               // gap basé sur barre précédente
-hei_gap0  = ema_hei  * hei_conf_gap / 100                 // gap basé sur barre courante
+ema_m1 = ta.ema(moy_src1, moy_len1)
+ema_m2 = ta.ema(moy_src2, moy_len2)
 
 // ══════════════════════════════════════════════════════════════
-// HEISHINATOR V4 — SÉLECTEUR D'HYPOTHÈSE
+// HEISHINATOR V4 — COLORATION HEIKEN ASHI
 // ══════════════════════════════════════════════════════════════
-hei_mode = input.string("H-LIVE — Close immédiat (même barre)",
-     "Mode de coloration",
-     options=[
-         "H-HA — Corps HA (close > open)",
-         "H-LIVE — Close immédiat (même barre)",
-         "H-BODY — Corps entier au-dessus",
-         "H-EMA50 — EMA50 direct",
-         "H-EMA50D — EMA50 clôture précédente",
-         "H-DEMA — Double EMA (moins de lag)",
-         "H6+ — Close + protect cross baissier",
-         "H6 — Close symétrique",
-         "H7 — Mèche haussier / Close baissier",
-         "H4 — Mèche 1 barre (2 côtés)",
-         "H5 — Mèche 2 barres (ancien code)"
-     ],
-     tooltip="LIVE: close>EMA barre courante | BODY: corps entier au-dessus | EMA50: EMA50 direct | DEMA: Double EMA moins de lag | H6+/H6: close avec délai 1 barre | H7/H4/H5: mèches",
-     group=grp_hei)
-
-// ── CALCUL ──────────────────────────────────────────────────
-var bool col_bull = false
-
-// Détection des transitions de tendance
-trend_cross = (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
-bear_cross  = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
-
-if trend_cross
-    col_bull := false
-
-// ── H-HA : Corps Heiken Ashi pur (close > open = bougie HA haussière) ─────────
-// Hypothèse : sur chart HA, close=HA_close et open=HA_open → coloring = corps HA
-if hei_mode == "H-HA — Corps HA (close > open)"
-    col_bull := close > open
-
-// ── H-LIVE : Close immédiat (même barre, pas de délai [1]) ────────────────────
-// Hypothèse : la couleur change SUR la bougie qui clôture au-dessus/dessous de l'EMA
-else if hei_mode == "H-LIVE — Close immédiat (même barre)"
-    col_bull := close > ema_hei + hei_gap0
-
-// ── H-BODY : Corps entier au-dessus (open ET close au-dessus) ─────────────────
-// Hypothèse : une "vraie" clôture = corps complet au-dessus, pas juste la wick
-else if hei_mode == "H-BODY — Corps entier au-dessus"
-    col_bull := math.min(open, close) > ema_hei + hei_gap0
-
-// ── H-EMA50 : EMA50 direct (pas d'EMA séparée) ───────────────────────────────
-// Hypothèse : la ligne de référence est EMA50 (la ligne épaisse), pas EMA35
-else if hei_mode == "H-EMA50 — EMA50 direct"
-    col_bull := close > ema_m1
-
-// ── H-EMA50D : EMA50 + délai 1 barre (clôture précédente) ────────────────────
-// Hypothèse : EMA50 comme référence, mais couleur change sur la bougie SUIVANTE
-else if hei_mode == "H-EMA50D — EMA50 clôture précédente"
-    col_bull := close[1] > ema_m1[1]
-
-// ── H-DEMA : Double EMA (lag réduit vs EMA simple) ───────────────────────────
-// Hypothèse : la ligne bleue fine est une DEMA (plus réactive que EMA35)
-else if hei_mode == "H-DEMA — Double EMA (moins de lag)"
-    col_bull := close > dema_hei + hei_gap0
-
-// ── H6+ : Close symétrique + protection 1ère barre cross baissier ─────────────
-// Même logique que H6, SAUF sur la barre exacte du cross baissier :
-// même si close > EMA50, on force ROUGE (cas A2 : cross + rebond simultané)
-if hei_mode == "H6+ — Close + protect cross baissier"
-    if bear_cross
-        col_bull := false                                  // force ROUGE au cross baissier
-    else
-        col_bull := close[1] > ema_hei[1] + hei_gap                 // H6 normal : clôture précédente
-
-// ── H6 : Close symétrique pur — couleur basée sur la clôture de la bougie précédente ──
-else if hei_mode == "H6 — Close symétrique"
-    col_bull := close[1] > ema_hei[1] + hei_gap
-
-// ── H7 : Mèche haussier / Close baissier ──────────────────────────────────────
-// HAUSSIER : mèche basse touche EMA_HEI → ROUGE immédiat / clôture préc. > EMA_HEI → BLEU
-// BAISSIER : clôture préc. > EMA_HEI → BLEU / clôture préc. < EMA_HEI → ROUGE
-else if hei_mode == "H7 — Mèche haussier / Close baissier"
-    if ema_m1 > ema_m2
-        if col_bull
-            if low <= ema_hei                              // 1 mèche → ROUGE (immédiat)
-                col_bull := false
-        else
-            if close[1] > ema_hei[1] + hei_gap                      // clôture préc. → BLEU
-                col_bull := true
-    else
-        if not col_bull
-            if close[1] > ema_hei[1] + hei_gap                      // clôture préc. → BLEU
-                col_bull := true
-        else
-            if close[1] < ema_hei[1] - hei_gap                      // clôture préc. → ROUGE
-                col_bull := false
-
-// ── H4 : Mèche 1 barre (les deux zones) ──────────────────────────────────────
-// HAUSSIER : 1 mèche low ≤ EMA_HEI → ROUGE (immédiat) / clôture préc. > EMA_HEI → BLEU
-// BAISSIER : 1 mèche high ≥ EMA_HEI → BLEU (immédiat) / clôture préc. < EMA_HEI → ROUGE
-else if hei_mode == "H4 — Mèche 1 barre (2 côtés)"
-    if ema_m1 > ema_m2
-        if col_bull
-            if low <= ema_hei                              // 1 mèche → ROUGE (immédiat)
-                col_bull := false
-        else
-            if close[1] > ema_hei[1] + hei_gap                      // clôture préc. → BLEU
-                col_bull := true
-    else
-        if not col_bull
-            if high >= ema_hei                             // 1 mèche → BLEU (immédiat)
-                col_bull := true
-        else
-            if close[1] < ema_hei[1] - hei_gap                      // clôture préc. → ROUGE
-                col_bull := false
-
-// ── H5 : Mèche 2 barres consécutives (ancien code) ───────────────────────────
-// HAUSSIER : 2 low consécutifs ≤ EMA_HEI → ROUGE / clôture préc. > EMA_HEI → BLEU
-// BAISSIER : 2 high consécutifs ≥ EMA_HEI → BLEU / clôture préc. < EMA_HEI → ROUGE
-else if hei_mode == "H5 — Mèche 2 barres (ancien code)"
-    if ema_m1 > ema_m2
-        if col_bull
-            if low <= ema_hei and low[1] <= ema_hei[1]    // 2 mèches → ROUGE
-                col_bull := false
-        else
-            if close[1] > ema_hei[1] + hei_gap                      // clôture préc. → BLEU
-                col_bull := true
-    else
-        if not col_bull
-            if high >= ema_hei and high[1] >= ema_hei[1]  // 2 mèches → BLEU
-                col_bull := true
-        else
-            if close[1] < ema_hei[1] - hei_gap                      // clôture préc. → ROUGE
-                col_bull := false
+// Sur chart Heiken Ashi : close = HA_close, open = HA_open
+// Bougie BLEUE si corps HA haussier (HA_close > HA_open)
+// Bougie ROUGE si corps HA baissier (HA_close ≤ HA_open)
+col_bull = close > open
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
