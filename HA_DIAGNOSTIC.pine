@@ -27,8 +27,11 @@ col_bull = mode == "G — close > EMA(close, N)"  ? close    > ema_ref      :
            mode == "I — close > open  (corps HA pur)"  ? close    > open       :
            false
 
-// ── BARCOLOR ─────────────────────────────────────────────────
-barcolor(col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0))
+// ── BGCOLOR (ne remplace PAS les couleurs de l'original) ─────
+// Fond bleu clair = notre signal BULL / fond rouge clair = BEAR
+// Les bougies de l'indicateur original restent visibles par-dessus
+bgcolor(col_bull ? color.new(#2196F3, 80) : color.new(#F44336, 80),
+     title = "Signal background (bleu=bull, rouge=bear)")
 
 // ── LIGNE EMA (blanche épaisse) ──────────────────────────────
 plot(ema_ref, "EMA référence", color=color.white, linewidth=3)
