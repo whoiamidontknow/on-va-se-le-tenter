@@ -1,29 +1,33 @@
 // ============================================================
-// HA DIAGNOSTIC INDICATOR — Pine Script v6
+// HA DIAGNOSTIC INDICATOR v2 — Pine Script v6
 // Goal: reverse-engineer an unknown candle-coloring rule
 //       on a Heiken Ashi chart.
 // ============================================================
 //@version=6
-indicator("HA Diagnostic — Rule Finder", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic — Rule Finder v2", overlay=true, max_labels_count=500)
 
 // ──────────────────────────────────────────────────────────
 // INPUTS
 // ──────────────────────────────────────────────────────────
 rule = input.string(
-     "A — HA corps (ha_close > ha_open)",
+     "G — HA_close > EMA(HA, custom period)",
      title  = "Coloring Rule to Test",
      options = [
+         "G — HA_close > EMA(HA, custom period)",
+         "H — regular close > EMA(close, custom period)",
          "A — HA corps (ha_close > ha_open)",
          "B — HA_close > EMA50_regular",
          "C — HA_close > EMA50_of_HA",
          "D — HA_close > EMA35_of_HA",
          "E — regular close > EMA50",
-         "F — HA_close > HA_open AND above EMA50"
+         "F — HA_close > HA_open AND above EMA(HA, custom)"
      ])
+
+ema_len = input.int(50, "EMA Period (pour règles G, H, F)", minval=1, maxval=200,
+     tooltip="Fais glisser entre 10 et 60 pour trouver la période exacte qui correspond à l'indicateur original")
 
 show_labels      = input.bool(true,  title = "Show transition labels")
 show_shapes      = input.bool(true,  title = "Show transition shapes (triangles)")
-label_offset_pct = input.float(0.3,  title = "Label offset (% of bar range)", minval = 0.05, maxval = 5.0)
 
 // ──────────────────────────────────────────────────────────
 // HEIKEN ASHI CALCULATIONS
@@ -37,31 +41,36 @@ ha_open_val := na(ha_open_val[1]) ? (open + close) / 2.0 : (ha_open_val[1] + ha_
 // ──────────────────────────────────────────────────────────
 // MOVING AVERAGES
 // ──────────────────────────────────────────────────────────
-ema50_regular = ta.ema(close,    50)
-ema50_of_ha   = ta.ema(ha_close, 50)
-ema35_of_ha   = ta.ema(ha_close, 35)
-ema35_regular = ta.ema(close,    35)
+ema_custom_ha      = ta.ema(ha_close, ema_len)   // EMA de HA_close, période configurable
+ema_custom_regular = ta.ema(close,    ema_len)   // EMA de close régulier, période configurable
+ema50_regular      = ta.ema(close,    50)
+ema50_of_ha        = ta.ema(ha_close, 50)
+ema35_of_ha        = ta.ema(ha_close, 35)
+ema35_regular      = ta.ema(close,    35)
 
 // ──────────────────────────────────────────────────────────
-// PLOT ALL 6 REFERENCE LINES
+// PLOT REFERENCE LINES
 // ──────────────────────────────────────────────────────────
-plot(ha_close,      title = "HA_close",        color = color.new(color.purple,  0), linewidth = 2)
-plot(ha_open_val,   title = "HA_open",          color = color.new(color.orange,  0), linewidth = 2)
-plot(ema50_regular, title = "EMA50 (regular)",  color = color.new(color.blue,    0), linewidth = 2)
-plot(ema50_of_ha,   title = "EMA50 of HA_close",color = color.new(color.teal,    0), linewidth = 2)
-plot(ema35_of_ha,   title = "EMA35 of HA_close",color = color.new(color.lime,    0), linewidth = 2)
-plot(ema35_regular, title = "EMA35 (regular)",  color = color.new(color.yellow,  0), linewidth = 2)
+plot(ha_close,         title = "HA_close",              color = color.new(color.purple, 0), linewidth = 2)
+plot(ha_open_val,      title = "HA_open",               color = color.new(color.orange, 0), linewidth = 2)
+plot(ema_custom_ha,    title = "EMA(HA, custom)",       color = color.new(color.white,  0), linewidth = 3)   // BLANC ÉPAIS = la plus importante
+plot(ema50_regular,    title = "EMA50 (regular)",       color = color.new(color.blue,   0), linewidth = 1)
+plot(ema50_of_ha,      title = "EMA50 of HA_close",     color = color.new(color.teal,   0), linewidth = 1)
+plot(ema35_of_ha,      title = "EMA35 of HA_close",     color = color.new(color.lime,   0), linewidth = 1)
+plot(ema35_regular,    title = "EMA35 (regular)",       color = color.new(color.yellow, 0), linewidth = 1)
 
 // ──────────────────────────────────────────────────────────
 // EVALUATE SELECTED RULE
 // ──────────────────────────────────────────────────────────
 col_bull =
-     rule == "A — HA corps (ha_close > ha_open)"           ? ha_close > ha_open_val                              :
-     rule == "B — HA_close > EMA50_regular"                ? ha_close > ema50_regular                            :
-     rule == "C — HA_close > EMA50_of_HA"                  ? ha_close > ema50_of_ha                              :
-     rule == "D — HA_close > EMA35_of_HA"                  ? ha_close > ema35_of_ha                              :
-     rule == "E — regular close > EMA50"                   ? close    > ema50_regular                            :
-     rule == "F — HA_close > HA_open AND above EMA50"      ? (ha_close > ha_open_val and ha_close > ema50_regular) :
+     rule == "G — HA_close > EMA(HA, custom period)"             ? ha_close > ema_custom_ha                                   :
+     rule == "H — regular close > EMA(close, custom period)"     ? close    > ema_custom_regular                              :
+     rule == "A — HA corps (ha_close > ha_open)"                 ? ha_close > ha_open_val                                     :
+     rule == "B — HA_close > EMA50_regular"                      ? ha_close > ema50_regular                                   :
+     rule == "C — HA_close > EMA50_of_HA"                        ? ha_close > ema50_of_ha                                     :
+     rule == "D — HA_close > EMA35_of_HA"                        ? ha_close > ema35_of_ha                                     :
+     rule == "E — regular close > EMA50"                         ? close    > ema50_regular                                   :
+     rule == "F — HA_close > HA_open AND above EMA(HA, custom)"  ? (ha_close > ha_open_val and ha_close > ema_custom_ha)      :
      false
 
 // ──────────────────────────────────────────────────────────
@@ -72,85 +81,70 @@ barcolor(col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0), title = "Cand
 // ──────────────────────────────────────────────────────────
 // TRANSITION DETECTION
 // ──────────────────────────────────────────────────────────
-// A transition occurs on bar N when col_bull[0] != col_bull[1]
 is_transition = bar_index > 0 and col_bull != col_bull[1]
 
-// Short rule tag for labels (strip the long prefix)
 rule_tag =
-     rule == "A — HA corps (ha_close > ha_open)"           ? "A" :
-     rule == "B — HA_close > EMA50_regular"                ? "B" :
-     rule == "C — HA_close > EMA50_of_HA"                  ? "C" :
-     rule == "D — HA_close > EMA35_of_HA"                  ? "D" :
-     rule == "E — regular close > EMA50"                   ? "E" :
-     rule == "F — HA_close > HA_open AND above EMA50"      ? "F" : "?"
+     rule == "G — HA_close > EMA(HA, custom period)"             ? "G" :
+     rule == "H — regular close > EMA(close, custom period)"     ? "H" :
+     rule == "A — HA corps (ha_close > ha_open)"                 ? "A" :
+     rule == "B — HA_close > EMA50_regular"                      ? "B" :
+     rule == "C — HA_close > EMA50_of_HA"                        ? "C" :
+     rule == "D — HA_close > EMA35_of_HA"                        ? "D" :
+     rule == "E — regular close > EMA50"                         ? "E" :
+     rule == "F — HA_close > HA_open AND above EMA(HA, custom)"  ? "F" : "?"
 
-// Dynamic vertical offset so labels don't overlap candles
-bar_range   = high - low
-offset_amt  = bar_range * (label_offset_pct / 100.0 * 100.0)   // simplified: pct of bar range
+bar_range  = high - low
+offset_amt = math.max(bar_range * 0.3, syminfo.mintick * 10)
 
-// ── Transition shapes (triangles) ────────────────────────
-// Bull transition  → triangle up below bar (green)
-// Bear transition  → triangle down above bar (red)
 plotshape(show_shapes and is_transition and col_bull,
-     title     = "Transition → Bull",
-     style     = shape.triangleup,
-     location  = location.belowbar,
-     color     = color.new(color.lime, 0),
-     size      = size.small)
+     title    = "→ Bull",
+     style    = shape.triangleup,
+     location = location.belowbar,
+     color    = color.new(color.lime, 0),
+     size     = size.small)
 
 plotshape(show_shapes and is_transition and not col_bull,
-     title     = "Transition → Bear",
-     style     = shape.triangledown,
-     location  = location.abovebar,
-     color     = color.new(color.red, 0),
-     size      = size.small)
+     title    = "→ Bear",
+     style    = shape.triangledown,
+     location = location.abovebar,
+     color    = color.new(color.red, 0),
+     size     = size.small)
 
-// ── Transition labels ─────────────────────────────────────
 if show_labels and is_transition
-    lbl_y     = col_bull ? low  - offset_amt : high + offset_amt
+    lbl_y     = col_bull ? low - offset_amt : high + offset_amt
     lbl_style = col_bull ? label.style_label_up : label.style_label_down
     lbl_color = col_bull ? color.new(color.lime, 15) : color.new(color.red, 15)
-    lbl_text  = (col_bull ? "▲ " : "▼ ") + rule_tag
+    lbl_text  = (col_bull ? "▲ " : "▼ ") + rule_tag + str.tostring(ema_len)
 
     label.new(
-         x      = bar_index,
-         y      = lbl_y,
-         text   = lbl_text,
-         style  = lbl_style,
-         color  = lbl_color,
+         x         = bar_index,
+         y         = lbl_y,
+         text      = lbl_text,
+         style     = lbl_style,
+         color     = lbl_color,
          textcolor = color.white,
-         size   = size.small)
+         size      = size.small)
 
 // ──────────────────────────────────────────────────────────
-// INFO TABLE  (top-right corner)
+// INFO TABLE
 // ──────────────────────────────────────────────────────────
-var table info = table.new(position.top_right, 2, 9,
+var table info = table.new(position.top_right, 2, 6,
      bgcolor      = color.new(color.black, 60),
      border_color = color.new(color.gray, 40),
      border_width = 1)
 
 if barstate.islast
-    // Header
-    table.cell(info, 0, 0, "Line",        text_color = color.white, text_size = size.small, bgcolor = color.new(color.navy, 30))
-    table.cell(info, 1, 0, "Color",       text_color = color.white, text_size = size.small, bgcolor = color.new(color.navy, 30))
-    // Rows
-    table.cell(info, 0, 1, "HA_close",        text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 1, "Purple thick",    text_color = color.purple, text_size = size.small)
-    table.cell(info, 0, 2, "HA_open",         text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 2, "Orange thick",    text_color = color.orange, text_size = size.small)
-    table.cell(info, 0, 3, "EMA50 regular",   text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 3, "Blue thick",      text_color = color.blue,   text_size = size.small)
-    table.cell(info, 0, 4, "EMA50 of HA",     text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 4, "Teal thick",      text_color = color.teal,   text_size = size.small)
-    table.cell(info, 0, 5, "EMA35 of HA",     text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 5, "Lime thick",      text_color = color.lime,   text_size = size.small)
-    table.cell(info, 0, 6, "EMA35 regular",   text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 6, "Yellow thick",    text_color = color.yellow, text_size = size.small)
-    // Active rule row
-    table.cell(info, 0, 7, "Active Rule",     text_color = color.white,  text_size = size.small, bgcolor = color.new(color.maroon, 30))
-    table.cell(info, 1, 7, rule_tag,          text_color = color.yellow, text_size = size.normal, bgcolor = color.new(color.maroon, 30))
-    // Current signal
-    sig_txt   = col_bull ? "BULL (Blue)" : "BEAR (Red)"
+    table.cell(info, 0, 0, "Rule",         text_color = color.white,  text_size = size.small, bgcolor = color.new(color.navy, 30))
+    table.cell(info, 1, 0, rule_tag,       text_color = color.yellow, text_size = size.normal, bgcolor = color.new(color.navy, 30))
+    table.cell(info, 0, 1, "EMA Period",   text_color = color.white,  text_size = size.small)
+    table.cell(info, 1, 1, str.tostring(ema_len), text_color = color.white, text_size = size.normal)
+    table.cell(info, 0, 2, "EMA(HA)",      text_color = color.white,  text_size = size.small)
+    table.cell(info, 1, 2, "WHITE thick",  text_color = color.white,  text_size = size.small)
+    table.cell(info, 0, 3, "HA_close",     text_color = color.white,  text_size = size.small)
+    table.cell(info, 1, 3, "Purple",       text_color = color.purple, text_size = size.small)
+    table.cell(info, 0, 4, "HA_open",      text_color = color.white,  text_size = size.small)
+    table.cell(info, 1, 4, "Orange",       text_color = color.orange, text_size = size.small)
+    sig_txt   = col_bull ? "BULL" : "BEAR"
     sig_color = col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0)
-    table.cell(info, 0, 8, "Signal now",      text_color = color.white, text_size = size.small)
-    table.cell(info, 1, 8, sig_txt,           text_color = sig_color,   text_size = size.small)
+    table.cell(info, 0, 5, "Signal",       text_color = color.white, text_size = size.small)
+    table.cell(info, 1, 5, sig_txt,        text_color = sig_color,   text_size = size.small)
