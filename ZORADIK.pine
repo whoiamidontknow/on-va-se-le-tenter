@@ -41,31 +41,40 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — SÉLECTEUR D'HYPOTHÈSE
 // ══════════════════════════════════════════════════════════════
-hei_mode = input.string("H6 — Close symétrique",
+hei_mode = input.string("H6+ — Close + protect cross baissier",
      "Mode de coloration",
      options=[
+         "H6+ — Close + protect cross baissier",
          "H6 — Close symétrique",
          "H7 — Mèche haussier / Close baissier",
          "H4 — Mèche 1 barre (2 côtés)",
          "H5 — Mèche 2 barres (ancien code)"
      ],
-     tooltip="H6: close>EMA50=BLEU partout | H7: mèche en haussier, close en baissier | H4: 1 mèche chaque côté | H5: 2 mèches consécutives",
+     tooltip="H6+: H6 + force ROUGE sur 1ère barre du baissier | H6: close>EMA50=BLEU partout | H7: mèche haussier, close baissier | H4: 1 mèche | H5: 2 mèches",
      group=grp_hei)
 
 // ── CALCUL ──────────────────────────────────────────────────
 var bool col_bull = false
 
-// Reset aux transitions de tendance (commun à tous les modes avec état)
-bool trend_cross = (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or
-                   (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
+// Détection des transitions de tendance
+bool trend_cross      = (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or
+                        (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
+bool bear_cross       = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])  // cross baissier
 
 if trend_cross
     col_bull := false
 
-// ── H6 : Close symétrique (close > EMA50 = BLEU, close ≤ EMA50 = ROUGE) ──────
-// Identique dans les deux zones. Immunisé contre le bug de reset car
-// au début d'un baissier, close est déjà ≤ EMA50 → reste ROUGE.
-if hei_mode == "H6 — Close symétrique"
+// ── H6+ : Close symétrique + protection 1ère barre cross baissier ─────────────
+// Même logique que H6, SAUF sur la barre exacte du cross baissier :
+// même si close > EMA50, on force ROUGE (cas A2 : cross + rebond simultané)
+if hei_mode == "H6+ — Close + protect cross baissier"
+    if bear_cross
+        col_bull := false                                  // force ROUGE au cross baissier
+    else
+        col_bull := close > ema_m1                        // H6 normal ailleurs
+
+// ── H6 : Close symétrique pur (close > EMA50 = BLEU, close ≤ EMA50 = ROUGE) ──
+else if hei_mode == "H6 — Close symétrique"
     col_bull := close > ema_m1
 
 // ── H7 : Mèche haussier / Close baissier ──────────────────────────────────────
