@@ -57,9 +57,8 @@ hei_mode = input.string("H6+ — Close + protect cross baissier",
 var bool col_bull = false
 
 // Détection des transitions de tendance
-bool trend_cross      = (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or
-                        (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
-bool bear_cross       = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])  // cross baissier
+trend_cross = (ema_m1 > ema_m2 and ema_m1[1] <= ema_m2[1]) or (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
+bear_cross  = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
 
 if trend_cross
     col_bull := false
