@@ -37,24 +37,30 @@ moy_no_fill_eq = input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2
 // ══════════════════════════════════════════════════════════════
 // EMAs — calculées ici car utilisées par HEISHINATOR et MOYENATOR
 // ══════════════════════════════════════════════════════════════
-ema_m1   = ta.ema(moy_src1, moy_len1)
-ema_m2   = ta.ema(moy_src2, moy_len2)
-ema_hei  = ta.ema(close, hei_ref_len)
-hei_gap  = ema_hei[1] * hei_conf_gap / 100
+ema_m1    = ta.ema(moy_src1, moy_len1)
+ema_m2    = ta.ema(moy_src2, moy_len2)
+ema_hei   = ta.ema(close, hei_ref_len)
+dema_hei  = 2 * ema_hei - ta.ema(ema_hei, hei_ref_len)   // Double EMA (moins de lag)
+hei_gap   = ema_hei[1] * hei_conf_gap / 100               // gap basé sur barre précédente
+hei_gap0  = ema_hei  * hei_conf_gap / 100                 // gap basé sur barre courante
 
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — SÉLECTEUR D'HYPOTHÈSE
 // ══════════════════════════════════════════════════════════════
-hei_mode = input.string("H6+ — Close + protect cross baissier",
+hei_mode = input.string("H-LIVE — Close immédiat (même barre)",
      "Mode de coloration",
      options=[
+         "H-LIVE — Close immédiat (même barre)",
+         "H-BODY — Corps entier au-dessus",
+         "H-EMA50 — EMA50 direct",
+         "H-DEMA — Double EMA (moins de lag)",
          "H6+ — Close + protect cross baissier",
          "H6 — Close symétrique",
          "H7 — Mèche haussier / Close baissier",
          "H4 — Mèche 1 barre (2 côtés)",
          "H5 — Mèche 2 barres (ancien code)"
      ],
-     tooltip="H6+: H6 + force ROUGE sur 1ère barre du baissier | H6: close>EMA50=BLEU partout | H7: mèche haussier, close baissier | H4: 1 mèche | H5: 2 mèches",
+     tooltip="LIVE: close>EMA barre courante | BODY: corps entier au-dessus | EMA50: EMA50 direct | DEMA: Double EMA moins de lag | H6+/H6: close avec délai 1 barre | H7/H4/H5: mèches",
      group=grp_hei)
 
 // ── CALCUL ──────────────────────────────────────────────────
@@ -66,6 +72,26 @@ bear_cross  = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
 
 if trend_cross
     col_bull := false
+
+// ── H-LIVE : Close immédiat (même barre, pas de délai [1]) ────────────────────
+// Hypothèse : la couleur change SUR la bougie qui clôture au-dessus/dessous de l'EMA
+if hei_mode == "H-LIVE — Close immédiat (même barre)"
+    col_bull := close > ema_hei + hei_gap0
+
+// ── H-BODY : Corps entier au-dessus (open ET close au-dessus) ─────────────────
+// Hypothèse : une "vraie" clôture = corps complet au-dessus, pas juste la wick
+else if hei_mode == "H-BODY — Corps entier au-dessus"
+    col_bull := math.min(open, close) > ema_hei + hei_gap0
+
+// ── H-EMA50 : EMA50 direct (pas d'EMA séparée) ───────────────────────────────
+// Hypothèse : la ligne de référence est EMA50 (la ligne épaisse), pas EMA35
+else if hei_mode == "H-EMA50 — EMA50 direct"
+    col_bull := close > ema_m1
+
+// ── H-DEMA : Double EMA (lag réduit vs EMA simple) ───────────────────────────
+// Hypothèse : la ligne bleue fine est une DEMA (plus réactive que EMA35)
+else if hei_mode == "H-DEMA — Double EMA (moins de lag)"
+    col_bull := close > dema_hei + hei_gap0
 
 // ── H6+ : Close symétrique + protection 1ère barre cross baissier ─────────────
 // Même logique que H6, SAUF sur la barre exacte du cross baissier :
