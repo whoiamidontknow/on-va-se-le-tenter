@@ -50,6 +50,7 @@ hei_gap0  = ema_hei  * hei_conf_gap / 100                 // gap basé sur barre
 hei_mode = input.string("H-LIVE — Close immédiat (même barre)",
      "Mode de coloration",
      options=[
+         "H-HA — Corps HA (close > open)",
          "H-LIVE — Close immédiat (même barre)",
          "H-BODY — Corps entier au-dessus",
          "H-EMA50 — EMA50 direct",
@@ -74,9 +75,14 @@ bear_cross  = (ema_m1 < ema_m2 and ema_m1[1] >= ema_m2[1])
 if trend_cross
     col_bull := false
 
+// ── H-HA : Corps Heiken Ashi pur (close > open = bougie HA haussière) ─────────
+// Hypothèse : sur chart HA, close=HA_close et open=HA_open → coloring = corps HA
+if hei_mode == "H-HA — Corps HA (close > open)"
+    col_bull := close > open
+
 // ── H-LIVE : Close immédiat (même barre, pas de délai [1]) ────────────────────
 // Hypothèse : la couleur change SUR la bougie qui clôture au-dessus/dessous de l'EMA
-if hei_mode == "H-LIVE — Close immédiat (même barre)"
+else if hei_mode == "H-LIVE — Close immédiat (même barre)"
     col_bull := close > ema_hei + hei_gap0
 
 // ── H-BODY : Corps entier au-dessus (open ET close au-dessus) ─────────────────
