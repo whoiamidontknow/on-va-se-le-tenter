@@ -1,150 +1,58 @@
-// ============================================================
-// HA DIAGNOSTIC INDICATOR v2 — Pine Script v6
-// Goal: reverse-engineer an unknown candle-coloring rule
-//       on a Heiken Ashi chart.
-// ============================================================
 //@version=6
-indicator("HA Diagnostic — Rule Finder v2", overlay=true, max_labels_count=500)
+// ════════════════════════════════════════════════════════════
+// HA DIAGNOSTIC v3 — utilise close/open natifs du chart
+// Sur chart HA, close = HA_close et open = HA_open nativement.
+// Pas de recalcul manuel → pas de lag artificiel.
+// ════════════════════════════════════════════════════════════
+indicator("HA Diagnostic v3", overlay=true, max_labels_count=500)
 
-// ──────────────────────────────────────────────────────────
-// INPUTS
-// ──────────────────────────────────────────────────────────
-rule = input.string(
-     "G — HA_close > EMA(HA, custom period)",
-     title  = "Coloring Rule to Test",
-     options = [
-         "G — HA_close > EMA(HA, custom period)",
-         "H — regular close > EMA(close, custom period)",
-         "A — HA corps (ha_close > ha_open)",
-         "B — HA_close > EMA50_regular",
-         "C — HA_close > EMA50_of_HA",
-         "D — HA_close > EMA35_of_HA",
-         "E — regular close > EMA50",
-         "F — HA_close > HA_open AND above EMA(HA, custom)"
-     ])
+// ── INPUTS ───────────────────────────────────────────────────
+ema_len  = input.int(50, "Période EMA", minval=1, maxval=200,
+     tooltip="Fais glisser lentement entre 10 et 60 pour trouver la période qui correspond à l'original")
 
-ema_len = input.int(50, "EMA Period (pour règles G, H, F)", minval=1, maxval=200,
-     tooltip="Fais glisser entre 10 et 60 pour trouver la période exacte qui correspond à l'indicateur original")
+mode = input.string("G — close > EMA(close, N)",
+     "Mode",
+     options=[
+         "G — close > EMA(close, N)",
+         "H — close[1] > EMA[1]  (+1 barre)",
+         "I — close > open  (corps HA pur)"
+     ],
+     tooltip="G: même barre | H: si G est tjrs 1 barre en retard, essaie H | I: corps HA pur")
 
-show_labels      = input.bool(true,  title = "Show transition labels")
-show_shapes      = input.bool(true,  title = "Show transition shapes (triangles)")
+// ── CALCULS ──────────────────────────────────────────────────
+ema_ref = ta.ema(close, ema_len)
 
-// ──────────────────────────────────────────────────────────
-// HEIKEN ASHI CALCULATIONS
-// (computed from raw OHLC — works on any chart type)
-// ──────────────────────────────────────────────────────────
-ha_close = (open + high + low + close) / 4.0
+col_bull = mode == "G — close > EMA(close, N)"  ? close    > ema_ref      :
+           mode == "H — close[1] > EMA[1]  (+1 barre)" ? close[1] > ema_ref[1] :
+           mode == "I — close > open  (corps HA pur)"  ? close    > open       :
+           false
 
-var float ha_open_val = na
-ha_open_val := na(ha_open_val[1]) ? (open + close) / 2.0 : (ha_open_val[1] + ha_close[1]) / 2.0
+// ── BARCOLOR ─────────────────────────────────────────────────
+barcolor(col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0))
 
-// ──────────────────────────────────────────────────────────
-// MOVING AVERAGES
-// ──────────────────────────────────────────────────────────
-ema_custom_ha      = ta.ema(ha_close, ema_len)   // EMA de HA_close, période configurable
-ema_custom_regular = ta.ema(close,    ema_len)   // EMA de close régulier, période configurable
-ema50_regular      = ta.ema(close,    50)
-ema50_of_ha        = ta.ema(ha_close, 50)
-ema35_of_ha        = ta.ema(ha_close, 35)
-ema35_regular      = ta.ema(close,    35)
+// ── LIGNE EMA (blanche épaisse) ──────────────────────────────
+plot(ema_ref, "EMA référence", color=color.white, linewidth=3)
 
-// ──────────────────────────────────────────────────────────
-// PLOT REFERENCE LINES
-// ──────────────────────────────────────────────────────────
-plot(ha_close,         title = "HA_close",              color = color.new(color.purple, 0), linewidth = 2)
-plot(ha_open_val,      title = "HA_open",               color = color.new(color.orange, 0), linewidth = 2)
-plot(ema_custom_ha,    title = "EMA(HA, custom)",       color = color.new(color.white,  0), linewidth = 3)   // BLANC ÉPAIS = la plus importante
-plot(ema50_regular,    title = "EMA50 (regular)",       color = color.new(color.blue,   0), linewidth = 1)
-plot(ema50_of_ha,      title = "EMA50 of HA_close",     color = color.new(color.teal,   0), linewidth = 1)
-plot(ema35_of_ha,      title = "EMA35 of HA_close",     color = color.new(color.lime,   0), linewidth = 1)
-plot(ema35_regular,    title = "EMA35 (regular)",       color = color.new(color.yellow, 0), linewidth = 1)
+// ── TRANSITIONS ──────────────────────────────────────────────
+is_bull_flip = bar_index > 0 and col_bull and not col_bull[1]
+is_bear_flip = bar_index > 0 and not col_bull and col_bull[1]
 
-// ──────────────────────────────────────────────────────────
-// EVALUATE SELECTED RULE
-// ──────────────────────────────────────────────────────────
-col_bull =
-     rule == "G — HA_close > EMA(HA, custom period)"             ? ha_close > ema_custom_ha                                   :
-     rule == "H — regular close > EMA(close, custom period)"     ? close    > ema_custom_regular                              :
-     rule == "A — HA corps (ha_close > ha_open)"                 ? ha_close > ha_open_val                                     :
-     rule == "B — HA_close > EMA50_regular"                      ? ha_close > ema50_regular                                   :
-     rule == "C — HA_close > EMA50_of_HA"                        ? ha_close > ema50_of_ha                                     :
-     rule == "D — HA_close > EMA35_of_HA"                        ? ha_close > ema35_of_ha                                     :
-     rule == "E — regular close > EMA50"                         ? close    > ema50_regular                                   :
-     rule == "F — HA_close > HA_open AND above EMA(HA, custom)"  ? (ha_close > ha_open_val and ha_close > ema_custom_ha)      :
-     false
+plotshape(is_bull_flip, style=shape.triangleup,   location=location.belowbar,
+     color=color.lime, size=size.small, title="→ Bull")
+plotshape(is_bear_flip, style=shape.triangledown, location=location.abovebar,
+     color=color.red,  size=size.small, title="→ Bear")
 
-// ──────────────────────────────────────────────────────────
-// BARCOLOR
-// ──────────────────────────────────────────────────────────
-barcolor(col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0), title = "Candle color (selected rule)")
-
-// ──────────────────────────────────────────────────────────
-// TRANSITION DETECTION
-// ──────────────────────────────────────────────────────────
-is_transition = bar_index > 0 and col_bull != col_bull[1]
-
-rule_tag =
-     rule == "G — HA_close > EMA(HA, custom period)"             ? "G" :
-     rule == "H — regular close > EMA(close, custom period)"     ? "H" :
-     rule == "A — HA corps (ha_close > ha_open)"                 ? "A" :
-     rule == "B — HA_close > EMA50_regular"                      ? "B" :
-     rule == "C — HA_close > EMA50_of_HA"                        ? "C" :
-     rule == "D — HA_close > EMA35_of_HA"                        ? "D" :
-     rule == "E — regular close > EMA50"                         ? "E" :
-     rule == "F — HA_close > HA_open AND above EMA(HA, custom)"  ? "F" : "?"
-
-bar_range  = high - low
-offset_amt = math.max(bar_range * 0.3, syminfo.mintick * 10)
-
-plotshape(show_shapes and is_transition and col_bull,
-     title    = "→ Bull",
-     style    = shape.triangleup,
-     location = location.belowbar,
-     color    = color.new(color.lime, 0),
-     size     = size.small)
-
-plotshape(show_shapes and is_transition and not col_bull,
-     title    = "→ Bear",
-     style    = shape.triangledown,
-     location = location.abovebar,
-     color    = color.new(color.red, 0),
-     size     = size.small)
-
-if show_labels and is_transition
-    lbl_y     = col_bull ? low - offset_amt : high + offset_amt
-    lbl_style = col_bull ? label.style_label_up : label.style_label_down
-    lbl_color = col_bull ? color.new(color.lime, 15) : color.new(color.red, 15)
-    lbl_text  = (col_bull ? "▲ " : "▼ ") + rule_tag + str.tostring(ema_len)
-
-    label.new(
-         x         = bar_index,
-         y         = lbl_y,
-         text      = lbl_text,
-         style     = lbl_style,
-         color     = lbl_color,
-         textcolor = color.white,
-         size      = size.small)
-
-// ──────────────────────────────────────────────────────────
-// INFO TABLE
-// ──────────────────────────────────────────────────────────
-var table info = table.new(position.top_right, 2, 6,
-     bgcolor      = color.new(color.black, 60),
-     border_color = color.new(color.gray, 40),
-     border_width = 1)
-
+// ── TABLE INFO ───────────────────────────────────────────────
+var table t = table.new(position.top_right, 2, 3,
+     bgcolor=color.new(color.black, 60), border_width=1)
 if barstate.islast
-    table.cell(info, 0, 0, "Rule",         text_color = color.white,  text_size = size.small, bgcolor = color.new(color.navy, 30))
-    table.cell(info, 1, 0, rule_tag,       text_color = color.yellow, text_size = size.normal, bgcolor = color.new(color.navy, 30))
-    table.cell(info, 0, 1, "EMA Period",   text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 1, str.tostring(ema_len), text_color = color.white, text_size = size.normal)
-    table.cell(info, 0, 2, "EMA(HA)",      text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 2, "WHITE thick",  text_color = color.white,  text_size = size.small)
-    table.cell(info, 0, 3, "HA_close",     text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 3, "Purple",       text_color = color.purple, text_size = size.small)
-    table.cell(info, 0, 4, "HA_open",      text_color = color.white,  text_size = size.small)
-    table.cell(info, 1, 4, "Orange",       text_color = color.orange, text_size = size.small)
-    sig_txt   = col_bull ? "BULL" : "BEAR"
-    sig_color = col_bull ? color.new(#2196F3, 0) : color.new(#F44336, 0)
-    table.cell(info, 0, 5, "Signal",       text_color = color.white, text_size = size.small)
-    table.cell(info, 1, 5, sig_txt,        text_color = sig_color,   text_size = size.small)
+    table.cell(t, 0, 0, "Mode",    text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 0, str.substring(mode, 0, 1),
+                                   text_color=color.yellow, text_size=size.normal)
+    table.cell(t, 0, 1, "Période", text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(ema_len),
+                                   text_color=color.white,  text_size=size.normal)
+    sig_col = col_bull ? color.new(#2196F3,0) : color.new(#F44336,0)
+    table.cell(t, 0, 2, "Signal",  text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 2, col_bull ? "BULL" : "BEAR",
+                                   text_color=sig_col,      text_size=size.small)
