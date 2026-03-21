@@ -53,6 +53,7 @@ hei_mode = input.string("H-LIVE — Close immédiat (même barre)",
          "H-LIVE — Close immédiat (même barre)",
          "H-BODY — Corps entier au-dessus",
          "H-EMA50 — EMA50 direct",
+         "H-EMA50D — EMA50 clôture précédente",
          "H-DEMA — Double EMA (moins de lag)",
          "H6+ — Close + protect cross baissier",
          "H6 — Close symétrique",
@@ -87,6 +88,11 @@ else if hei_mode == "H-BODY — Corps entier au-dessus"
 // Hypothèse : la ligne de référence est EMA50 (la ligne épaisse), pas EMA35
 else if hei_mode == "H-EMA50 — EMA50 direct"
     col_bull := close > ema_m1
+
+// ── H-EMA50D : EMA50 + délai 1 barre (clôture précédente) ────────────────────
+// Hypothèse : EMA50 comme référence, mais couleur change sur la bougie SUIVANTE
+else if hei_mode == "H-EMA50D — EMA50 clôture précédente"
+    col_bull := close[1] > ema_m1[1]
 
 // ── H-DEMA : Double EMA (lag réduit vs EMA simple) ───────────────────────────
 // Hypothèse : la ligne bleue fine est une DEMA (plus réactive que EMA35)
