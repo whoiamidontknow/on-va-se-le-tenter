@@ -72,67 +72,67 @@ if hei_mode == "H6+ — Close + protect cross baissier"
     if bear_cross
         col_bull := false                                  // force ROUGE au cross baissier
     else
-        col_bull := close > ema_hei                       // H6 normal ailleurs
+        col_bull := close[1] > ema_hei[1]                 // H6 normal : clôture précédente
 
-// ── H6 : Close symétrique pur (close > EMA_HEI = BLEU, close ≤ EMA_HEI = ROUGE) ──
+// ── H6 : Close symétrique pur — couleur basée sur la clôture de la bougie précédente ──
 else if hei_mode == "H6 — Close symétrique"
-    col_bull := close > ema_hei
+    col_bull := close[1] > ema_hei[1]
 
 // ── H7 : Mèche haussier / Close baissier ──────────────────────────────────────
-// HAUSSIER : mèche basse touche EMA_HEI → ROUGE immédiat / close > EMA_HEI → BLEU
-// BAISSIER : close > EMA_HEI → BLEU / close < EMA_HEI → ROUGE (pas de mèche)
+// HAUSSIER : mèche basse touche EMA_HEI → ROUGE immédiat / clôture préc. > EMA_HEI → BLEU
+// BAISSIER : clôture préc. > EMA_HEI → BLEU / clôture préc. < EMA_HEI → ROUGE
 else if hei_mode == "H7 — Mèche haussier / Close baissier"
     if ema_m1 > ema_m2
         if col_bull
-            if low <= ema_hei                              // 1 mèche → ROUGE
+            if low <= ema_hei                              // 1 mèche → ROUGE (immédiat)
                 col_bull := false
         else
-            if close > ema_hei                             // close → BLEU
+            if close[1] > ema_hei[1]                      // clôture préc. → BLEU
                 col_bull := true
     else
         if not col_bull
-            if close > ema_hei                             // close → BLEU
+            if close[1] > ema_hei[1]                      // clôture préc. → BLEU
                 col_bull := true
         else
-            if close < ema_hei                             // close → ROUGE
+            if close[1] < ema_hei[1]                      // clôture préc. → ROUGE
                 col_bull := false
 
 // ── H4 : Mèche 1 barre (les deux zones) ──────────────────────────────────────
-// HAUSSIER : 1 mèche low ≤ EMA_HEI → ROUGE / close > EMA_HEI → BLEU
-// BAISSIER : 1 mèche high ≥ EMA_HEI → BLEU / close < EMA_HEI → ROUGE
+// HAUSSIER : 1 mèche low ≤ EMA_HEI → ROUGE (immédiat) / clôture préc. > EMA_HEI → BLEU
+// BAISSIER : 1 mèche high ≥ EMA_HEI → BLEU (immédiat) / clôture préc. < EMA_HEI → ROUGE
 else if hei_mode == "H4 — Mèche 1 barre (2 côtés)"
     if ema_m1 > ema_m2
         if col_bull
-            if low <= ema_hei                              // 1 mèche → ROUGE
+            if low <= ema_hei                              // 1 mèche → ROUGE (immédiat)
                 col_bull := false
         else
-            if close > ema_hei                             // close → BLEU
+            if close[1] > ema_hei[1]                      // clôture préc. → BLEU
                 col_bull := true
     else
         if not col_bull
-            if high >= ema_hei                             // 1 mèche → BLEU
+            if high >= ema_hei                             // 1 mèche → BLEU (immédiat)
                 col_bull := true
         else
-            if close < ema_hei                             // close → ROUGE
+            if close[1] < ema_hei[1]                      // clôture préc. → ROUGE
                 col_bull := false
 
 // ── H5 : Mèche 2 barres consécutives (ancien code) ───────────────────────────
-// HAUSSIER : 2 low consécutifs ≤ EMA_HEI → ROUGE / close > EMA_HEI → BLEU
-// BAISSIER : 2 high consécutifs ≥ EMA_HEI → BLEU / close < EMA_HEI → ROUGE
+// HAUSSIER : 2 low consécutifs ≤ EMA_HEI → ROUGE / clôture préc. > EMA_HEI → BLEU
+// BAISSIER : 2 high consécutifs ≥ EMA_HEI → BLEU / clôture préc. < EMA_HEI → ROUGE
 else if hei_mode == "H5 — Mèche 2 barres (ancien code)"
     if ema_m1 > ema_m2
         if col_bull
             if low <= ema_hei and low[1] <= ema_hei[1]    // 2 mèches → ROUGE
                 col_bull := false
         else
-            if close > ema_hei                             // close → BLEU
+            if close[1] > ema_hei[1]                      // clôture préc. → BLEU
                 col_bull := true
     else
         if not col_bull
             if high >= ema_hei and high[1] >= ema_hei[1]  // 2 mèches → BLEU
                 col_bull := true
         else
-            if close < ema_hei                             // close → ROUGE
+            if close[1] < ema_hei[1]                      // clôture préc. → ROUGE
                 col_bull := false
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
