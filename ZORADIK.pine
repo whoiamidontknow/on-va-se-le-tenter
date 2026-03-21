@@ -9,6 +9,7 @@ grp_hei        = "=== EPHORE HEISHINATOR V4 ==="
 hei_custom     = input.bool(false, "Personnaliser Couleurs",         group=grp_hei)
 hei_bull_color = input.color(color.blue, "Couleur Bougie Haussiere", group=grp_hei)
 hei_bear_color = input.color(color.red,  "Couleur Bougie Baissiere", group=grp_hei)
+hei_ref_len    = input.int(35, "EMA Référence Heishinator", group=grp_hei, minval=1, tooltip="EMA utilisée pour la coloration des bougies (séparée des Moyenators)")
 hei_bull_color_final = hei_custom ? hei_bull_color : color.new(color.blue, 0)
 hei_bear_color_final = hei_custom ? hei_bear_color : color.new(color.red,  0)
 
@@ -35,8 +36,9 @@ moy_no_fill_eq = input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2
 // ══════════════════════════════════════════════════════════════
 // EMAs — calculées ici car utilisées par HEISHINATOR et MOYENATOR
 // ══════════════════════════════════════════════════════════════
-ema_m1 = ta.ema(moy_src1, moy_len1)
-ema_m2 = ta.ema(moy_src2, moy_len2)
+ema_m1  = ta.ema(moy_src1, moy_len1)
+ema_m2  = ta.ema(moy_src2, moy_len2)
+ema_hei = ta.ema(close, hei_ref_len)
 
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — SÉLECTEUR D'HYPOTHÈSE
@@ -70,67 +72,67 @@ if hei_mode == "H6+ — Close + protect cross baissier"
     if bear_cross
         col_bull := false                                  // force ROUGE au cross baissier
     else
-        col_bull := close > ema_m1                        // H6 normal ailleurs
+        col_bull := close > ema_hei                       // H6 normal ailleurs
 
-// ── H6 : Close symétrique pur (close > EMA50 = BLEU, close ≤ EMA50 = ROUGE) ──
+// ── H6 : Close symétrique pur (close > EMA_HEI = BLEU, close ≤ EMA_HEI = ROUGE) ──
 else if hei_mode == "H6 — Close symétrique"
-    col_bull := close > ema_m1
+    col_bull := close > ema_hei
 
 // ── H7 : Mèche haussier / Close baissier ──────────────────────────────────────
-// HAUSSIER : mèche basse touche EMA50 → ROUGE immédiat / close > EMA50 → BLEU
-// BAISSIER : close > EMA50 → BLEU / close < EMA50 → ROUGE (pas de mèche)
+// HAUSSIER : mèche basse touche EMA_HEI → ROUGE immédiat / close > EMA_HEI → BLEU
+// BAISSIER : close > EMA_HEI → BLEU / close < EMA_HEI → ROUGE (pas de mèche)
 else if hei_mode == "H7 — Mèche haussier / Close baissier"
     if ema_m1 > ema_m2
         if col_bull
-            if low <= ema_m1                               // 1 mèche → ROUGE
+            if low <= ema_hei                              // 1 mèche → ROUGE
                 col_bull := false
         else
-            if close > ema_m1                              // close → BLEU
+            if close > ema_hei                             // close → BLEU
                 col_bull := true
     else
         if not col_bull
-            if close > ema_m1                              // close → BLEU
+            if close > ema_hei                             // close → BLEU
                 col_bull := true
         else
-            if close < ema_m1                              // close → ROUGE
+            if close < ema_hei                             // close → ROUGE
                 col_bull := false
 
 // ── H4 : Mèche 1 barre (les deux zones) ──────────────────────────────────────
-// HAUSSIER : 1 mèche low ≤ EMA50 → ROUGE / close > EMA50 → BLEU
-// BAISSIER : 1 mèche high ≥ EMA50 → BLEU / close < EMA50 → ROUGE
+// HAUSSIER : 1 mèche low ≤ EMA_HEI → ROUGE / close > EMA_HEI → BLEU
+// BAISSIER : 1 mèche high ≥ EMA_HEI → BLEU / close < EMA_HEI → ROUGE
 else if hei_mode == "H4 — Mèche 1 barre (2 côtés)"
     if ema_m1 > ema_m2
         if col_bull
-            if low <= ema_m1                               // 1 mèche → ROUGE
+            if low <= ema_hei                              // 1 mèche → ROUGE
                 col_bull := false
         else
-            if close > ema_m1                              // close → BLEU
+            if close > ema_hei                             // close → BLEU
                 col_bull := true
     else
         if not col_bull
-            if high >= ema_m1                              // 1 mèche → BLEU
+            if high >= ema_hei                             // 1 mèche → BLEU
                 col_bull := true
         else
-            if close < ema_m1                              // close → ROUGE
+            if close < ema_hei                             // close → ROUGE
                 col_bull := false
 
 // ── H5 : Mèche 2 barres consécutives (ancien code) ───────────────────────────
-// HAUSSIER : 2 low consécutifs ≤ EMA50 → ROUGE / close > EMA50 → BLEU
-// BAISSIER : 2 high consécutifs ≥ EMA50 → BLEU / close < EMA50 → ROUGE
+// HAUSSIER : 2 low consécutifs ≤ EMA_HEI → ROUGE / close > EMA_HEI → BLEU
+// BAISSIER : 2 high consécutifs ≥ EMA_HEI → BLEU / close < EMA_HEI → ROUGE
 else if hei_mode == "H5 — Mèche 2 barres (ancien code)"
     if ema_m1 > ema_m2
         if col_bull
-            if low <= ema_m1 and low[1] <= ema_m1[1]      // 2 mèches → ROUGE
+            if low <= ema_hei and low[1] <= ema_hei[1]    // 2 mèches → ROUGE
                 col_bull := false
         else
-            if close > ema_m1                              // close → BLEU
+            if close > ema_hei                             // close → BLEU
                 col_bull := true
     else
         if not col_bull
-            if high >= ema_m1 and high[1] >= ema_m1[1]    // 2 mèches → BLEU
+            if high >= ema_hei and high[1] >= ema_hei[1]  // 2 mèches → BLEU
                 col_bull := true
         else
-            if close < ema_m1                              // close → ROUGE
+            if close < ema_hei                             // close → ROUGE
                 col_bull := false
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
