@@ -1,0 +1,126 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// HA DIAGNOSTIC v5 — Score Multi-Signal
+// Hypothèse : l'indicateur original colore BLEU quand ≥2 signaux
+// parmi [SuperTrend, EMA, VWAP] sont bullish simultanément.
+// La table de debug montre l'état de chaque signal en temps réel.
+// ════════════════════════════════════════════════════════════
+indicator("HA Diagnostic v5 — Score Multi-Signal", overlay=true, max_labels_count=500)
+
+// ── INPUTS ───────────────────────────────────────────────────
+grp = "=== CONFIG ==="
+
+mode = input.string("2 — ST + EMA", "Mode",
+     options=[
+         "1 — SuperTrend seul",
+         "2 — ST + EMA",
+         "3 — ST + VWAP",
+         "4 — ST + EMA + VWAP  (3/3)",
+         "5 — EMA + VWAP  (sans ST)",
+         "6 — ST + LinReg",
+         "7 — Score ≥ N  (configurable)"
+     ],
+     tooltip="Commencer par mode 2 et 3. Comparer visuellement avec l'original.",
+     group=grp)
+
+score_min = input.int(2, "Score minimum (mode 7)", minval=1, maxval=3, group=grp)
+
+// SuperTrend
+st_factor = input.float(3.0, "[ST] Factor", step=0.1, group=grp)
+st_atr    = input.int(10,   "[ST] ATR Période", minval=1, group=grp)
+
+// EMA
+ema_len = input.int(20, "[EMA] Période", minval=1,
+     tooltip="Essayer 20, 50, puis ajuster",
+     group=grp)
+
+// ── CALCULS DES SOUS-SIGNAUX ──────────────────────────────────
+
+// Signal 1 — SuperTrend
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr)
+s1_bull = st_dir < 0  // -1 = bullish en Pine v6
+
+// Signal 2 — close > EMA(close, N)
+ema_val = ta.ema(close, ema_len)
+s2_bull = close > ema_val
+
+// Signal 3 — close > VWAP
+s3_bull = close > ta.vwap
+
+// Signal 4 — LinReg slope > 0 (pente positive)
+lr_now  = ta.linreg(close, 14, 0)
+lr_prev = ta.linreg(close, 14, 1)
+s4_bull = lr_now > lr_prev
+
+// ── SCORE ────────────────────────────────────────────────────
+score = (s1_bull ? 1 : 0) + (s2_bull ? 1 : 0) + (s3_bull ? 1 : 0)
+
+// ── SÉLECTION DU SIGNAL ──────────────────────────────────────
+col_bull =
+     mode == "1 — SuperTrend seul"         ? s1_bull :
+     mode == "2 — ST + EMA"                ? (s1_bull and s2_bull) :
+     mode == "3 — ST + VWAP"               ? (s1_bull and s3_bull) :
+     mode == "4 — ST + EMA + VWAP  (3/3)" ? (s1_bull and s2_bull and s3_bull) :
+     mode == "5 — EMA + VWAP  (sans ST)"  ? (s2_bull and s3_bull) :
+     mode == "6 — ST + LinReg"             ? (s1_bull and s4_bull) :
+     mode == "7 — Score ≥ N  (configurable)" ? score >= score_min :
+     false
+
+// ── BGCOLOR ──────────────────────────────────────────────────
+bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78),
+     title="Signal background")
+
+// ── LIGNE SUPERTREND ─────────────────────────────────────────
+plot(st_line, "SuperTrend",
+     color = s1_bull ? color.new(color.lime, 0) : color.new(color.red, 0),
+     linewidth=2)
+
+// ── LIGNE EMA ────────────────────────────────────────────────
+plot(ema_val, "EMA",
+     color=color.new(color.white, 0),
+     linewidth=1, style=plot.style_line)
+
+// ── TRANSITIONS ──────────────────────────────────────────────
+bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+
+plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar,
+     color=color.lime, size=size.small, title="→ Bull")
+plotshape(bear_flip, style=shape.triangledown, location=location.abovebar,
+     color=color.red,  size=size.small, title="→ Bear")
+
+// ── TABLE DE DEBUG ────────────────────────────────────────────
+// Montre l'état de chaque sous-signal individuellement
+// → permet de voir lequel bloque le passage en BULL
+var table t = table.new(position.top_right, 2, 7,
+     bgcolor=color.new(color.black, 60), border_width=1)
+
+if barstate.islast
+    // Header
+    table.cell(t, 0, 0, "Signal",      text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "État",        text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 20))
+    // SuperTrend
+    table.cell(t, 0, 1, "SuperTrend",  text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 1, s1_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=s1_bull ? #2196F3 : #F44336, text_size=size.small)
+    // EMA
+    table.cell(t, 0, 2, "EMA(" + str.tostring(ema_len) + ")", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, s2_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=s2_bull ? #2196F3 : #F44336, text_size=size.small)
+    // VWAP
+    table.cell(t, 0, 3, "VWAP",        text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 3, s3_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=s3_bull ? #2196F3 : #F44336, text_size=size.small)
+    // LinReg
+    table.cell(t, 0, 4, "LinReg pente", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, s4_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=s4_bull ? #2196F3 : #F44336, text_size=size.small)
+    // Score
+    score_color = score >= 2 ? #2196F3 : #F44336
+    table.cell(t, 0, 5, "Score /3",    text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 5, str.tostring(score) + "/3",
+         text_color=score_color, text_size=size.normal)
+    // Mode actif
+    table.cell(t, 0, 6, "Mode",        text_color=color.white,  text_size=size.small)
+    table.cell(t, 1, 6, str.substring(mode, 0, 1),
+         text_color=color.yellow, text_size=size.normal)
