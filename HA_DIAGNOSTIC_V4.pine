@@ -1,0 +1,236 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0
+// © HA_DIAGNOSTIC_V4 — Reverse-engineering Ephore Market Ultimate
+
+//@version=6
+indicator("HA DIAGNOSTIC v4", overlay=true, max_labels_count=500)
+
+// ============================================================
+// INPUTS
+// ============================================================
+grp = "=== CONFIG ==="
+
+mode = input.string("A", title="Mode",
+     options=["A","B","C","D","E","F","G","H","I","J","K","L"],
+     tooltip="A=SuperTrend | B=EMA Cross | C=close>EMA | D=RSI>50 | E=MACD>0 | F=MACD>Signal | G=HA Body | H=Kijun | I=HMA Cross | J=close>SMA | K=Ichimoku TK | L=ParabolicSAR",
+     group=grp)
+
+// A — Supertrend
+st_factor = input.float(3.0,  title="[A] SuperTrend Factor", step=0.1, group=grp)
+st_atr    = input.int(10,     title="[A] SuperTrend ATR Len", minval=1, group=grp)
+
+// B — EMA Cross
+ema_n1    = input.int(9,      title="[B] EMA Fast", minval=1, group=grp)
+ema_n2    = input.int(21,     title="[B] EMA Slow", minval=1, group=grp)
+
+// C — close > EMA
+ema_n     = input.int(33,     title="[C] EMA Len", minval=1, group=grp)
+
+// D — RSI
+rsi_len   = input.int(14,     title="[D] RSI Len", minval=1, group=grp)
+
+// E/F — MACD
+macd_fast = input.int(12,     title="[E/F] MACD Fast", minval=1, group=grp)
+macd_slow = input.int(26,     title="[E/F] MACD Slow", minval=1, group=grp)
+macd_sig  = input.int(9,      title="[E/F] MACD Signal", minval=1, group=grp)
+
+// H/K — Kijun / Ichimoku
+kijun_len  = input.int(26,    title="[H/K] Kijun Len", minval=1, group=grp)
+tenkan_len = input.int(9,     title="[K] Tenkan Len", minval=1, group=grp)
+
+// I — HMA Cross
+hma_n1    = input.int(9,      title="[I] HMA Fast", minval=2, group=grp)
+hma_n2    = input.int(21,     title="[I] HMA Slow", minval=2, group=grp)
+
+// J — close > SMA
+sma_n     = input.int(33,     title="[J] SMA Len", minval=1, group=grp)
+
+// L — Parabolic SAR
+sar_start = input.float(0.02, title="[L] SAR Start", step=0.001, group=grp)
+sar_inc   = input.float(0.02, title="[L] SAR Inc",   step=0.001, group=grp)
+sar_max   = input.float(0.2,  title="[L] SAR Max",   step=0.01,  group=grp)
+
+// ============================================================
+// CALCULS — tous calculés indépendamment du mode
+// ============================================================
+
+// --- A : SuperTrend ---
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr)
+bull_A = st_dir < 0
+
+// --- B : EMA Cross ---
+ema_fast = ta.ema(close, ema_n1)
+ema_slow = ta.ema(close, ema_n2)
+bull_B   = ema_fast > ema_slow
+
+// --- C : close > EMA ---
+ema_c  = ta.ema(close, ema_n)
+bull_C = close > ema_c
+
+// --- D : RSI > 50 ---
+rsi_val = ta.rsi(close, rsi_len)
+bull_D  = rsi_val > 50
+
+// --- E/F : MACD ---
+[macd_line, signal_line, _hist] = ta.macd(close, macd_fast, macd_slow, macd_sig)
+bull_E = macd_line > 0
+bull_F = macd_line > signal_line
+
+// --- G : HA body (close > open natif sur chart HA) ---
+bull_G = close > open
+
+// --- H : close > Kijun ---
+kijun = math.avg(ta.highest(high, kijun_len), ta.lowest(low, kijun_len))
+bull_H = close > kijun
+
+// --- I : HMA Cross ---
+hma(src, len) =>
+    half = math.floor(len / 2)
+    sqrtLen = math.round(math.sqrt(len))
+    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sqrtLen)
+
+hma_fast_val = hma(close, hma_n1)
+hma_slow_val = hma(close, hma_n2)
+bull_I = hma_fast_val > hma_slow_val
+
+// --- J : close > SMA ---
+sma_val = ta.sma(close, sma_n)
+bull_J  = close > sma_val
+
+// --- K : Tenkan > Kijun (Ichimoku) ---
+tenkan = math.avg(ta.highest(high, tenkan_len), ta.lowest(low, tenkan_len))
+bull_K = tenkan > kijun
+
+// --- L : close > Parabolic SAR ---
+sar_val = ta.sar(sar_start, sar_inc, sar_max)
+bull_L  = close > sar_val
+
+// ============================================================
+// SÉLECTION DU SIGNAL SELON LE MODE
+// ============================================================
+col_bull =
+     mode == "A" ? bull_A :
+     mode == "B" ? bull_B :
+     mode == "C" ? bull_C :
+     mode == "D" ? bull_D :
+     mode == "E" ? bull_E :
+     mode == "F" ? bull_F :
+     mode == "G" ? bull_G :
+     mode == "H" ? bull_H :
+     mode == "I" ? bull_I :
+     mode == "J" ? bull_J :
+     mode == "K" ? bull_K :
+     mode == "L" ? bull_L :
+     false
+
+// ============================================================
+// BGCOLOR
+// ============================================================
+bgcolor(col_bull ? color.new(color.blue, 75) : color.new(color.red, 75), title="Signal BG")
+
+// ============================================================
+// TRANSITIONS (plotshape)
+// ============================================================
+bull_flip = col_bull and not col_bull[1] and bar_index > 0
+bear_flip = not col_bull and col_bull[1] and bar_index > 0
+
+plotshape(bull_flip, title="Bull Flip ▲", style=shape.triangleup,
+     location=location.belowbar, color=color.new(color.blue, 0), size=size.small)
+plotshape(bear_flip, title="Bear Flip ▼", style=shape.triangledown,
+     location=location.abovebar, color=color.new(color.red, 0), size=size.small)
+
+// ============================================================
+// PLOTS RÉFÉRENCES (na si mode différent)
+// ============================================================
+
+// Mode A — SuperTrend coloré
+plot(mode == "A" ? st_line : na, title="SuperTrend",
+     color=col_bull ? color.new(color.lime, 0) : color.new(color.red, 0),
+     linewidth=2)
+
+// Mode B — EMA Fast / Slow
+plot(mode == "B" ? ema_fast : na, title="EMA Fast [B]", color=color.new(color.orange, 0), linewidth=1)
+plot(mode == "B" ? ema_slow : na, title="EMA Slow [B]", color=color.new(color.white,  0), linewidth=1)
+
+// Mode C — EMA N
+plot(mode == "C" ? ema_c : na, title="EMA [C]", color=color.new(color.white, 0), linewidth=2)
+
+// Mode H — Kijun
+plot(mode == "H" or mode == "K" ? kijun : na, title="Kijun [H/K]", color=color.new(color.aqua, 0), linewidth=2)
+
+// Mode I — HMA Fast / Slow
+plot(mode == "I" ? hma_fast_val : na, title="HMA Fast [I]", color=color.new(color.orange, 0), linewidth=1)
+plot(mode == "I" ? hma_slow_val : na, title="HMA Slow [I]", color=color.new(color.white,  0), linewidth=1)
+
+// Mode J — SMA
+plot(mode == "J" ? sma_val : na, title="SMA [J]", color=color.new(color.yellow, 0), linewidth=2)
+
+// Mode K — Tenkan
+plot(mode == "K" ? tenkan : na, title="Tenkan [K]", color=color.new(color.fuchsia, 0), linewidth=1)
+
+// Mode L — SAR (points)
+plot(mode == "L" ? sar_val : na, title="SAR [L]",
+     color=col_bull ? color.new(color.lime, 0) : color.new(color.red, 0),
+     style=plot.style_circles, linewidth=2)
+
+// ============================================================
+// TABLE INFO — top-right, dernière bougie
+// ============================================================
+var table info_table = table.new(position.top_right, 2, 4,
+     border_color=color.new(color.gray, 50), border_width=1,
+     bgcolor=color.new(color.black, 60))
+
+mode_label =
+     mode == "A" ? "A — SuperTrend" :
+     mode == "B" ? "B — EMA Cross" :
+     mode == "C" ? "C — close>EMA" :
+     mode == "D" ? "D — RSI>50" :
+     mode == "E" ? "E — MACD>0" :
+     mode == "F" ? "F — MACD>Signal" :
+     mode == "G" ? "G — HA Body" :
+     mode == "H" ? "H — Kijun" :
+     mode == "I" ? "I — HMA Cross" :
+     mode == "J" ? "J — close>SMA" :
+     mode == "K" ? "K — Ichimoku TK" :
+     mode == "L" ? "L — Parabolic SAR" :
+     "?"
+
+param_label =
+     mode == "A" ? "F=" + str.tostring(st_factor) + " ATR=" + str.tostring(st_atr) :
+     mode == "B" ? "Fast=" + str.tostring(ema_n1) + " Slow=" + str.tostring(ema_n2) :
+     mode == "C" ? "N=" + str.tostring(ema_n) :
+     mode == "D" ? "Len=" + str.tostring(rsi_len) :
+     mode == "E" ? str.tostring(macd_fast) + "/" + str.tostring(macd_slow) + "/" + str.tostring(macd_sig) :
+     mode == "F" ? str.tostring(macd_fast) + "/" + str.tostring(macd_slow) + "/" + str.tostring(macd_sig) :
+     mode == "G" ? "close>open" :
+     mode == "H" ? "Kijun=" + str.tostring(kijun_len) :
+     mode == "I" ? "Fast=" + str.tostring(hma_n1) + " Slow=" + str.tostring(hma_n2) :
+     mode == "J" ? "N=" + str.tostring(sma_n) :
+     mode == "K" ? "T=" + str.tostring(tenkan_len) + " K=" + str.tostring(kijun_len) :
+     mode == "L" ? "S=" + str.tostring(sar_start) + " I=" + str.tostring(sar_inc) + " M=" + str.tostring(sar_max) :
+     "?"
+
+if barstate.islast
+    // Row 0 — header
+    table.cell(info_table, 0, 0, "HA DIAGNOSTIC v4",
+         text_color=color.white, text_size=size.small,
+         bgcolor=color.new(color.navy, 20))
+    table.cell(info_table, 1, 0, "",
+         bgcolor=color.new(color.navy, 20))
+    // Row 1 — mode
+    table.cell(info_table, 0, 1, "Mode",
+         text_color=color.new(color.gray, 20), text_size=size.small)
+    table.cell(info_table, 1, 1, mode_label,
+         text_color=color.white, text_size=size.small)
+    // Row 2 — signal
+    table.cell(info_table, 0, 2, "Signal",
+         text_color=color.new(color.gray, 20), text_size=size.small)
+    table.cell(info_table, 1, 2,
+         col_bull ? "BULL ▲" : "BEAR ▼",
+         text_color=col_bull ? color.new(color.blue, 0) : color.new(color.red, 0),
+         text_size=size.normal,
+         bgcolor=col_bull ? color.new(color.blue, 85) : color.new(color.red, 85))
+    // Row 3 — params
+    table.cell(info_table, 0, 3, "Params",
+         text_color=color.new(color.gray, 20), text_size=size.small)
+    table.cell(info_table, 1, 3, param_label,
+         text_color=color.yellow, text_size=size.small)
