@@ -1,25 +1,30 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v5 — Score Multi-Signal
-// Itération 2 : Mode 4 utilise Kijun-sen(26) au lieu de EMA(20)
-// Kijun reste flat pendant les consolidations → filtre plus stable
+// HA DIAGNOSTIC v5 — Itération 3
+// Nouvelle hypothèse : l'original colore par CORPS HA filtré par trend.
+//   col_bull = trend_bull AND close > open
+// Quand trend = BEAR → toutes les bougies sont rouges (zones propres)
+// Quand trend = BULL → couleur = direction du corps HA (alternée naturellement)
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v5 — Score Multi-Signal", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v5", overlay=true, max_labels_count=500)
 
 // ── INPUTS ───────────────────────────────────────────────────
 grp = "=== CONFIG ==="
 
-mode = input.string("4 — ST + Kijun + VWAP  (3/3)", "Mode",
+mode = input.string("8 — ST  ×  corps HA", "Mode",
      options=[
          "1 — SuperTrend seul",
-         "2 — ST + EMA",
-         "3 — ST + VWAP",
+         "2 — ST + VWAP",
+         "3 — ST + EMA",
          "4 — ST + Kijun + VWAP  (3/3)",
          "5 — ST + Kijun",
          "6 — ST + EMA + VWAP  (3/3)",
-         "7 — Score ≥ N  (configurable)"
+         "7 — Score ≥ N  (configurable)",
+         "8 — ST  ×  corps HA",
+         "9 — EMA  ×  corps HA",
+         "A — Kijun  ×  corps HA"
      ],
-     tooltip="Mode 4 = meilleure hypothèse actuelle. Kijun-sen remplace EMA pour stabiliser le filtre MA.",
+     tooltip="Modes 8/9/A = nouvelle hypothèse : trend filter × direction du corps HA",
      group=grp)
 
 score_min = input.int(2, "Score minimum (mode 7)", minval=1, maxval=3, group=grp)
@@ -28,105 +33,90 @@ score_min = input.int(2, "Score minimum (mode 7)", minval=1, maxval=3, group=grp
 st_factor = input.float(3.0, "[ST] Factor", step=0.1, group=grp)
 st_atr    = input.int(10,   "[ST] ATR Période", minval=1, group=grp)
 
-// EMA (utilisée dans Mode 2 et 6)
-ema_len = input.int(20, "[EMA] Période (modes 2 et 6)", minval=1, group=grp)
+// EMA
+ema_len = input.int(50, "[EMA] Période", minval=1, group=grp)
 
-// Kijun-sen (utilisée dans Modes 4 et 5)
-kijun_len = input.int(26, "[Kijun] Période", minval=1,
-     tooltip="Kijun-sen = midpoint sur N barres. Reste flat en range → meilleur filtre que EMA.",
-     group=grp)
+// Kijun-sen
+kijun_len = input.int(26, "[Kijun] Période", minval=1, group=grp)
 
-// ── CALCULS DES SOUS-SIGNAUX ──────────────────────────────────
+// ── CALCULS ──────────────────────────────────────────────────
 
-// Signal 1 — SuperTrend
+// SuperTrend
 [st_line, st_dir] = ta.supertrend(st_factor, st_atr)
-s1_bull = st_dir < 0
+s_st   = st_dir < 0
 
-// Signal 2 — close > EMA(close, N)
+// EMA
 ema_val = ta.ema(close, ema_len)
-s2_bull = close > ema_val
+s_ema   = close > ema_val
 
-// Signal 3 — close > VWAP
-s3_bull = close > ta.vwap
+// VWAP
+s_vwap = close > ta.vwap
 
-// Signal 4 — close > Kijun-sen
+// Kijun-sen
 kijun_val = (ta.highest(high, kijun_len) + ta.lowest(low, kijun_len)) / 2
-s4_bull = close > kijun_val
+s_kijun   = close > kijun_val
 
-// Signal 5 — LinReg slope (informatif, table seulement)
+// Corps HA (sur chart natif HA : close = HA_close, open = HA_open)
+s_body = close > open
+
+// LinReg (info table)
 lr_bull = ta.linreg(close, 14, 0) > ta.linreg(close, 14, 1)
 
-// ── SCORE ─────────────────────────────────────────────────────
-// Score principal : ST + Kijun + VWAP
-score = (s1_bull ? 1 : 0) + (s4_bull ? 1 : 0) + (s3_bull ? 1 : 0)
+// Score ST+Kijun+VWAP (info table)
+score = (s_st ? 1 : 0) + (s_kijun ? 1 : 0) + (s_vwap ? 1 : 0)
 
-// ── SÉLECTION DU SIGNAL ───────────────────────────────────────
+// ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "1 — SuperTrend seul"              ? s1_bull :
-     mode == "2 — ST + EMA"                     ? (s1_bull and s2_bull) :
-     mode == "3 — ST + VWAP"                    ? (s1_bull and s3_bull) :
-     mode == "4 — ST + Kijun + VWAP  (3/3)"    ? (s1_bull and s4_bull and s3_bull) :
-     mode == "5 — ST + Kijun"                   ? (s1_bull and s4_bull) :
-     mode == "6 — ST + EMA + VWAP  (3/3)"      ? (s1_bull and s2_bull and s3_bull) :
-     mode == "7 — Score ≥ N  (configurable)"   ? score >= score_min :
+     mode == "1 — SuperTrend seul"            ? s_st :
+     mode == "2 — ST + VWAP"                  ? (s_st and s_vwap) :
+     mode == "3 — ST + EMA"                   ? (s_st and s_ema) :
+     mode == "4 — ST + Kijun + VWAP  (3/3)"  ? (s_st and s_kijun and s_vwap) :
+     mode == "5 — ST + Kijun"                 ? (s_st and s_kijun) :
+     mode == "6 — ST + EMA + VWAP  (3/3)"    ? (s_st and s_ema and s_vwap) :
+     mode == "7 — Score ≥ N  (configurable)" ? score >= score_min :
+     mode == "8 — ST  ×  corps HA"           ? (s_st and s_body) :
+     mode == "9 — EMA  ×  corps HA"          ? (s_ema and s_body) :
+     mode == "A — Kijun  ×  corps HA"        ? (s_kijun and s_body) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78),
      title="Signal background")
 
-// ── LIGNE SUPERTREND ─────────────────────────────────────────
+// ── PLOTS RÉFÉRENCE ──────────────────────────────────────────
 plot(st_line, "SuperTrend",
-     color = s1_bull ? color.new(color.lime, 0) : color.new(color.red, 0),
+     color=s_st ? color.new(color.lime, 0) : color.new(color.red, 0),
      linewidth=2)
-
-// ── LIGNE KIJUN-SEN ──────────────────────────────────────────
 plot(kijun_val, "Kijun-sen",
-     color=color.new(color.aqua, 0),
-     linewidth=1, style=plot.style_line)
+     color=color.new(color.aqua, 30), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
 bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
-
-plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar,
-     color=color.lime, size=size.small, title="→ Bull")
-plotshape(bear_flip, style=shape.triangledown, location=location.abovebar,
-     color=color.red,  size=size.small, title="→ Bear")
+plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.small)
+plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
 // ── TABLE DE DEBUG ────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 8,
+var table t = table.new(position.top_right, 2, 9,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
     table.cell(t, 0, 0, "Signal",       text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
     table.cell(t, 1, 0, "État",         text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    // SuperTrend
     table.cell(t, 0, 1, "SuperTrend",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, s1_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=s1_bull ? #2196F3 : #F44336, text_size=size.small)
-    // EMA
+    table.cell(t, 1, 1, s_st    ? "▲ BULL" : "▼ BEAR", text_color=s_st    ? #2196F3 : #F44336, text_size=size.small)
     table.cell(t, 0, 2, "EMA(" + str.tostring(ema_len) + ")", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, s2_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=s2_bull ? #2196F3 : #F44336, text_size=size.small)
-    // VWAP
+    table.cell(t, 1, 2, s_ema   ? "▲ BULL" : "▼ BEAR", text_color=s_ema   ? #2196F3 : #F44336, text_size=size.small)
     table.cell(t, 0, 3, "VWAP",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, s3_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=s3_bull ? #2196F3 : #F44336, text_size=size.small)
-    // Kijun-sen
+    table.cell(t, 1, 3, s_vwap  ? "▲ BULL" : "▼ BEAR", text_color=s_vwap  ? #2196F3 : #F44336, text_size=size.small)
     table.cell(t, 0, 4, "Kijun(" + str.tostring(kijun_len) + ")", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, s4_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=s4_bull ? #2196F3 : #F44336, text_size=size.small)
-    // LinReg (info)
-    table.cell(t, 0, 5, "LinReg pente", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, lr_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=lr_bull ? #2196F3 : #F44336, text_size=size.small)
-    // Score ST+Kijun+VWAP
-    score_color = score >= 2 ? #2196F3 : #F44336
-    table.cell(t, 0, 6, "Score /3",     text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, str.tostring(score) + "/3",
-         text_color=score_color, text_size=size.normal)
-    // Mode actif
-    table.cell(t, 0, 7, "Mode",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, str.substring(mode, 0, 1),
-         text_color=color.yellow, text_size=size.normal)
+    table.cell(t, 1, 4, s_kijun ? "▲ BULL" : "▼ BEAR", text_color=s_kijun ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 5, "Corps HA",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, s_body  ? "▲ BULL" : "▼ BEAR", text_color=s_body  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 6, "LinReg",       text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, lr_bull ? "▲ BULL" : "▼ BEAR", text_color=lr_bull ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 7, "Score /3",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, str.tostring(score) + "/3",
+         text_color=score >= 2 ? #2196F3 : #F44336, text_size=size.normal)
+    table.cell(t, 0, 8, "Mode",         text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 8, str.substring(mode, 0, 1), text_color=color.yellow, text_size=size.normal)
