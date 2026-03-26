@@ -4,6 +4,8 @@
 // Toujours sur la TF courante. Modes simplifiés.
 // Mode 8 (ST × corps HA) = meilleure piste.
 // ST(3, 50) → ATR long = ligne plus stable, moins de faux flips.
+// Mode 9 = ST(5,75) lisse — hypothèse Ephore Market Ultimate.
+// Mode 10 = ST(5,75) × corps HA.
 // ════════════════════════════════════════════════════════════
 indicator("HA Diagnostic v5", overlay=true, max_labels_count=500)
 
@@ -18,7 +20,9 @@ mode = input.string("8 — ST × corps HA", "Mode",
          "5 — ST + EMA + VWAP",
          "6 — EMA seul",
          "7 — ST × corps HA  (EMA filtre)",
-         "8 — ST × corps HA"
+         "8 — ST × corps HA",
+         "9 — ST(5,75)",
+         "10 — ST(5,75) × Corps HA"
      ], group=grp)
 
 st_factor = input.float(3.0, "[ST] Factor",     step=0.1, minval=0.1, group=grp)
@@ -28,11 +32,14 @@ st_atr    = input.int(50,    "[ST] ATR Période", minval=1, maxval=500,
 ema_len   = input.int(50,    "[EMA] Période",   minval=1, group=grp)
 
 // ── CALCULS ──────────────────────────────────────────────────
-[st_line, st_dir] = ta.supertrend(st_factor, st_atr)
-s_st   = st_dir < 0
-s_ema  = close > ta.ema(close, ema_len)
-s_vwap = close > ta.vwap
-s_body = close > open
+[st_line, st_dir]        = ta.supertrend(st_factor, st_atr)
+[st_line_smooth, st_dir_smooth] = ta.supertrend(5, 75)
+
+s_st     = st_dir < 0
+s_st_sm  = st_dir_smooth < 0
+s_ema    = close > ta.ema(close, ema_len)
+s_vwap   = close > ta.vwap
+s_body   = close > open
 
 lr_bull = ta.linreg(close, 14, 0) > ta.linreg(close, 14, 1)
 score   = (s_st ? 1 : 0) + (s_ema ? 1 : 0) + (s_vwap ? 1 : 0)
@@ -47,6 +54,8 @@ col_bull =
      mode == "6 — EMA seul"              ? s_ema :
      mode == "7 — ST × corps HA  (EMA filtre)" ? (s_ema and s_body) :
      mode == "8 — ST × corps HA"         ? (s_st and s_body) :
+     mode == "9 — ST(5,75)"              ? s_st_sm :
+     mode == "10 — ST(5,75) × Corps HA"  ? (s_st_sm and s_body) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
@@ -56,6 +65,9 @@ bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 plot(st_line, "SuperTrend",
      color=s_st ? color.new(color.lime, 0) : color.new(color.red, 0),
      linewidth=2)
+plot(st_line_smooth, "ST(5,75)",
+     color=s_st_sm ? color.new(color.aqua, 30) : color.new(color.orange, 30),
+     linewidth=1)
 plot(ta.ema(close, ema_len), "EMA",
      color=color.new(color.white, 40), linewidth=1)
 
@@ -66,7 +78,7 @@ plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
 // ── TABLE ────────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 9,
+var table t = table.new(position.top_right, 2, 11,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
@@ -74,19 +86,23 @@ if barstate.islast
     table.cell(t, 1, 0, "État",      text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
     table.cell(t, 0, 1, "ST",        text_color=color.white, text_size=size.small)
     table.cell(t, 1, 1, s_st    ? "▲ BULL" : "▼ BEAR", text_color=s_st    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 2, "Corps HA",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, s_body  ? "▲ BULL" : "▼ BEAR", text_color=s_body  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 3, "EMA(" + str.tostring(ema_len) + ")", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, s_ema   ? "▲ BULL" : "▼ BEAR", text_color=s_ema   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 4, "VWAP",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, s_vwap  ? "▲ BULL" : "▼ BEAR", text_color=s_vwap  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 5, "LinReg",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, lr_bull ? "▲ BULL" : "▼ BEAR", text_color=lr_bull ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 6, "Score /3",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, str.tostring(score) + "/3",
+    table.cell(t, 0, 2, "ST(5,75)",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, s_st_sm ? "▲ BULL" : "▼ BEAR", text_color=s_st_sm ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 3, "st_dir_smooth", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 3, str.tostring(st_dir_smooth), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 4, "Corps HA",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, s_body  ? "▲ BULL" : "▼ BEAR", text_color=s_body  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 5, "EMA(" + str.tostring(ema_len) + ")", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, s_ema   ? "▲ BULL" : "▼ BEAR", text_color=s_ema   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 6, "VWAP",      text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, s_vwap  ? "▲ BULL" : "▼ BEAR", text_color=s_vwap  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 7, "LinReg",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, lr_bull ? "▲ BULL" : "▼ BEAR", text_color=lr_bull ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 8, "Score /3",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 8, str.tostring(score) + "/3",
          text_color=score >= 2 ? #2196F3 : #F44336, text_size=size.normal)
-    table.cell(t, 0, 7, "ST params", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, str.tostring(st_factor) + "/" + str.tostring(st_atr),
+    table.cell(t, 0, 9, "ST params", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 9, str.tostring(st_factor) + "/" + str.tostring(st_atr),
          text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 8, "Mode",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 8, str.substring(mode, 0, 1), text_color=color.yellow, text_size=size.normal)
+    table.cell(t, 0, 10, "Mode",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 10, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
