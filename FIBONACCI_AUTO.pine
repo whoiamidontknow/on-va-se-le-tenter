@@ -116,29 +116,30 @@ var float prev_l0_4h = na
 var float prev_l1_4h = na
 
 // ═══════════════════════════════════════════════════════════════════
-//  EXÉCUTION
+//  CALCULS — appelés à chaque barre pour éviter les warnings Pine
+// ═══════════════════════════════════════════════════════════════════
+[l0_15, l1_15] = calc_fib_points(h15, o15, c15, a15, ph15, lookback)
+[l0_1h, l1_1h] = calc_fib_points(h1h, o1h, c1h, a1h, ph1h, lookback)
+[l0_4h, l1_4h] = calc_fib_points(h4h, o4h, c4h, a4h, ph4h, lookback)
+
+// ═══════════════════════════════════════════════════════════════════
+//  DESSIN — uniquement sur la dernière barre
 // ═══════════════════════════════════════════════════════════════════
 if barstate.islast
-    if show_15
-        [l0_15, l1_15] = calc_fib_points(h15, o15, c15, a15, ph15, lookback)
-        if l0_15 != prev_l0_15 or l1_15 != prev_l1_15
-            draw_fib(lines_15, labels_15, l0_15, l1_15, col_15, "15m")
-            prev_l0_15 := l0_15
-            prev_l1_15 := l1_15
+    if show_15 and (l0_15 != prev_l0_15 or l1_15 != prev_l1_15)
+        draw_fib(lines_15, labels_15, l0_15, l1_15, col_15, "15m")
+        prev_l0_15 := l0_15
+        prev_l1_15 := l1_15
 
-    if show_1h
-        [l0_1h, l1_1h] = calc_fib_points(h1h, o1h, c1h, a1h, ph1h, lookback)
-        if l0_1h != prev_l0_1h or l1_1h != prev_l1_1h
-            draw_fib(lines_1h, labels_1h, l0_1h, l1_1h, col_1h, "1H")
-            prev_l0_1h := l0_1h
-            prev_l1_1h := l1_1h
+    if show_1h and (l0_1h != prev_l0_1h or l1_1h != prev_l1_1h)
+        draw_fib(lines_1h, labels_1h, l0_1h, l1_1h, col_1h, "1H")
+        prev_l0_1h := l0_1h
+        prev_l1_1h := l1_1h
 
-    if show_4h
-        [l0_4h, l1_4h] = calc_fib_points(h4h, o4h, c4h, a4h, ph4h, lookback)
-        if l0_4h != prev_l0_4h or l1_4h != prev_l1_4h
-            draw_fib(lines_4h, labels_4h, l0_4h, l1_4h, col_4h, "4H")
-            prev_l0_4h := l0_4h
-            prev_l1_4h := l1_4h
+    if show_4h and (l0_4h != prev_l0_4h or l1_4h != prev_l1_4h)
+        draw_fib(lines_4h, labels_4h, l0_4h, l1_4h, col_4h, "4H")
+        prev_l0_4h := l0_4h
+        prev_l1_4h := l1_4h
 
 // ═══════════════════════════════════════════════════════════════════
 //  TABLE CONFLUENCE 0.618
