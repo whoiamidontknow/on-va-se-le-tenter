@@ -88,7 +88,7 @@ draw_fib(lines_arr, labels_arr, level0, level1, col, suffix) =>
                           color  = is_618 ? col_618 : col,
                           width  = is_618 ? 2 : 1,
                           style  = is_618 ? line.style_solid : line.style_dashed,
-                          extend = line.extend_right)
+                          extend = extend.right)
             array.push(lines_arr, ln)
             lbl = label.new(bar_index + 52, price,
                             str.tostring(ratio * 100, "0.0") + "% " + suffix,
