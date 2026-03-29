@@ -122,9 +122,12 @@ var label[] lb15 = array.new<label>()
 var label[] lb1h = array.new<label>()
 var label[] lb4h = array.new<label>()
 
-var float t15 = na,  b15 = na
-var float t1h = na,  b1h = na
-var float t4h = na,  b4h = na
+var float t15 = na
+var float b15 = na
+var float t1h = na
+var float b1h = na
+var float t4h = na
+var float b4h = na
 
 // ── CALCUL À CHAQUE BARRE (évite warning Pine) ───────────────────
 [new_t15, new_b15] = find_range(high15, open15, clos15, ha_close_15, atr15, ph15, lookback)
