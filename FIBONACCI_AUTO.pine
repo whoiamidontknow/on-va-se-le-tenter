@@ -100,17 +100,19 @@ draw_fibs(ln_arr, lb_arr, top, bot, col, suffix) =>
             r      = array.get(LEVELS, i)
             price  = fib_lvl(top, bot, r)
             is_618 = r == 0.618
+            is_end = r == 0.0 or r == 1.0
+            ln_col = is_618 ? col_618 : color.black
             ln = line.new(bar_index - 300, price, bar_index + 60, price,
-                 color  = is_618 ? col_618 : col,
-                 width  = is_618 ? 2 : 1,
-                 style  = is_618 ? line.style_solid : line.style_dashed,
+                 color  = ln_col,
+                 width  = is_618 or is_end ? 2 : 1,
+                 style  = is_618 or is_end ? line.style_solid : line.style_dashed,
                  extend = extend.right)
             array.push(ln_arr, ln)
-            lbl = label.new(bar_index + 62, price,
-                 str.tostring(math.round(r * 1000) / 10, "0.0") + "% (" + str.tostring(price, format.mintick) + ") " + suffix,
-                 color     = color.new(col, 85),
-                 textcolor = is_618 ? col_618 : col,
-                 style     = label.style_label_left,
+            lbl = label.new(bar_index - 295, price,
+                 str.tostring(r, "0.###") + " (" + str.tostring(price, format.mintick) + ") " + suffix,
+                 color     = color.new(color.white, 80),
+                 textcolor = is_618 ? col_618 : color.black,
+                 style     = label.style_label_right,
                  size      = size.tiny)
             array.push(lb_arr, lbl)
 
