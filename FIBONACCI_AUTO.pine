@@ -1,5 +1,5 @@
 //@version=6
-indicator("Fibonacci Auto - Ephore MTF", overlay=true, max_lines_count=500, max_labels_count=200)
+indicator("Fibonacci Auto - Ephore MTF", overlay=true, max_lines_count=500, max_labels_count=200, max_bars_back=500)
 
 // ═══════════════════════════════════════════════════════════════════
 //  INPUTS
