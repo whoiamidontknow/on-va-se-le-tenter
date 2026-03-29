@@ -32,18 +32,21 @@ o15  = request.security(syminfo.tickerid, "15",  open,                     looka
 c15  = request.security(syminfo.tickerid, "15",  close,                    lookahead=barmerge.lookahead_off)
 a15  = request.security(syminfo.tickerid, "15",  ta.atr(14),               lookahead=barmerge.lookahead_off)
 ph15 = request.security(syminfo.tickerid, "15",  ta.pivothigh(high, 5, 5), lookahead=barmerge.lookahead_off)
+max_bars_back(ph15, 500)
 
 h1h  = request.security(syminfo.tickerid, "60",  high,                     lookahead=barmerge.lookahead_off)
 o1h  = request.security(syminfo.tickerid, "60",  open,                     lookahead=barmerge.lookahead_off)
 c1h  = request.security(syminfo.tickerid, "60",  close,                    lookahead=barmerge.lookahead_off)
 a1h  = request.security(syminfo.tickerid, "60",  ta.atr(14),               lookahead=barmerge.lookahead_off)
 ph1h = request.security(syminfo.tickerid, "60",  ta.pivothigh(high, 5, 5), lookahead=barmerge.lookahead_off)
+max_bars_back(ph1h, 500)
 
 h4h  = request.security(syminfo.tickerid, "240", high,                     lookahead=barmerge.lookahead_off)
 o4h  = request.security(syminfo.tickerid, "240", open,                     lookahead=barmerge.lookahead_off)
 c4h  = request.security(syminfo.tickerid, "240", close,                    lookahead=barmerge.lookahead_off)
 a4h  = request.security(syminfo.tickerid, "240", ta.atr(14),               lookahead=barmerge.lookahead_off)
 ph4h = request.security(syminfo.tickerid, "240", ta.pivothigh(high, 5, 5), lookahead=barmerge.lookahead_off)
+max_bars_back(ph4h, 500)
 
 // ═══════════════════════════════════════════════════════════════════
 //  FONCTIONS
