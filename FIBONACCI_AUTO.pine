@@ -1,71 +1,45 @@
 //@version=6
 // ═══════════════════════════════════════════════════════════════════
-// FIBONACCI AUTO — Ephore MTF
+// FIBONACCI AUTO — Ephore
 // Logique tendance baissière :
 //   0%   = 2ème pivot haut valide (hors spike/news)
 //   100% = plus bas HA_close du lookback
 //   0.618 = zone de pression clé sur rebond
-// Confluence : plus de TF touchent le 0.618 simultanément → signal fort
 // ═══════════════════════════════════════════════════════════════════
-indicator("Fibonacci Auto - Ephore MTF", overlay=true,
-     max_lines_count=500, max_labels_count=200, max_bars_back=500)
+indicator("Fibonacci Auto - Ephore", overlay=true,
+     max_lines_count=200, max_labels_count=100, max_bars_back=500)
 
 // ── INPUTS ───────────────────────────────────────────────────────
 grp_gen   = "Paramètres"
-lookback  = input.int(200,  "Lookback (bougies)",     minval=50, maxval=500, group=grp_gen)
-pivot_len = input.int(5,    "Pivot longueur",          minval=2,  maxval=20,  group=grp_gen)
+sel_tf    = input.string("15m", "Timeframe", options=["15m", "1H", "4H"], group=grp_gen)
+lookback  = input.int(200,  "Lookback (bougies)", minval=50, maxval=500, group=grp_gen)
+pivot_len = input.int(5,    "Pivot longueur",     minval=2,  maxval=20,  group=grp_gen)
 spike_fac = input.float(2.0,"Filtre spike (× ATR14)", minval=0.5, maxval=6.0, step=0.5, group=grp_gen,
      tooltip="Mèche haute > N × ATR → considéré spike/news → ignoré")
-near_pct  = input.float(0.3,"Zone 0.618 (±%)",        minval=0.05, maxval=2.0, step=0.05, group=grp_gen)
-
-grp_tf  = "Timeframes"
-show_15 = input.bool(true,  "15m", group=grp_tf, inline="tf")
-show_1h = input.bool(true,  "1H",  group=grp_tf, inline="tf")
-show_4h = input.bool(true,  "4H",  group=grp_tf, inline="tf")
 
 // ── COULEURS ──────────────────────────────────────────────────────
-col_15  = color.new(#64B5F6, 0)
-col_1h  = color.new(#FF9800, 0)
-col_4h  = color.new(#F44336, 0)
 col_618 = color.new(#FFD700, 0)
+col_line = color.black
 
 var float[] LEVELS = array.from(0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0)
 
 // ── DONNÉES MTF ───────────────────────────────────────────────────
 f_sec(tf, expr) => request.security(syminfo.tickerid, tf, expr, lookahead=barmerge.lookahead_off)
 
-high15 = f_sec("15",  high)
-low15  = f_sec("15",  low)
-open15 = f_sec("15",  open)
-clos15 = f_sec("15",  close)
-atr15  = f_sec("15",  ta.atr(14))
-// pivot high sur la TF 15m
-ph15   = f_sec("15",  ta.pivothigh(high, pivot_len, pivot_len))
+tf_str = sel_tf == "15m" ? "15" : sel_tf == "1H" ? "60" : "240"
 
-high1h = f_sec("60",  high)
-low1h  = f_sec("60",  low)
-open1h = f_sec("60",  open)
-clos1h = f_sec("60",  close)
-atr1h  = f_sec("60",  ta.atr(14))
-ph1h   = f_sec("60",  ta.pivothigh(high, pivot_len, pivot_len))
+hi   = f_sec(tf_str, high)
+lo   = f_sec(tf_str, low)
+op   = f_sec(tf_str, open)
+cl   = f_sec(tf_str, close)
+atr  = f_sec(tf_str, ta.atr(14))
+ph   = f_sec(tf_str, ta.pivothigh(high, pivot_len, pivot_len))
 
-high4h = f_sec("240", high)
-low4h  = f_sec("240", low)
-open4h = f_sec("240", open)
-clos4h = f_sec("240", close)
-atr4h  = f_sec("240", ta.atr(14))
-ph4h   = f_sec("240", ta.pivothigh(high, pivot_len, pivot_len))
-
-// ── CALCUL HA CLOSE (pour le plus bas) ───────────────────────────
-// Sur chart HA natif, close = HA_close directement.
-// Via request.security on récupère les valeurs brutes → on recalcule HA_close.
-ha_close_15 = (open15 + high15 + low15 + clos15) / 4
-ha_close_1h = (open1h + high1h + low1h + clos1h) / 4
-ha_close_4h = (open4h + high4h + low4h + clos4h) / 4
+ha_c = (op + hi + lo + cl) / 4
 
 // ── FONCTIONS ────────────────────────────────────────────────────
 fib_lvl(top, bot, ratio) =>
-    top + (bot - top) * ratio   // 0% = top, 100% = bot
+    top + (bot - top) * ratio
 
 clear_all(ln_arr, lb_arr) =>
     while array.size(ln_arr) > 0
@@ -73,13 +47,10 @@ clear_all(ln_arr, lb_arr) =>
     while array.size(lb_arr) > 0
         label.delete(array.pop(lb_arr))
 
-// Trouve : [top_price, bot_price]
-//   bot = plus bas HA_close sur lookback
-//   top = 2ème pivot haut valide (hors spike)
 find_range(h_src, o_src, c_src, ha_c_src, atr_src, ph_src, lb) =>
-    bot    = ta.lowest(ha_c_src, lb)   // plus bas HA close
-    top    = float(na)
-    count  = 0
+    bot   = ta.lowest(ha_c_src, lb)
+    top   = float(na)
+    count = 0
     for i = 1 to lb
         pv = ph_src[i]
         if not na(pv)
@@ -93,7 +64,7 @@ find_range(h_src, o_src, c_src, ha_c_src, atr_src, ph_src, lb) =>
     valid = not na(top) and not na(bot) and top > bot
     [valid ? top : float(na), valid ? bot : float(na)]
 
-draw_fibs(ln_arr, lb_arr, top, bot, col, suffix) =>
+draw_fibs(ln_arr, lb_arr, top, bot) =>
     clear_all(ln_arr, lb_arr)
     if not na(top) and not na(bot)
         for i = 0 to array.size(LEVELS) - 1
@@ -101,81 +72,32 @@ draw_fibs(ln_arr, lb_arr, top, bot, col, suffix) =>
             price  = fib_lvl(top, bot, r)
             is_618 = r == 0.618
             is_end = r == 0.0 or r == 1.0
-            ln_col = is_618 ? col_618 : color.black
             ln = line.new(bar_index - 300, price, bar_index + 60, price,
-                 color  = ln_col,
+                 color  = is_618 ? col_618 : col_line,
                  width  = is_618 or is_end ? 2 : 1,
                  style  = is_618 or is_end ? line.style_solid : line.style_dashed,
                  extend = extend.right)
             array.push(ln_arr, ln)
             lbl = label.new(bar_index - 295, price,
-                 str.tostring(r, "0.###") + " (" + str.tostring(price, format.mintick) + ") " + suffix,
-                 color     = color.new(color.white, 80),
-                 textcolor = is_618 ? col_618 : color.black,
+                 str.tostring(r, "0.###") + " (" + str.tostring(price, format.mintick) + ")",
+                 color     = color.new(color.white, 100),
+                 textcolor = is_618 ? col_618 : col_line,
                  style     = label.style_label_right,
                  size      = size.tiny)
             array.push(lb_arr, lbl)
 
 // ── STOCKAGE ─────────────────────────────────────────────────────
-var line[]  ln15 = array.new<line>()
-var line[]  ln1h = array.new<line>()
-var line[]  ln4h = array.new<line>()
-var label[] lb15 = array.new<label>()
-var label[] lb1h = array.new<label>()
-var label[] lb4h = array.new<label>()
+var line[]  ln_arr = array.new<line>()
+var label[] lb_arr = array.new<label>()
+var float   t_prev = na
+var float   b_prev = na
 
-var float t15 = na
-var float b15 = na
-var float t1h = na
-var float b1h = na
-var float t4h = na
-var float b4h = na
-
-// ── CALCUL À CHAQUE BARRE (évite warning Pine) ───────────────────
-[new_t15, new_b15] = find_range(high15, open15, clos15, ha_close_15, atr15, ph15, lookback)
-[new_t1h, new_b1h] = find_range(high1h, open1h, clos1h, ha_close_1h, atr1h, ph1h, lookback)
-[new_t4h, new_b4h] = find_range(high4h, open4h, clos4h, ha_close_4h, atr4h, ph4h, lookback)
+// ── CALCUL ───────────────────────────────────────────────────────
+[new_top, new_bot] = find_range(hi, op, cl, ha_c, atr, ph, lookback)
 
 // ── DESSIN SUR DERNIÈRE BARRE ─────────────────────────────────────
 if barstate.islast
-    // 15m
-    if show_15 and (na(t15) or new_t15 != t15 or new_b15 != b15)
-        draw_fibs(ln15, lb15, new_t15, new_b15, col_15, "15m")
-        t15 := new_t15
-        b15 := new_b15
-
-    // 1H
-    if show_1h and (na(t1h) or new_t1h != t1h or new_b1h != b1h)
-        draw_fibs(ln1h, lb1h, new_t1h, new_b1h, col_1h, "1H")
-        t1h := new_t1h
-        b1h := new_b1h
-
-    // 4H
-    if show_4h and (na(t4h) or new_t4h != t4h or new_b4h != b4h)
-        draw_fibs(ln4h, lb4h, new_t4h, new_b4h, col_4h, "4H")
-        t4h := new_t4h
-        b4h := new_b4h
-
-// ── CONFLUENCE 0.618 ──────────────────────────────────────────────
-near_618(top, bot) =>
-    p618 = fib_lvl(top, bot, 0.618)
-    not na(top) and not na(bot) and
-     math.abs(close - p618) / p618 * 100 <= near_pct
-
-n15 = near_618(t15, b15)
-n1h = near_618(t1h, b1h)
-n4h = near_618(t4h, b4h)
-conf = (n15 ? 1 : 0) + (n1h ? 1 : 0) + (n4h ? 1 : 0)
-
-var table tbl = table.new(position.top_left, 1, 2,
-     bgcolor=color.new(color.black, 60), border_width=1, border_color=color.gray)
-
-table.cell(tbl, 0, 0,
-     "Confluence 0.618 : " + str.tostring(conf) + "/3" + (conf >= 2 ? "  ⚡ PRESSION" : ""),
-     text_color = conf >= 2 ? color.white : color.gray,
-     bgcolor    = conf >= 2 ? color.new(color.green, 30) : color.new(color.gray, 70),
-     text_size  = size.small)
-
-table.cell(tbl, 0, 1,
-     (n15 ? "✓" : "✗") + " 15m   " + (n1h ? "✓" : "✗") + " 1H   " + (n4h ? "✓" : "✗") + " 4H",
-     text_color = color.silver, text_size = size.tiny)
+    if na(t_prev) or new_top != t_prev or new_bot != b_prev
+        draw_fibs(ln_arr, lb_arr, new_top, new_bot)
+        t_prev := new_top
+        b_prev := new_bot
