@@ -39,7 +39,7 @@ ha_c = (op + hi + lo + cl) / 4
 
 // ── FONCTIONS ────────────────────────────────────────────────────
 fib_lvl(top, bot, ratio) =>
-    top + (bot - top) * ratio
+    bot + (top - bot) * ratio   // 0 = bas (lowest HA close), 1 = haut (pivot high)
 
 clear_all(ln_arr, lb_arr) =>
     while array.size(ln_arr) > 0
