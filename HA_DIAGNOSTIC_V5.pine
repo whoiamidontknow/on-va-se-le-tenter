@@ -1,100 +1,102 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v7 — Focus HIGHER TIMEFRAME
-// Observation : tous les modes 1H échouent.
-// Les bougies Heishinator restent la même couleur sur de nombreuses
-// barres 1H → le signal vient très probablement d'un TF supérieur.
-// Hypothèse : 4H ou Daily SuperTrend / EMA colore les bougies 1H.
+// HA DIAGNOSTIC v7 — Nouvelles hypothèses TF courante
+// Observation : modes 1-20 (v6) échouent tous.
+// Piste : paramètre "75" visible dans config Heishinator
+//         → EMA(75) non testé, combinaisons avec ST/VWAP
+// Aussi : double lissage (DEMA), TEMA, HMA(75)
 // ════════════════════════════════════════════════════════════
 indicator("HA Diagnostic v7", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("1 — 4H ST", "Mode",
+mode = input.string("1 — EMA(75)", "Mode",
      options=[
-         "1 — 4H ST",
-         "2 — 4H EMA(33)",
-         "3 — 4H corps HA",
-         "4 — 4H ST × corps HA",
-         "5 — Daily ST",
-         "6 — Daily EMA(33)",
-         "7 — Daily corps HA",
-         "8 — Daily ST × corps HA",
-         "9 — 4H ST × 1H corps HA",
-         "10 — 4H EMA(33) × 1H corps HA",
-         "11 — 4H ST × 4H EMA(33)",
-         "12 — Daily ST × 1H corps HA",
-         "13 — 4H score≥2 [ST,EMA33,corps]",
-         "14 — 4H EMA(9) > 4H EMA(21)",
-         "15 — Daily EMA(9) > Daily EMA(21)"
+         "1 — EMA(75)",
+         "2 — EMA(75) × corps HA",
+         "3 — ST × EMA(75)",
+         "4 — ST × EMA(75) × corps HA",
+         "5 — VWAP × EMA(75)",
+         "6 — score≥2 [ST, EMA(75), corps HA]",
+         "7 — score≥2 [ST, EMA(75), VWAP]",
+         "8 — DEMA(33)",
+         "9 — DEMA(75)",
+         "10 — DEMA(33) × corps HA",
+         "11 — HMA(75)",
+         "12 — HMA(33)",
+         "13 — EMA(55)",
+         "14 — EMA(89)",
+         "15 — EMA(144)"
      ], group=grp)
 
-st_factor = input.float(3.0, "[ST] Factor",    step=0.1, minval=0.1, group=grp)
-st_atr    = input.int(10,   "[ST] ATR Période", minval=1, maxval=500, group=grp)
+st_factor = input.float(3.0, "[ST] Factor",     step=0.1, group=grp)
+st_atr    = input.int(10,   "[ST] ATR Période", minval=1, group=grp)
 
-// ── DONNÉES HTF ─────────────────────────────────────────────
-f(tf, e) => request.security(syminfo.tickerid, tf, e, lookahead=barmerge.lookahead_off)
+// ── CALCULS ──────────────────────────────────────────────────
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr)
+s_st   = st_dir < 0
+s_body = close > open
+s_vwap = close > ta.vwap
 
-// 4H
-[st4h_line, st4h_dir] = request.security(syminfo.tickerid, "240",
-     ta.supertrend(st_factor, st_atr), lookahead=barmerge.lookahead_off)
-ema33_4h = f("240", ta.ema(close, 33))
-ema9_4h  = f("240", ta.ema(close, 9))
-ema21_4h = f("240", ta.ema(close, 21))
-cl4h     = f("240", close)
-op4h     = f("240", open)
+ema75  = ta.ema(close, 75)
+ema55  = ta.ema(close, 55)
+ema89  = ta.ema(close, 89)
+ema144 = ta.ema(close, 144)
+ema33  = ta.ema(close, 33)
 
-// Daily
-[stD_line, stD_dir] = request.security(syminfo.tickerid, "D",
-     ta.supertrend(st_factor, st_atr), lookahead=barmerge.lookahead_off)
-ema33_D  = f("D", ta.ema(close, 33))
-ema9_D   = f("D", ta.ema(close, 9))
-ema21_D  = f("D", ta.ema(close, 21))
-clD      = f("D", close)
-opD      = f("D", open)
+// DEMA = 2*EMA - EMA(EMA)
+dema33 = 2 * ema33 - ta.ema(ema33, 33)
+dema75 = 2 * ema75 - ta.ema(ema75, 75)
 
-// 1H (chart courant)
-s_body_1h = close > open
+// HMA = WMA(2*WMA(src,n/2) - WMA(src,n), sqrt(n))
+hma(src, len) =>
+    half = math.floor(len / 2)
+    sq   = math.round(math.sqrt(len))
+    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sq)
 
-// ── SIGNAUX ─────────────────────────────────────────────────
-s_4h_st   = st4h_dir < 0
-s_4h_e33  = cl4h > ema33_4h
-s_4h_body = cl4h > op4h
-s_D_st    = stD_dir  < 0
-s_D_e33   = clD  > ema33_D
-s_D_body  = clD  > opD
-s_4h_e9x21 = ema9_4h > ema21_4h
-s_D_e9x21  = ema9_D  > ema21_D
-score_4h  = (s_4h_st ? 1 : 0) + (s_4h_e33 ? 1 : 0) + (s_4h_body ? 1 : 0)
+hma75 = hma(close, 75)
+hma33 = hma(close, 33)
+
+s_e75   = close > ema75
+s_e55   = close > ema55
+s_e89   = close > ema89
+s_e144  = close > ema144
+s_d33   = close > dema33
+s_d75   = close > dema75
+s_h75   = close > hma75
+s_h33   = close > hma33
+
+score75 = (s_st ? 1 : 0) + (s_e75 ? 1 : 0) + (s_body ? 1 : 0)
+scoreVW = (s_st ? 1 : 0) + (s_e75 ? 1 : 0) + (s_vwap ? 1 : 0)
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "1 — 4H ST"                    ? s_4h_st :
-     mode == "2 — 4H EMA(33)"               ? s_4h_e33 :
-     mode == "3 — 4H corps HA"              ? s_4h_body :
-     mode == "4 — 4H ST × corps HA"         ? (s_4h_st and s_4h_body) :
-     mode == "5 — Daily ST"                  ? s_D_st :
-     mode == "6 — Daily EMA(33)"             ? s_D_e33 :
-     mode == "7 — Daily corps HA"            ? s_D_body :
-     mode == "8 — Daily ST × corps HA"       ? (s_D_st and s_D_body) :
-     mode == "9 — 4H ST × 1H corps HA"      ? (s_4h_st and s_body_1h) :
-     mode == "10 — 4H EMA(33) × 1H corps HA" ? (s_4h_e33 and s_body_1h) :
-     mode == "11 — 4H ST × 4H EMA(33)"      ? (s_4h_st and s_4h_e33) :
-     mode == "12 — Daily ST × 1H corps HA"  ? (s_D_st and s_body_1h) :
-     mode == "13 — 4H score≥2 [ST,EMA33,corps]" ? (score_4h >= 2) :
-     mode == "14 — 4H EMA(9) > 4H EMA(21)"  ? s_4h_e9x21 :
-     mode == "15 — Daily EMA(9) > Daily EMA(21)" ? s_D_e9x21 :
+     mode == "1 — EMA(75)"                         ? s_e75 :
+     mode == "2 — EMA(75) × corps HA"              ? (s_e75 and s_body) :
+     mode == "3 — ST × EMA(75)"                    ? (s_st and s_e75) :
+     mode == "4 — ST × EMA(75) × corps HA"         ? (s_st and s_e75 and s_body) :
+     mode == "5 — VWAP × EMA(75)"                  ? (s_vwap and s_e75) :
+     mode == "6 — score≥2 [ST, EMA(75), corps HA]" ? (score75 >= 2) :
+     mode == "7 — score≥2 [ST, EMA(75), VWAP]"     ? (scoreVW >= 2) :
+     mode == "8 — DEMA(33)"                         ? s_d33 :
+     mode == "9 — DEMA(75)"                         ? s_d75 :
+     mode == "10 — DEMA(33) × corps HA"             ? (s_d33 and s_body) :
+     mode == "11 — HMA(75)"                         ? s_h75 :
+     mode == "12 — HMA(33)"                         ? s_h33 :
+     mode == "13 — EMA(55)"                         ? s_e55 :
+     mode == "14 — EMA(89)"                         ? s_e89 :
+     mode == "15 — EMA(144)"                        ? s_e144 :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
-// ── PLOTS ────────────────────────────────────────────────────
-plot(st4h_line, "ST 4H",
-     color=s_4h_st ? color.new(color.lime, 0) : color.new(color.red, 0),
-     linewidth=2)
-plot(ema33_4h, "EMA(33) 4H", color=color.new(color.orange, 0), linewidth=1)
-plot(ema33_D,  "EMA(33) Daily", color=color.new(color.yellow, 20), linewidth=1)
+// ── PLOTS ─────────────────────────────────────────────────────
+plot(st_line, "SuperTrend",
+     color=s_st ? color.lime : color.red, linewidth=2)
+plot(ema75,  "EMA(75)",  color=color.new(color.orange, 0),  linewidth=1)
+plot(dema33, "DEMA(33)", color=color.new(color.aqua, 40),   linewidth=1)
+plot(hma75,  "HMA(75)",  color=color.new(color.yellow, 40), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -107,21 +109,21 @@ var table t = table.new(position.top_right, 2, 9,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0, "Signal",        text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, "État",          text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "4H ST",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, s_4h_st   ? "▲ BULL" : "▼ BEAR", text_color=s_4h_st   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 2, "4H EMA(33)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, s_4h_e33  ? "▲ BULL" : "▼ BEAR", text_color=s_4h_e33  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 3, "4H corps HA",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, s_4h_body ? "▲ BULL" : "▼ BEAR", text_color=s_4h_body ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 4, "Daily ST",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, s_D_st    ? "▲ BULL" : "▼ BEAR", text_color=s_D_st    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 5, "Daily EMA(33)", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, s_D_e33   ? "▲ BULL" : "▼ BEAR", text_color=s_D_e33   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 6, "Daily corps",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, s_D_body  ? "▲ BULL" : "▼ BEAR", text_color=s_D_body  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 7, "1H corps",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, s_body_1h ? "▲ BULL" : "▼ BEAR", text_color=s_body_1h ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 8, "Mode",          text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 0, "Signal",     text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "État",       text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "ST",         text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, s_st    ? "▲" : "▼", text_color=s_st    ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 2, "EMA(75)",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, s_e75   ? "▲" : "▼", text_color=s_e75   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 3, "DEMA(33)",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, s_d33   ? "▲" : "▼", text_color=s_d33   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 4, "DEMA(75)",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, s_d75   ? "▲" : "▼", text_color=s_d75   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 5, "HMA(75)",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, s_h75   ? "▲" : "▼", text_color=s_h75   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 6, "corps HA",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, s_body  ? "▲" : "▼", text_color=s_body  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 7, "VWAP",       text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, s_vwap  ? "▲" : "▼", text_color=s_vwap  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 8, "Mode",       text_color=color.white, text_size=size.small)
     table.cell(t, 1, 8, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
