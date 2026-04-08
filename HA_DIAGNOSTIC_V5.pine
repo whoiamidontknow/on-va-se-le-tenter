@@ -1,102 +1,93 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v7 — Nouvelles hypothèses TF courante
-// Observation : modes 1-20 (v6) échouent tous.
-// Piste : paramètre "75" visible dans config Heishinator
-//         → EMA(75) non testé, combinaisons avec ST/VWAP
-// Aussi : double lissage (DEMA), TEMA, HMA(75)
+// HA DIAGNOSTIC v8 — PARAMÈTRES RÉELS HEISHINATOR
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v7", overlay=true, max_labels_count=500)
+// BREAKTHROUGH : décodage du paramètre string Heishinator
+// "Subtle 75 5 3 3 —— 1 Wick ... 0,5 33 0,35 14 0,5 20 1 ATR..."
+//
+// 75  = opacité/transparence (display) — PAS une période MA
+// 0,5  / 33  → SuperTrend 1 : factor=0.5, ATR=33
+// 0,35 / 14  → SuperTrend 2 : factor=0.35, ATR=14
+// 20         → EMA période 20
+//
+// Tous nos tests précédents utilisaient factor ≥ 3.
+// Les vrais facteurs sont < 1 → ST ultra-serré, quasi MA-cross.
+// ════════════════════════════════════════════════════════════
+indicator("HA Diagnostic v8", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("1 — EMA(75)", "Mode",
+mode = input.string("H1 — ST1 AND ST2", "Mode",
      options=[
-         "1 — EMA(75)",
-         "2 — EMA(75) × corps HA",
-         "3 — ST × EMA(75)",
-         "4 — ST × EMA(75) × corps HA",
-         "5 — VWAP × EMA(75)",
-         "6 — score≥2 [ST, EMA(75), corps HA]",
-         "7 — score≥2 [ST, EMA(75), VWAP]",
-         "8 — DEMA(33)",
-         "9 — DEMA(75)",
-         "10 — DEMA(33) × corps HA",
-         "11 — HMA(75)",
-         "12 — HMA(33)",
-         "13 — EMA(55)",
-         "14 — EMA(89)",
-         "15 — EMA(144)"
+         "H1 — ST1 AND ST2",
+         "H2 — ST1 AND ST2 AND EMA20",
+         "H3 — score≥2 [ST1,ST2,EMA20]",
+         "H4 — score≥2 [ST1,ST2,VWAP]",
+         "H5 — ST1 seul",
+         "H6 — ST2 seul",
+         "H7 — ST1 AND EMA20",
+         "H8 — ST2 AND EMA20",
+         "H9 — ST1 AND ST2 AND corps HA",
+         "H10 — ST1 AND ST2 AND VWAP",
+         "H11 — score≥2 [ST1,ST2,corps HA]",
+         "H12 — EMA20 seul",
+         "H13 — ST1 AND ST2 AND EMA20 AND corps HA",
+         "H14 — score≥2 [ST1,EMA20,VWAP]",
+         "H15 — score≥3 tous"
      ], group=grp)
 
-st_factor = input.float(3.0, "[ST] Factor",     step=0.1, group=grp)
-st_atr    = input.int(10,   "[ST] ATR Période", minval=1, group=grp)
+// Paramètres ajustables (defaults = valeurs Heishinator décodées)
+st1_factor = input.float(0.5,  "ST1 Factor", step=0.05, minval=0.1, group=grp)
+st1_atr    = input.int(33,     "ST1 ATR",    minval=1, group=grp)
+st2_factor = input.float(0.35, "ST2 Factor", step=0.05, minval=0.1, group=grp)
+st2_atr    = input.int(14,     "ST2 ATR",    minval=1, group=grp)
+ema_len    = input.int(20,     "EMA Période", minval=1, group=grp)
 
 // ── CALCULS ──────────────────────────────────────────────────
-[st_line, st_dir] = ta.supertrend(st_factor, st_atr)
-s_st   = st_dir < 0
-s_body = close > open
+[st1_line, st1_dir] = ta.supertrend(st1_factor, st1_atr)
+[st2_line, st2_dir] = ta.supertrend(st2_factor, st2_atr)
+
+s_st1  = st1_dir < 0
+s_st2  = st2_dir < 0
+s_e20  = close > ta.ema(close, ema_len)
 s_vwap = close > ta.vwap
+s_body = close > open
 
-ema75  = ta.ema(close, 75)
-ema55  = ta.ema(close, 55)
-ema89  = ta.ema(close, 89)
-ema144 = ta.ema(close, 144)
-ema33  = ta.ema(close, 33)
-
-// DEMA = 2*EMA - EMA(EMA)
-dema33 = 2 * ema33 - ta.ema(ema33, 33)
-dema75 = 2 * ema75 - ta.ema(ema75, 75)
-
-// HMA = WMA(2*WMA(src,n/2) - WMA(src,n), sqrt(n))
-hma(src, len) =>
-    half = math.floor(len / 2)
-    sq   = math.round(math.sqrt(len))
-    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sq)
-
-hma75 = hma(close, 75)
-hma33 = hma(close, 33)
-
-s_e75   = close > ema75
-s_e55   = close > ema55
-s_e89   = close > ema89
-s_e144  = close > ema144
-s_d33   = close > dema33
-s_d75   = close > dema75
-s_h75   = close > hma75
-s_h33   = close > hma33
-
-score75 = (s_st ? 1 : 0) + (s_e75 ? 1 : 0) + (s_body ? 1 : 0)
-scoreVW = (s_st ? 1 : 0) + (s_e75 ? 1 : 0) + (s_vwap ? 1 : 0)
+score_all  = (s_st1?1:0) + (s_st2?1:0) + (s_e20?1:0) + (s_vwap?1:0) + (s_body?1:0)
+score_312  = (s_st1?1:0) + (s_st2?1:0) + (s_e20?1:0)
+score_31v  = (s_st1?1:0) + (s_st2?1:0) + (s_vwap?1:0)
+score_31b  = (s_st1?1:0) + (s_st2?1:0) + (s_body?1:0)
+score_1ev  = (s_st1?1:0) + (s_e20?1:0) + (s_vwap?1:0)
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "1 — EMA(75)"                         ? s_e75 :
-     mode == "2 — EMA(75) × corps HA"              ? (s_e75 and s_body) :
-     mode == "3 — ST × EMA(75)"                    ? (s_st and s_e75) :
-     mode == "4 — ST × EMA(75) × corps HA"         ? (s_st and s_e75 and s_body) :
-     mode == "5 — VWAP × EMA(75)"                  ? (s_vwap and s_e75) :
-     mode == "6 — score≥2 [ST, EMA(75), corps HA]" ? (score75 >= 2) :
-     mode == "7 — score≥2 [ST, EMA(75), VWAP]"     ? (scoreVW >= 2) :
-     mode == "8 — DEMA(33)"                         ? s_d33 :
-     mode == "9 — DEMA(75)"                         ? s_d75 :
-     mode == "10 — DEMA(33) × corps HA"             ? (s_d33 and s_body) :
-     mode == "11 — HMA(75)"                         ? s_h75 :
-     mode == "12 — HMA(33)"                         ? s_h33 :
-     mode == "13 — EMA(55)"                         ? s_e55 :
-     mode == "14 — EMA(89)"                         ? s_e89 :
-     mode == "15 — EMA(144)"                        ? s_e144 :
+     mode == "H1 — ST1 AND ST2"                      ? (s_st1 and s_st2) :
+     mode == "H2 — ST1 AND ST2 AND EMA20"             ? (s_st1 and s_st2 and s_e20) :
+     mode == "H3 — score≥2 [ST1,ST2,EMA20]"           ? (score_312 >= 2) :
+     mode == "H4 — score≥2 [ST1,ST2,VWAP]"            ? (score_31v >= 2) :
+     mode == "H5 — ST1 seul"                           ? s_st1 :
+     mode == "H6 — ST2 seul"                           ? s_st2 :
+     mode == "H7 — ST1 AND EMA20"                      ? (s_st1 and s_e20) :
+     mode == "H8 — ST2 AND EMA20"                      ? (s_st2 and s_e20) :
+     mode == "H9 — ST1 AND ST2 AND corps HA"           ? (s_st1 and s_st2 and s_body) :
+     mode == "H10 — ST1 AND ST2 AND VWAP"              ? (s_st1 and s_st2 and s_vwap) :
+     mode == "H11 — score≥2 [ST1,ST2,corps HA]"        ? (score_31b >= 2) :
+     mode == "H12 — EMA20 seul"                        ? s_e20 :
+     mode == "H13 — ST1 AND ST2 AND EMA20 AND corps HA"? (s_st1 and s_st2 and s_e20 and s_body) :
+     mode == "H14 — score≥2 [ST1,EMA20,VWAP]"          ? (score_1ev >= 2) :
+     mode == "H15 — score≥3 tous"                      ? (score_all >= 3) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
 // ── PLOTS ─────────────────────────────────────────────────────
-plot(st_line, "SuperTrend",
-     color=s_st ? color.lime : color.red, linewidth=2)
-plot(ema75,  "EMA(75)",  color=color.new(color.orange, 0),  linewidth=1)
-plot(dema33, "DEMA(33)", color=color.new(color.aqua, 40),   linewidth=1)
-plot(hma75,  "HMA(75)",  color=color.new(color.yellow, 40), linewidth=1)
+plot(st1_line, "ST1(0.5,33)",
+     color=s_st1 ? color.new(color.lime, 0) : color.new(color.red, 0), linewidth=2)
+plot(st2_line, "ST2(0.35,14)",
+     color=s_st2 ? color.new(color.aqua, 30) : color.new(color.orange, 30), linewidth=1)
+plot(ta.ema(close, ema_len), "EMA(20)",
+     color=color.new(color.white, 40), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -105,25 +96,31 @@ plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
 // ── TABLE ─────────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 9,
+var table t = table.new(position.top_right, 2, 10,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0, "Signal",     text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, "État",       text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "ST",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, s_st    ? "▲" : "▼", text_color=s_st    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 2, "EMA(75)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, s_e75   ? "▲" : "▼", text_color=s_e75   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 3, "DEMA(33)",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, s_d33   ? "▲" : "▼", text_color=s_d33   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 4, "DEMA(75)",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, s_d75   ? "▲" : "▼", text_color=s_d75   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 5, "HMA(75)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, s_h75   ? "▲" : "▼", text_color=s_h75   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 6, "corps HA",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, s_body  ? "▲" : "▼", text_color=s_body  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 7, "VWAP",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, s_vwap  ? "▲" : "▼", text_color=s_vwap  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 8, "Mode",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 8, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
+    table.cell(t, 0, 0, "Signal",         text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "État",           text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "ST1(0.5/33)",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, s_st1  ? "▲ BULL" : "▼ BEAR", text_color=s_st1  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 2, "ST2(0.35/14)",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, s_st2  ? "▲ BULL" : "▼ BEAR", text_color=s_st2  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 3, "EMA(" + str.tostring(ema_len) + ")", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, s_e20  ? "▲ BULL" : "▼ BEAR", text_color=s_e20  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 4, "VWAP",           text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, s_vwap ? "▲ BULL" : "▼ BEAR", text_color=s_vwap ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 5, "Corps HA",       text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, s_body ? "▲ BULL" : "▼ BEAR", text_color=s_body ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 6, "ST1 AND ST2",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, (s_st1 and s_st2) ? "▲ BULL" : "▼ BEAR",
+         text_color=(s_st1 and s_st2) ? color.lime : color.red, text_size=size.small)
+    table.cell(t, 0, 7, "Score/5",        text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, str.tostring(score_all) + "/5",
+         text_color=score_all >= 3 ? #2196F3 : #F44336, text_size=size.normal)
+    table.cell(t, 0, 8, "ST params",      text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 8, str.tostring(st1_factor) + "/" + str.tostring(st1_atr) + "  " +
+         str.tostring(st2_factor) + "/" + str.tostring(st2_atr),
+         text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 9, "Mode",           text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 9, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
