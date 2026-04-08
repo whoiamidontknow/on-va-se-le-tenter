@@ -68,8 +68,8 @@ s_ema33   = close > ta.ema(close, 33)         // EMA 33 (règle ZORADIK confirm�
 s_vwap    = close > ta.vwap                   // VWAP
 s_body    = close > open                      // Corps HA haussier (close > open sur HA natif)
 
-// Kijun (Ichimoku, période 26)
-[_, kijun, _, _, _] = ta.ichimoku(9, 26, 52)
+// Kijun (Ichimoku, période 26) — calculé manuellement
+kijun     = math.avg(ta.highest(high, 26), ta.lowest(low, 26))
 s_kijun   = close > kijun
 
 // Corps HA confirmé sur 2 barres consécutives
