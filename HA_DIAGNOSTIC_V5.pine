@@ -1,174 +1,127 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v6 — Itération 6
-// Toujours sur chart natif Heiken Ashi (TF courante).
-// Objectif : identifier le filtre qui supprime les "thin blue
-// stripes" en downtrend que mode 8 (ST × corps HA) produit.
-//
-// CONTEXTE : ZORADIK.pine révèle que la règle HEISHINATOR V4
-// est  close > EMA(close, 33)  — MAIS les tests précédents ont
-// montré que "EMA seul" ne colle pas exactement. La contradiction
-// suggère soit que l'EMA 33 est combinée avec autre chose, soit
-// que la comparaison se fait sur un signal dérivé (ex: close HA
-// lissé 2 barres, ou confirmation corps).
-//
-// Nouveaux modes à tester : filtres de confirmation
-// pour éliminer les faux retournements haussiers en downtrend.
+// HA DIAGNOSTIC v7 — Focus HIGHER TIMEFRAME
+// Observation : tous les modes 1H échouent.
+// Les bougies Heishinator restent la même couleur sur de nombreuses
+// barres 1H → le signal vient très probablement d'un TF supérieur.
+// Hypothèse : 4H ou Daily SuperTrend / EMA colore les bougies 1H.
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v6", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v7", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("11 — ST × corps HA × VWAP", "Mode",
+mode = input.string("1 — 4H ST", "Mode",
      options=[
-         // ── Modes hérités ──────────────────────────────────
-         "1 — ST seul",
-         "2 — corps HA seul",
-         "3 — ST + EMA",
-         "4 — ST + VWAP",
-         "5 — ST + EMA + VWAP",
-         "6 — EMA seul",
-         "7 — ST × corps HA  (EMA filtre)",
-         "8 — ST × corps HA",
-         "9 — ST(5,75)",
-         "10 — ST(5,75) × Corps HA",
-         // ── Nouveaux modes v6 ──────────────────────────────
-         "11 — ST × corps HA × VWAP",
-         "12 — ST × corps HA × EMA(9)",
-         "13 — ST × corps HA × EMA(21)",
-         "14 — ST × corps HA × Kijun",
-         "15 — ST(5,75) × corps HA",
-         "16 — Score≥2 [ST, EMA(21), corps HA]",
-         "17 — Score≥2 [ST, VWAP, corps HA]",
-         "18 — ST × corps HA ×2 barres",
-         "19 — ST × corps HA × LinReg>0",
-         "20 — EMA(33) seul"
+         "1 — 4H ST",
+         "2 — 4H EMA(33)",
+         "3 — 4H corps HA",
+         "4 — 4H ST × corps HA",
+         "5 — Daily ST",
+         "6 — Daily EMA(33)",
+         "7 — Daily corps HA",
+         "8 — Daily ST × corps HA",
+         "9 — 4H ST × 1H corps HA",
+         "10 — 4H EMA(33) × 1H corps HA",
+         "11 — 4H ST × 4H EMA(33)",
+         "12 — Daily ST × 1H corps HA",
+         "13 — 4H score≥2 [ST,EMA33,corps]",
+         "14 — 4H EMA(9) > 4H EMA(21)",
+         "15 — Daily EMA(9) > Daily EMA(21)"
      ], group=grp)
 
-st_factor = input.float(3.0, "[ST] Factor",     step=0.1, minval=0.1, group=grp)
-st_atr    = input.int(10,    "[ST] ATR Période", minval=1, maxval=500,
-     tooltip="Valeur par défaut 10 (standard). Modes 9/10/15 utilisent ST(5,75) fixe.",
-     group=grp)
-ema_len   = input.int(50,    "[EMA] Période (modes 3/6/7)",   minval=1, group=grp)
+st_factor = input.float(3.0, "[ST] Factor",    step=0.1, minval=0.1, group=grp)
+st_atr    = input.int(10,   "[ST] ATR Période", minval=1, maxval=500, group=grp)
 
-// ── CALCULS ──────────────────────────────────────────────────
+// ── DONNÉES HTF ─────────────────────────────────────────────
+f(tf, e) => request.security(syminfo.tickerid, tf, e, lookahead=barmerge.lookahead_off)
 
-// SuperTrend configurable
-[st_line, st_dir]              = ta.supertrend(st_factor, st_atr)
-// SuperTrend lisse fixe
-[st_line_smooth, st_dir_smooth] = ta.supertrend(5, 75)
+// 4H
+[st4h_line, st4h_dir] = request.security(syminfo.tickerid, "240",
+     ta.supertrend(st_factor, st_atr), lookahead=barmerge.lookahead_off)
+ema33_4h = f("240", ta.ema(close, 33))
+ema9_4h  = f("240", ta.ema(close, 9))
+ema21_4h = f("240", ta.ema(close, 21))
+cl4h     = f("240", close)
+op4h     = f("240", open)
 
-// Signaux de base
-s_st      = st_dir < 0                        // ST configurable haussier
-s_st_sm   = st_dir_smooth < 0                 // ST(5,75) haussier
-s_ema     = close > ta.ema(close, ema_len)    // EMA configurable
-s_ema9    = close > ta.ema(close, 9)          // EMA 9
-s_ema21   = close > ta.ema(close, 21)         // EMA 21
-s_ema33   = close > ta.ema(close, 33)         // EMA 33 (règle ZORADIK confirmée)
-s_vwap    = close > ta.vwap                   // VWAP
-s_body    = close > open                      // Corps HA haussier (close > open sur HA natif)
+// Daily
+[stD_line, stD_dir] = request.security(syminfo.tickerid, "D",
+     ta.supertrend(st_factor, st_atr), lookahead=barmerge.lookahead_off)
+ema33_D  = f("D", ta.ema(close, 33))
+ema9_D   = f("D", ta.ema(close, 9))
+ema21_D  = f("D", ta.ema(close, 21))
+clD      = f("D", close)
+opD      = f("D", open)
 
-// Kijun (Ichimoku, période 26) — calculé manuellement
-kijun     = math.avg(ta.highest(high, 26), ta.lowest(low, 26))
-s_kijun   = close > kijun
+// 1H (chart courant)
+s_body_1h = close > open
 
-// Corps HA confirmé sur 2 barres consécutives
-s_body2   = s_body and s_body[1]
-
-// LinReg slope positive (14 barres)
-lr_bull   = ta.linreg(close, 14, 0) > ta.linreg(close, 14, 1)
-
-// Scores
-score_st_ema21_body = (s_st ? 1 : 0) + (s_ema21 ? 1 : 0) + (s_body ? 1 : 0)
-score_st_vwap_body  = (s_st ? 1 : 0) + (s_vwap  ? 1 : 0) + (s_body ? 1 : 0)
+// ── SIGNAUX ─────────────────────────────────────────────────
+s_4h_st   = st4h_dir < 0
+s_4h_e33  = cl4h > ema33_4h
+s_4h_body = cl4h > op4h
+s_D_st    = stD_dir  < 0
+s_D_e33   = clD  > ema33_D
+s_D_body  = clD  > opD
+s_4h_e9x21 = ema9_4h > ema21_4h
+s_D_e9x21  = ema9_D  > ema21_D
+score_4h  = (s_4h_st ? 1 : 0) + (s_4h_e33 ? 1 : 0) + (s_4h_body ? 1 : 0)
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "1 — ST seul"               ? s_st :
-     mode == "2 — corps HA seul"         ? s_body :
-     mode == "3 — ST + EMA"              ? (s_st and s_ema) :
-     mode == "4 — ST + VWAP"             ? (s_st and s_vwap) :
-     mode == "5 — ST + EMA + VWAP"       ? (s_st and s_ema and s_vwap) :
-     mode == "6 — EMA seul"              ? s_ema :
-     mode == "7 — ST × corps HA  (EMA filtre)" ? (s_ema and s_body) :
-     mode == "8 — ST × corps HA"         ? (s_st and s_body) :
-     mode == "9 — ST(5,75)"              ? s_st_sm :
-     mode == "10 — ST(5,75) × Corps HA"  ? (s_st_sm and s_body) :
-     // ── Nouveaux ─────────────────────────────────────────────
-     mode == "11 — ST × corps HA × VWAP"       ? (s_st and s_body and s_vwap) :
-     mode == "12 — ST × corps HA × EMA(9)"      ? (s_st and s_body and s_ema9) :
-     mode == "13 — ST × corps HA × EMA(21)"     ? (s_st and s_body and s_ema21) :
-     mode == "14 — ST × corps HA × Kijun"       ? (s_st and s_body and s_kijun) :
-     mode == "15 — ST(5,75) × corps HA"         ? (s_st_sm and s_body) :
-     mode == "16 — Score≥2 [ST, EMA(21), corps HA]" ? (score_st_ema21_body >= 2) :
-     mode == "17 — Score≥2 [ST, VWAP, corps HA]"    ? (score_st_vwap_body  >= 2) :
-     mode == "18 — ST × corps HA ×2 barres"     ? (s_st and s_body2) :
-     mode == "19 — ST × corps HA × LinReg>0"    ? (s_st and s_body and lr_bull) :
-     mode == "20 — EMA(33) seul"                ? s_ema33 :
+     mode == "1 — 4H ST"                    ? s_4h_st :
+     mode == "2 — 4H EMA(33)"               ? s_4h_e33 :
+     mode == "3 — 4H corps HA"              ? s_4h_body :
+     mode == "4 — 4H ST × corps HA"         ? (s_4h_st and s_4h_body) :
+     mode == "5 — Daily ST"                  ? s_D_st :
+     mode == "6 — Daily EMA(33)"             ? s_D_e33 :
+     mode == "7 — Daily corps HA"            ? s_D_body :
+     mode == "8 — Daily ST × corps HA"       ? (s_D_st and s_D_body) :
+     mode == "9 — 4H ST × 1H corps HA"      ? (s_4h_st and s_body_1h) :
+     mode == "10 — 4H EMA(33) × 1H corps HA" ? (s_4h_e33 and s_body_1h) :
+     mode == "11 — 4H ST × 4H EMA(33)"      ? (s_4h_st and s_4h_e33) :
+     mode == "12 — Daily ST × 1H corps HA"  ? (s_D_st and s_body_1h) :
+     mode == "13 — 4H score≥2 [ST,EMA33,corps]" ? (score_4h >= 2) :
+     mode == "14 — 4H EMA(9) > 4H EMA(21)"  ? s_4h_e9x21 :
+     mode == "15 — Daily EMA(9) > Daily EMA(21)" ? s_D_e9x21 :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
 // ── PLOTS ────────────────────────────────────────────────────
-plot(st_line, "SuperTrend",
-     color=s_st    ? color.new(color.lime, 0)    : color.new(color.red,    0),
+plot(st4h_line, "ST 4H",
+     color=s_4h_st ? color.new(color.lime, 0) : color.new(color.red, 0),
      linewidth=2)
-plot(st_line_smooth, "ST(5,75)",
-     color=s_st_sm ? color.new(color.aqua, 30)   : color.new(color.orange, 30),
-     linewidth=1)
-plot(ta.ema(close, ema_len), "EMA config",
-     color=color.new(color.white, 50), linewidth=1)
-plot(ta.ema(close, 33), "EMA 33",
-     color=color.new(color.yellow, 30), linewidth=1,
-     style=plot.style_circles)
+plot(ema33_4h, "EMA(33) 4H", color=color.new(color.orange, 0), linewidth=1)
+plot(ema33_D,  "EMA(33) Daily", color=color.new(color.yellow, 20), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
 bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
-plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar,
-     color=color.lime, size=size.small)
-plotshape(bear_flip, style=shape.triangledown, location=location.abovebar,
-     color=color.red,  size=size.small)
+plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.small)
+plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
-// ── TABLE ────────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 16,
+// ── TABLE ─────────────────────────────────────────────────────
+var table t = table.new(position.top_right, 2, 9,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0,  "Signal",     text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0,  "État",       text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1,  "ST",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1,  s_st      ? "▲ BULL" : "▼ BEAR", text_color=s_st      ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 2,  "ST(5,75)",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2,  s_st_sm   ? "▲ BULL" : "▼ BEAR", text_color=s_st_sm   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 3,  "Corps HA",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3,  s_body    ? "▲ BULL" : "▼ BEAR", text_color=s_body    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 4,  "Corps HA×2", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4,  s_body2   ? "▲ BULL" : "▼ BEAR", text_color=s_body2   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 5,  "EMA cfg",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5,  s_ema     ? "▲ BULL" : "▼ BEAR", text_color=s_ema     ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 6,  "EMA(9)",     text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6,  s_ema9    ? "▲ BULL" : "▼ BEAR", text_color=s_ema9    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 7,  "EMA(21)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7,  s_ema21   ? "▲ BULL" : "▼ BEAR", text_color=s_ema21   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 8,  "EMA(33)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 8,  s_ema33   ? "▲ BULL" : "▼ BEAR", text_color=s_ema33   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 9,  "VWAP",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 9,  s_vwap    ? "▲ BULL" : "▼ BEAR", text_color=s_vwap    ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 10, "Kijun",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 10, s_kijun   ? "▲ BULL" : "▼ BEAR", text_color=s_kijun   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 11, "LinReg",     text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 11, lr_bull   ? "▲ BULL" : "▼ BEAR", text_color=lr_bull   ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 12, "Sc ST/EMA21/Body", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 12, str.tostring(score_st_ema21_body) + "/3",
-         text_color=score_st_ema21_body >= 2 ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 13, "Sc ST/VWAP/Body",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 13, str.tostring(score_st_vwap_body) + "/3",
-         text_color=score_st_vwap_body  >= 2 ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 14, "ST params",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 14, str.tostring(st_factor) + "/" + str.tostring(st_atr),
-         text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 15, "Mode",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 15, str.substring(mode, 0, 2),
-         text_color=color.yellow, text_size=size.normal)
+    table.cell(t, 0, 0, "Signal",        text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "État",          text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "4H ST",         text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, s_4h_st   ? "▲ BULL" : "▼ BEAR", text_color=s_4h_st   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 2, "4H EMA(33)",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, s_4h_e33  ? "▲ BULL" : "▼ BEAR", text_color=s_4h_e33  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 3, "4H corps HA",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, s_4h_body ? "▲ BULL" : "▼ BEAR", text_color=s_4h_body ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 4, "Daily ST",      text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, s_D_st    ? "▲ BULL" : "▼ BEAR", text_color=s_D_st    ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 5, "Daily EMA(33)", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, s_D_e33   ? "▲ BULL" : "▼ BEAR", text_color=s_D_e33   ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 6, "Daily corps",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, s_D_body  ? "▲ BULL" : "▼ BEAR", text_color=s_D_body  ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 7, "1H corps",      text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, s_body_1h ? "▲ BULL" : "▼ BEAR", text_color=s_body_1h ? #2196F3 : #F44336, text_size=size.small)
+    table.cell(t, 0, 8, "Mode",          text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 8, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
