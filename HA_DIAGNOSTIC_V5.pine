@@ -1,119 +1,172 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v9 — TRIPLE ST + SCORE >= 1
+// HA DIAGNOSTIC v10 — MOYENATOR HYPOTHESIS
 // ════════════════════════════════════════════════════════════
-// Nouvelle hypothèse : 3 SuperTrends dans le paramètre string
-//   0,5 / 33  → ST1
-//   0,35 / 14 → ST2
-//   0,5 / 20  → ST3  ← NOUVEAU
-// "Bull Score: 1/3" + candles BLEUES → coloring = score >= 1
+// RÉVÉLATION : Section HEISHINATOR V4 n'a AUCUN paramètre
+// d'indicateur → la logique vient du MOYENATOR V5
 //
-// MODES supplémentaires : paramètres standards (3,10)
+// MOYENATOR V5 = 2 MAs "Clôture" avec fill cyan/rouge OPAQUE
+// → Heishinator suit la même condition que Moyenator (MA1>MA2)
+//
+// Test systématique des périodes et types de MA cross
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v9", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v10", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("V1 — 3ST score≥1", "Mode",
+mode = input.string("M1 — EMA9>EMA21", "Mode",
      options=[
-         // Hypothèse principale : 3 SuperTrends, score >= 1
-         "V1 — 3ST score≥1",
-         "V2 — 3ST score≥2",
-         "V3 — 3ST score≥3",
-         // ST3 seul
-         "V4 — ST3(0.5,20) seul",
-         // Combos avec ST3
-         "V5 — ST1 OR ST3",
-         "V6 — ST2 OR ST3",
-         "V7 — ST1 AND ST3",
-         "V8 — ST2 AND ST3",
-         // Standard params ST(3,10)
-         "V9 — ST_STD(3,10) seul",
-         "V10 — ST_STD score≥1 [STD,EMA20,VWAP]",
-         "V11 — ST_STD score≥2 [STD,EMA20,VWAP]",
-         "V12 — ST_STD AND EMA20",
-         "V13 — ST_STD AND VWAP",
-         // Autres params standards
-         "V14 — ST(2,10) seul",
-         "V15 — ST(1,10) seul",
-         "V16 — ST(2,7) seul",
-         "V17 — ST(1.5,14) seul",
-         // Score >= 1 avec params custom
-         "V18 — score≥1 [ST1,ST2,EMA20]",
-         "V19 — score≥1 [ST1,ST2,VWAP]",
-         "V20 — score≥1 [ST1,ST2,body]"
+         // ── EMA Cross (les plus communs) ──
+         "M1 — EMA9>EMA21",
+         "M2 — EMA12>EMA26",
+         "M3 — EMA13>EMA21",
+         "M4 — EMA20>EMA50",
+         "M5 — EMA5>EMA20",
+         "M6 — EMA8>EMA21",
+         "M7 — EMA10>EMA30",
+         "M8 — EMA13>EMA34",
+         // ── SMA Cross ──
+         "M9 — SMA9>SMA21",
+         "M10 — SMA5>SMA20",
+         "M11 — SMA13>SMA34",
+         "M12 — SMA20>SMA50",
+         // ── WMA Cross ──
+         "M13 — WMA9>WMA21",
+         "M14 — WMA13>WMA34",
+         // ── HMA Cross ──
+         "M15 — HMA9>HMA21",
+         "M16 — HMA13>HMA21",
+         // ── VWMA Cross ──
+         "M17 — VWMA9>VWMA21",
+         "M18 — VWMA13>VWMA34",
+         // ── Params custom ajustables ──
+         "M19 — Custom MA1>MA2",
+         "M20 — Custom close>MA"
      ], group=grp)
 
-// Paramètres ST1, ST2, ST3
-st1_factor = input.float(0.5,  "ST1 Factor", step=0.05, minval=0.1, group=grp)
-st1_atr    = input.int(33,     "ST1 ATR",    minval=1, group=grp)
-st2_factor = input.float(0.35, "ST2 Factor", step=0.05, minval=0.1, group=grp)
-st2_atr    = input.int(14,     "ST2 ATR",    minval=1, group=grp)
-st3_factor = input.float(0.5,  "ST3 Factor", step=0.05, minval=0.1, group=grp)
-st3_atr    = input.int(20,     "ST3 ATR",    minval=1, group=grp)
-std_factor = input.float(3.0,  "STD Factor", step=0.1, minval=0.1, group=grp)
-std_atr    = input.int(10,     "STD ATR",    minval=1, group=grp)
-ema_len    = input.int(20,     "EMA Période", minval=1, group=grp)
+// Paramètres custom
+ma_type  = input.string("EMA", "Type MA (M19/M20)", options=["EMA","SMA","WMA","HMA"], group=grp)
+ma1_len  = input.int(9,  "MA1 Période (M19/M20)", minval=1, group=grp)
+ma2_len  = input.int(21, "MA2 Période (M19)", minval=1, group=grp)
 
-// ── CALCULS ──────────────────────────────────────────────────
-[st1_line, st1_dir]   = ta.supertrend(st1_factor, st1_atr)
-[st2_line, st2_dir]   = ta.supertrend(st2_factor, st2_atr)
-[st3_line, st3_dir]   = ta.supertrend(st3_factor, st3_atr)
-[std_line, std_dir]   = ta.supertrend(std_factor, std_atr)
-[_l14, dir_v14]  = ta.supertrend(2.0, 10)
-[_l15, dir_v15]  = ta.supertrend(1.0, 10)
-[_l16, dir_v16]  = ta.supertrend(2.0, 7)
-[_l17, dir_v17]  = ta.supertrend(1.5, 14)
+// ── FONCTIONS ─────────────────────────────────────────────
+hma(src, len) =>
+    half = math.floor(len / 2)
+    sqrtLen = math.round(math.sqrt(len))
+    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sqrtLen)
 
-s_st1  = st1_dir < 0
-s_st2  = st2_dir < 0
-s_st3  = st3_dir < 0
-s_std  = std_dir < 0
-s_e20  = close > ta.ema(close, ema_len)
-s_vwap = close > ta.vwap
-s_body = close > open
+ma(src, len, t) =>
+    t == "EMA" ? ta.ema(src, len) :
+    t == "SMA" ? ta.sma(src, len) :
+    t == "WMA" ? ta.wma(src, len) :
+    hma(src, len)
 
-// Scores
-score_3st  = (s_st1?1:0) + (s_st2?1:0) + (s_st3?1:0)
-score_stdev = (s_std?1:0) + (s_e20?1:0) + (s_vwap?1:0)
-score_12e  = (s_st1?1:0) + (s_st2?1:0) + (s_e20?1:0)
-score_12v  = (s_st1?1:0) + (s_st2?1:0) + (s_vwap?1:0)
-score_12b  = (s_st1?1:0) + (s_st2?1:0) + (s_body?1:0)
+// ── MAs pré-calculées ────────────────────────────────────
+ema9   = ta.ema(close, 9)
+ema12  = ta.ema(close, 12)
+ema13  = ta.ema(close, 13)
+ema20  = ta.ema(close, 20)
+ema21  = ta.ema(close, 21)
+ema26  = ta.ema(close, 26)
+ema30  = ta.ema(close, 30)
+ema34  = ta.ema(close, 34)
+ema50  = ta.ema(close, 50)
+ema5   = ta.ema(close, 5)
+ema8   = ta.ema(close, 8)
+ema10  = ta.ema(close, 10)
+
+sma9   = ta.sma(close, 9)
+sma13  = ta.sma(close, 13)
+sma20  = ta.sma(close, 20)
+sma21  = ta.sma(close, 21)
+sma34  = ta.sma(close, 34)
+sma50  = ta.sma(close, 50)
+sma5   = ta.sma(close, 5)
+
+wma9   = ta.wma(close, 9)
+wma13  = ta.wma(close, 13)
+wma21  = ta.wma(close, 21)
+wma34  = ta.wma(close, 34)
+
+hma9   = hma(close, 9)
+hma13  = hma(close, 13)
+hma21  = hma(close, 21)
+
+vwma9  = ta.vwma(close, 9)
+vwma13 = ta.vwma(close, 13)
+vwma21 = ta.vwma(close, 21)
+vwma34 = ta.vwma(close, 34)
+
+ma1_custom = ma(close, ma1_len, ma_type)
+ma2_custom = ma(close, ma2_len, ma_type)
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "V1 — 3ST score≥1"                   ? (score_3st >= 1) :
-     mode == "V2 — 3ST score≥2"                   ? (score_3st >= 2) :
-     mode == "V3 — 3ST score≥3"                   ? (score_3st >= 3) :
-     mode == "V4 — ST3(0.5,20) seul"               ? s_st3 :
-     mode == "V5 — ST1 OR ST3"                     ? (s_st1 or s_st3) :
-     mode == "V6 — ST2 OR ST3"                     ? (s_st2 or s_st3) :
-     mode == "V7 — ST1 AND ST3"                    ? (s_st1 and s_st3) :
-     mode == "V8 — ST2 AND ST3"                    ? (s_st2 and s_st3) :
-     mode == "V9 — ST_STD(3,10) seul"              ? s_std :
-     mode == "V10 — ST_STD score≥1 [STD,EMA20,VWAP]" ? (score_stdev >= 1) :
-     mode == "V11 — ST_STD score≥2 [STD,EMA20,VWAP]" ? (score_stdev >= 2) :
-     mode == "V12 — ST_STD AND EMA20"              ? (s_std and s_e20) :
-     mode == "V13 — ST_STD AND VWAP"               ? (s_std and s_vwap) :
-     mode == "V14 — ST(2,10) seul"                 ? (dir_v14 < 0) :
-     mode == "V15 — ST(1,10) seul"                 ? (dir_v15 < 0) :
-     mode == "V16 — ST(2,7) seul"                  ? (dir_v16 < 0) :
-     mode == "V17 — ST(1.5,14) seul"               ? (dir_v17 < 0) :
-     mode == "V18 — score≥1 [ST1,ST2,EMA20]"       ? (score_12e >= 1) :
-     mode == "V19 — score≥1 [ST1,ST2,VWAP]"        ? (score_12v >= 1) :
-     mode == "V20 — score≥1 [ST1,ST2,body]"        ? (score_12b >= 1) :
+     mode == "M1 — EMA9>EMA21"    ? (ema9   > ema21) :
+     mode == "M2 — EMA12>EMA26"   ? (ema12  > ema26) :
+     mode == "M3 — EMA13>EMA21"   ? (ema13  > ema21) :
+     mode == "M4 — EMA20>EMA50"   ? (ema20  > ema50) :
+     mode == "M5 — EMA5>EMA20"    ? (ema5   > ema20) :
+     mode == "M6 — EMA8>EMA21"    ? (ema8   > ema21) :
+     mode == "M7 — EMA10>EMA30"   ? (ema10  > ema30) :
+     mode == "M8 — EMA13>EMA34"   ? (ema13  > ema34) :
+     mode == "M9 — SMA9>SMA21"    ? (sma9   > sma21) :
+     mode == "M10 — SMA5>SMA20"   ? (sma5   > sma20) :
+     mode == "M11 — SMA13>SMA34"  ? (sma13  > sma34) :
+     mode == "M12 — SMA20>SMA50"  ? (sma20  > sma50) :
+     mode == "M13 — WMA9>WMA21"   ? (wma9   > wma21) :
+     mode == "M14 — WMA13>WMA34"  ? (wma13  > wma34) :
+     mode == "M15 — HMA9>HMA21"   ? (hma9   > hma21) :
+     mode == "M16 — HMA13>HMA21"  ? (hma13  > hma21) :
+     mode == "M17 — VWMA9>VWMA21" ? (vwma9  > vwma21) :
+     mode == "M18 — VWMA13>VWMA34"? (vwma13 > vwma34) :
+     mode == "M19 — Custom MA1>MA2"? (ma1_custom > ma2_custom) :
+     mode == "M20 — Custom close>MA"? (close > ma1_custom) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
-// ── PLOTS ─────────────────────────────────────────────────────
-plot(st1_line, "ST1(0.5,33)",
-     color=s_st1 ? color.new(color.lime, 0) : color.new(color.red, 0), linewidth=2)
-plot(st2_line, "ST2(0.35,14)",
-     color=s_st2 ? color.new(color.aqua, 30) : color.new(color.orange, 30), linewidth=1)
-plot(st3_line, "ST3(0.5,20)",
-     color=s_st3 ? color.new(color.yellow, 20) : color.new(color.fuchsia, 20), linewidth=1)
+// ── PLOTS des MAs actives ─────────────────────────────────────
+ma_a = mode == "M1 — EMA9>EMA21" or mode == "M6 — EMA8>EMA21" or mode == "M3 — EMA13>EMA21" ?
+     (mode == "M1 — EMA9>EMA21" ? ema9 : mode == "M6 — EMA8>EMA21" ? ema8 : ema13) :
+     mode == "M2 — EMA12>EMA26" ? ema12 :
+     mode == "M4 — EMA20>EMA50" ? ema20 :
+     mode == "M5 — EMA5>EMA20"  ? ema5  :
+     mode == "M7 — EMA10>EMA30" ? ema10 :
+     mode == "M8 — EMA13>EMA34" ? ema13 :
+     mode == "M9 — SMA9>SMA21"  ? sma9  :
+     mode == "M10 — SMA5>SMA20" ? sma5  :
+     mode == "M11 — SMA13>SMA34"? sma13 :
+     mode == "M12 — SMA20>SMA50"? sma20 :
+     mode == "M13 — WMA9>WMA21" ? wma9  :
+     mode == "M14 — WMA13>WMA34"? wma13 :
+     mode == "M15 — HMA9>HMA21" ? hma9  :
+     mode == "M16 — HMA13>HMA21"? hma13 :
+     mode == "M17 — VWMA9>VWMA21" ? vwma9  :
+     mode == "M18 — VWMA13>VWMA34"? vwma13 :
+     ma1_custom
+
+ma_b = mode == "M1 — EMA9>EMA21" or mode == "M6 — EMA8>EMA21" or mode == "M3 — EMA13>EMA21" ? ema21 :
+     mode == "M2 — EMA12>EMA26" ? ema26 :
+     mode == "M4 — EMA20>EMA50" ? ema50 :
+     mode == "M5 — EMA5>EMA20"  ? ema20 :
+     mode == "M7 — EMA10>EMA30" ? ema30 :
+     mode == "M8 — EMA13>EMA34" ? ema34 :
+     mode == "M9 — SMA9>SMA21"  ? sma21 :
+     mode == "M10 — SMA5>SMA20" ? sma20 :
+     mode == "M11 — SMA13>SMA34"? sma34 :
+     mode == "M12 — SMA20>SMA50"? sma50 :
+     mode == "M13 — WMA9>WMA21" ? wma21 :
+     mode == "M14 — WMA13>WMA34"? wma34 :
+     mode == "M15 — HMA9>HMA21" ? hma21 :
+     mode == "M16 — HMA13>HMA21"? hma21 :
+     mode == "M17 — VWMA9>VWMA21" ? vwma21 :
+     mode == "M18 — VWMA13>VWMA34"? vwma34 :
+     ma2_custom
+
+plot(ma_a, "MA1", color=color.new(color.lime, 0), linewidth=2)
+plot(ma_b, "MA2", color=color.new(color.orange, 0), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -122,35 +175,27 @@ plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
 // ── TABLE ─────────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 12,
+var table t = table.new(position.top_right, 2, 8,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0, "Signal",         text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, "État",           text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "ST1(0.5/33)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, s_st1  ? "▲ BULL" : "▼ BEAR", text_color=s_st1  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 2, "ST2(0.35/14)",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, s_st2  ? "▲ BULL" : "▼ BEAR", text_color=s_st2  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 3, "ST3(0.5/20)",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, s_st3  ? "▲ BULL" : "▼ BEAR", text_color=s_st3  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 4, "ST_STD(3/10)",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, s_std  ? "▲ BULL" : "▼ BEAR", text_color=s_std  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 5, "EMA(20)",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, s_e20  ? "▲ BULL" : "▼ BEAR", text_color=s_e20  ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 6, "VWAP",           text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, s_vwap ? "▲ BULL" : "▼ BEAR", text_color=s_vwap ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 7, "Corps HA",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, s_body ? "▲ BULL" : "▼ BEAR", text_color=s_body ? #2196F3 : #F44336, text_size=size.small)
-    table.cell(t, 0, 8, "Score 3ST",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 8, str.tostring(score_3st) + "/3",
-         text_color=score_3st >= 1 ? #2196F3 : #F44336, text_size=size.normal)
-    table.cell(t, 0, 9, "Score STD",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 9, str.tostring(score_stdev) + "/3",
-         text_color=score_stdev >= 1 ? #2196F3 : #F44336, text_size=size.normal)
-    table.cell(t, 0, 10, "Mode",          text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 10, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal)
-    table.cell(t, 0, 11, "ACTIF",         text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 11, col_bull ? "▲ BULL" : "▼ BEAR",
+    table.cell(t, 0, 0, "Mode",      text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "MA1",       text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(ma_a, format.mintick), text_color=color.lime, text_size=size.small)
+    table.cell(t, 0, 2, "MA2",       text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, str.tostring(ma_b, format.mintick), text_color=color.orange, text_size=size.small)
+    table.cell(t, 0, 3, "MA1>MA2",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, (ma_a > ma_b) ? "OUI ▲" : "NON ▼",
+         text_color=(ma_a > ma_b) ? color.lime : color.red, text_size=size.small)
+    table.cell(t, 0, 4, "close>MA1", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, (close > ma_a) ? "OUI ▲" : "NON ▼",
+         text_color=(close > ma_a) ? color.lime : color.red, text_size=size.small)
+    table.cell(t, 0, 5, "SIGNAL",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, col_bull ? "▲ BULL" : "▼ BEAR",
          text_color=col_bull ? color.lime : color.red, text_size=size.normal,
          bgcolor=col_bull ? color.new(color.blue, 80) : color.new(color.red, 80))
+    table.cell(t, 0, 6, "EMA9",      text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, (ema9>ema21) ? "9>21▲" : "9<21▼", text_color=(ema9>ema21)?color.lime:color.red, text_size=size.small)
+    table.cell(t, 0, 7, "EMA13",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, (ema13>ema21) ? "13>21▲" : "13<21▼", text_color=(ema13>ema21)?color.lime:color.red, text_size=size.small)
