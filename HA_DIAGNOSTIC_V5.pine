@@ -1,132 +1,128 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v11 — SMOOTHED HA VARIANTS
+// HA DIAGNOSTIC v12 — MOYENATOR CROSS + COMBINED HYPOTHESES
 // ════════════════════════════════════════════════════════════
-// RÉVÉLATION ZORADIK.pine : Heishinator utilise Smoothed HA
-//   hei_close = EMA((O+H+L+C)/4, 6)
-//   hei_op    = (prev_op*5 + prev_close) / 6
-//   col_bull  = 3 bars consécutifs BULL
-//   col_bear  = 2 bars consécutifs BEAR
+// NOUVELLE HYPOTHÈSE PRINCIPALE :
+//   Heishinator = Moyenator cross (EMA50 > EMA60)
+//   → mêmes couleurs cyan/rouge, pas de paramètres séparés
+//   → Heishinator "suit" simplement le Moyenator
 //
-// PROBLÈME : sur chart natif HA, O/H/L/C sont DÉJÀ des valeurs
-// HA → formule fait "HA de HA" = double transformation = FAUX
+// HYPOTHÈSE 2 :
+//   Heishinator = SHA_bull AND close > EMA50 (combiné)
 //
-// SOLUTION POTENTIELLE : utiliser close >= open (natif HA)
-// avec la même logique de bars consécutifs
+// HYPOTHÈSE 3 :
+//   Heishinator = moy_was_bull (persistant : SHA ET low>EMA50)
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v11", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v12", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("N3 — Native HA 3bull/2bear", "Mode",
+mode = input.string("P1 — EMA50>EMA60", "Mode",
      options=[
-         // ── Natif HA (close=HA_close, open=HA_open) ──
-         "N1 — Native HA brut (close>=open)",
-         "N2 — Native HA 2bull/1bear",
-         "N3 — Native HA 3bull/2bear",
-         "N4 — Native HA 3bull/1bear",
-         "N5 — Native HA 2bull/2bear",
-         "N6 — Native HA 1bull/2bear",
-         "N7 — Native HA 4bull/2bear",
-         "N8 — Native HA 3bull/3bear",
-         // ── Smoothed HA sur chart NATIF HA (double transform) ──
-         "S1 — SHA EMA6 3bull/2bear (ZORADIK actuel)",
-         "S2 — SHA EMA3 3bull/2bear",
-         "S3 — SHA EMA9 3bull/2bear",
-         "S4 — SHA EMA6 2bull/1bear",
-         "S5 — SHA EMA6 1bull/1bear",
-         // ── close > EMA(close, N) ──
-         "E1 — close > EMA(close,6)",
-         "E2 — close > EMA(close,9)",
-         "E3 — close > EMA(close,3)",
-         // ── Smoothed HA CORRECT (EMA sur close régulier) ──
-         "C1 — SHA natif open/close direct",
-         "C2 — SHA EMA(hlc3,6) vs EMA(open,6)",
-         "C3 — EMA(close,6) >= EMA(open,6)"
+         // ── PRINCIPALE : Moyenator cross ──
+         "P1 — EMA50>EMA60",
+         "P2 — EMA50>EMA60 + SHA6 bull",
+         "P3 — EMA50>EMA60 + natif bull",
+         "P4 — close>EMA50",
+         "P5 — close>EMA60",
+         // ── Combiné SHA + EMA50/60 ──
+         "C1 — SHA6 AND close>EMA50",
+         "C2 — SHA6 AND close>EMA60",
+         "C3 — SHA6 AND EMA50>EMA60",
+         "C4 — natif AND close>EMA50",
+         "C5 — natif AND close>EMA60",
+         "C6 — natif AND EMA50>EMA60",
+         // ── moy_was_bull (logique persistante ZORADIK) ──
+         "R1 — moy_was_bull (SHA+low>EMA50)",
+         "R2 — moy_was_bull (natif+low>EMA50)",
+         "R3 — moy_was_bull (SHA+close>EMA50)",
+         // ── Score : EMA50>EMA60 + SHA + natif ──
+         "S1 — score≥1 [EMA50>60, SHA6, natif]",
+         "S2 — score≥2 [EMA50>60, SHA6, natif]",
+         "S3 — score≥3 [EMA50>60, SHA6, natif]",
+         // ── Autres périodes non testées ──
+         "X1 — EMA30>EMA60",
+         "X2 — EMA40>EMA60",
+         "X3 — EMA50>EMA55"
      ], group=grp)
 
-// ── CALCULS SHA (formule ZORADIK) ─────────────────────────
-// Attention : sur chart natif HA, open/close/high/low sont déjà HA
+// ── EMA Moyenator ────────────────────────────────────────────
+ema50 = ta.ema(close, 50)
+ema55 = ta.ema(close, 55)
+ema60 = ta.ema(close, 60)
+ema30 = ta.ema(close, 30)
+ema40 = ta.ema(close, 40)
+
+moy_cross_bull = ema50 > ema60
+
+// ── Smoothed HA (formule ZORADIK) ────────────────────────────
 sha_close_raw = (open + high + low + close) / 4
 sha_close_6   = ta.ema(sha_close_raw, 6)
-sha_close_3   = ta.ema(sha_close_raw, 3)
-sha_close_9   = ta.ema(sha_close_raw, 9)
-
 var float sha_op_6 = na
-var float sha_op_3 = na
-var float sha_op_9 = na
 sha_op_6 := na(sha_op_6[1]) ? (open + close) / 2 : (sha_op_6[1] * 5 + sha_close_6[1]) / 6
-sha_op_3 := na(sha_op_3[1]) ? (open + close) / 2 : (sha_op_3[1] * 2 + sha_close_3[1]) / 3
-sha_op_9 := na(sha_op_9[1]) ? (open + close) / 2 : (sha_op_9[1] * 8 + sha_close_9[1]) / 9
+sha_bull = sha_close_6 >= sha_op_6
 
-sha_bull_6 = sha_close_6 >= sha_op_6
-sha_bull_3 = sha_close_3 >= sha_op_3
-sha_bull_9 = sha_close_9 >= sha_op_9
-
-// ── Natif HA close >= open ──────────────────────────────────
+// ── Natif HA ─────────────────────────────────────────────────
 nat_bull = close >= open
 
-// ── Approche C2/C3 ──────────────────────────────────────────
-ema_c6  = ta.ema(close, 6)
-ema_o6  = ta.ema(open, 6)
-ema_hlc = ta.ema(hlc3, 6)
-ema_c3  = ta.ema(close, 3)
-ema_c9  = ta.ema(close, 9)
+// ── moy_was_bull (logique persistante ZORADIK) ───────────────
+var bool r1_state = false
+moy_b1 = sha_bull and low   > ema50
+moy_b2 = nat_bull and low   > ema50
+moy_b3 = sha_bull and close > ema50
+moy_bear1 = not sha_bull and high < ema50
+moy_bear2 = not nat_bull and high < ema50
+moy_bear3 = not sha_bull and close < ema50
 
-// ── LOGIQUE CONSÉCUTIVE ─────────────────────────────────────
-// Générique : col_bull allumé si N bars BULL consécutifs,
-//             col_bear allumé si M bars BEAR consécutifs
-f_color(bull_cond, bull_n, bear_m) =>
-    var bool cb = false
-    var bool cbr = true
-    b0 = bull_cond
-    b1 = bull_cond[1]
-    b2 = bull_cond[2]
-    b3 = bull_cond[3]
-    // Bull
-    bull_ok = bull_n == 1 ? b0 :
-              bull_n == 2 ? (b0 and b1) :
-              bull_n == 3 ? (b0 and b1 and b2) :
-              bull_n == 4 ? (b0 and b1 and b2 and b3) : b0
-    // Bear
-    bear_ok = bear_m == 1 ? not b0 :
-              bear_m == 2 ? (not b0 and not b1) :
-              bear_m == 3 ? (not b0 and not b1 and not b2) : not b0
-    if bull_ok
-        cb  := true
-        cbr := false
-    else if bear_ok
-        cbr := true
-        cb  := false
-    // Fallback persistance
-    result = cb ? true : cbr ? false : cb[1]
-    result
+var bool r1 = false
+var bool r2 = false
+var bool r3 = false
+if moy_b1
+    r1 := true
+else if moy_bear1
+    r1 := false
+if moy_b2
+    r2 := true
+else if moy_bear2
+    r2 := false
+if moy_b3
+    r3 := true
+else if moy_bear3
+    r3 := false
+
+// ── Score ────────────────────────────────────────────────────
+score3 = (moy_cross_bull?1:0) + (sha_bull?1:0) + (nat_bull?1:0)
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "N1 — Native HA brut (close>=open)"     ? nat_bull :
-     mode == "N2 — Native HA 2bull/1bear"             ? f_color(nat_bull, 2, 1) :
-     mode == "N3 — Native HA 3bull/2bear"             ? f_color(nat_bull, 3, 2) :
-     mode == "N4 — Native HA 3bull/1bear"             ? f_color(nat_bull, 3, 1) :
-     mode == "N5 — Native HA 2bull/2bear"             ? f_color(nat_bull, 2, 2) :
-     mode == "N6 — Native HA 1bull/2bear"             ? f_color(nat_bull, 1, 2) :
-     mode == "N7 — Native HA 4bull/2bear"             ? f_color(nat_bull, 4, 2) :
-     mode == "N8 — Native HA 3bull/3bear"             ? f_color(nat_bull, 3, 3) :
-     mode == "S1 — SHA EMA6 3bull/2bear (ZORADIK actuel)" ? f_color(sha_bull_6, 3, 2) :
-     mode == "S2 — SHA EMA3 3bull/2bear"              ? f_color(sha_bull_3, 3, 2) :
-     mode == "S3 — SHA EMA9 3bull/2bear"              ? f_color(sha_bull_9, 3, 2) :
-     mode == "S4 — SHA EMA6 2bull/1bear"              ? f_color(sha_bull_6, 2, 1) :
-     mode == "S5 — SHA EMA6 1bull/1bear"              ? f_color(sha_bull_6, 1, 1) :
-     mode == "E1 — close > EMA(close,6)"              ? (close > ema_c6) :
-     mode == "E2 — close > EMA(close,9)"              ? (close > ema_c9) :
-     mode == "E3 — close > EMA(close,3)"              ? (close > ema_c3) :
-     mode == "C1 — SHA natif open/close direct"       ? f_color(nat_bull, 3, 2) :
-     mode == "C2 — SHA EMA(hlc3,6) vs EMA(open,6)"   ? (ema_hlc >= ema_o6) :
-     mode == "C3 — EMA(close,6) >= EMA(open,6)"      ? (ema_c6 >= ema_o6) :
+     mode == "P1 — EMA50>EMA60"              ? moy_cross_bull :
+     mode == "P2 — EMA50>EMA60 + SHA6 bull"  ? (moy_cross_bull and sha_bull) :
+     mode == "P3 — EMA50>EMA60 + natif bull" ? (moy_cross_bull and nat_bull) :
+     mode == "P4 — close>EMA50"              ? (close > ema50) :
+     mode == "P5 — close>EMA60"              ? (close > ema60) :
+     mode == "C1 — SHA6 AND close>EMA50"     ? (sha_bull and close > ema50) :
+     mode == "C2 — SHA6 AND close>EMA60"     ? (sha_bull and close > ema60) :
+     mode == "C3 — SHA6 AND EMA50>EMA60"     ? (sha_bull and moy_cross_bull) :
+     mode == "C4 — natif AND close>EMA50"    ? (nat_bull and close > ema50) :
+     mode == "C5 — natif AND close>EMA60"    ? (nat_bull and close > ema60) :
+     mode == "C6 — natif AND EMA50>EMA60"    ? (nat_bull and moy_cross_bull) :
+     mode == "R1 — moy_was_bull (SHA+low>EMA50)"   ? r1 :
+     mode == "R2 — moy_was_bull (natif+low>EMA50)" ? r2 :
+     mode == "R3 — moy_was_bull (SHA+close>EMA50)" ? r3 :
+     mode == "S1 — score≥1 [EMA50>60, SHA6, natif]" ? (score3 >= 1) :
+     mode == "S2 — score≥2 [EMA50>60, SHA6, natif]" ? (score3 >= 2) :
+     mode == "S3 — score≥3 [EMA50>60, SHA6, natif]" ? (score3 >= 3) :
+     mode == "X1 — EMA30>EMA60"  ? (ema30 > ema60) :
+     mode == "X2 — EMA40>EMA60"  ? (ema40 > ema60) :
+     mode == "X3 — EMA50>EMA55"  ? (ema50 > ema55) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
+
+// ── PLOTS ────────────────────────────────────────────────────
+plot(ema50, "EMA50", color=color.new(color.lime, 40), linewidth=1)
+plot(ema60, "EMA60", color=color.new(color.orange, 40), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -134,30 +130,30 @@ bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
 plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.small)
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
-// ── TABLE DE DIAGNOSTIC ──────────────────────────────────────
+// ── TABLE ────────────────────────────────────────────────────
 var table t = table.new(position.top_right, 2, 10,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0, "Mode",      text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 0, "Mode",        text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
     table.cell(t, 1, 0, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "native bull",text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, nat_bull ? "▲" : "▼", text_color=nat_bull?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 2, "SHA6 bull",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, sha_bull_6 ? "▲" : "▼", text_color=sha_bull_6?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 3, "nat[-1]",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, nat_bull[1] ? "▲" : "▼", text_color=nat_bull[1]?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 4, "nat[-2]",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, nat_bull[2] ? "▲" : "▼", text_color=nat_bull[2]?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 5, "c>EMA6",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, (close>ema_c6) ? "▲" : "▼", text_color=(close>ema_c6)?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 6, "EMA6>=EMo6",text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, (ema_c6>=ema_o6) ? "▲" : "▼", text_color=(ema_c6>=ema_o6)?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 7, "HLC>EMo6",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, (ema_hlc>=ema_o6) ? "▲" : "▼", text_color=(ema_hlc>=ema_o6)?color.lime:color.red, text_size=size.normal)
-    table.cell(t, 0, 8, "SIGNAL",    text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 1, "EMA50>EMA60", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, moy_cross_bull ? "▲" : "▼", text_color=moy_cross_bull?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 2, "SHA6 bull",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, sha_bull ? "▲" : "▼", text_color=sha_bull?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 3, "natif bull",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, nat_bull ? "▲" : "▼", text_color=nat_bull?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 4, "c>EMA50",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, (close>ema50) ? "▲" : "▼", text_color=(close>ema50)?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 5, "c>EMA60",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, (close>ema60) ? "▲" : "▼", text_color=(close>ema60)?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 6, "R1 state",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, r1 ? "▲" : "▼", text_color=r1?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 7, "Score/3",     text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, str.tostring(score3)+"/3", text_color=score3>=2?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 8, "SIGNAL",      text_color=color.white, text_size=size.small)
     table.cell(t, 1, 8, col_bull ? "▲ BULL" : "▼ BEAR",
          text_color=col_bull ? color.lime : color.red, text_size=size.normal,
          bgcolor=col_bull ? color.new(color.blue, 80) : color.new(color.red, 80))
-    table.cell(t, 0, 9, "SHA_op6",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 9, str.tostring(sha_op_6, format.mintick), text_color=color.yellow, text_size=size.tiny)
+    table.cell(t, 0, 9, "EMA50",       text_color=color.white, text_size=size.tiny)
+    table.cell(t, 1, 9, str.tostring(ema50, format.mintick), text_color=color.yellow, text_size=size.tiny)
