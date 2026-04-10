@@ -1,172 +1,132 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v10 — MOYENATOR HYPOTHESIS
+// HA DIAGNOSTIC v11 — SMOOTHED HA VARIANTS
 // ════════════════════════════════════════════════════════════
-// RÉVÉLATION : Section HEISHINATOR V4 n'a AUCUN paramètre
-// d'indicateur → la logique vient du MOYENATOR V5
+// RÉVÉLATION ZORADIK.pine : Heishinator utilise Smoothed HA
+//   hei_close = EMA((O+H+L+C)/4, 6)
+//   hei_op    = (prev_op*5 + prev_close) / 6
+//   col_bull  = 3 bars consécutifs BULL
+//   col_bear  = 2 bars consécutifs BEAR
 //
-// MOYENATOR V5 = 2 MAs "Clôture" avec fill cyan/rouge OPAQUE
-// → Heishinator suit la même condition que Moyenator (MA1>MA2)
+// PROBLÈME : sur chart natif HA, O/H/L/C sont DÉJÀ des valeurs
+// HA → formule fait "HA de HA" = double transformation = FAUX
 //
-// Test systématique des périodes et types de MA cross
+// SOLUTION POTENTIELLE : utiliser close >= open (natif HA)
+// avec la même logique de bars consécutifs
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v10", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v11", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("M1 — EMA9>EMA21", "Mode",
+mode = input.string("N3 — Native HA 3bull/2bear", "Mode",
      options=[
-         // ── EMA Cross (les plus communs) ──
-         "M1 — EMA9>EMA21",
-         "M2 — EMA12>EMA26",
-         "M3 — EMA13>EMA21",
-         "M4 — EMA20>EMA50",
-         "M5 — EMA5>EMA20",
-         "M6 — EMA8>EMA21",
-         "M7 — EMA10>EMA30",
-         "M8 — EMA13>EMA34",
-         // ── SMA Cross ──
-         "M9 — SMA9>SMA21",
-         "M10 — SMA5>SMA20",
-         "M11 — SMA13>SMA34",
-         "M12 — SMA20>SMA50",
-         // ── WMA Cross ──
-         "M13 — WMA9>WMA21",
-         "M14 — WMA13>WMA34",
-         // ── HMA Cross ──
-         "M15 — HMA9>HMA21",
-         "M16 — HMA13>HMA21",
-         // ── VWMA Cross ──
-         "M17 — VWMA9>VWMA21",
-         "M18 — VWMA13>VWMA34",
-         // ── Params custom ajustables ──
-         "M19 — Custom MA1>MA2",
-         "M20 — Custom close>MA"
+         // ── Natif HA (close=HA_close, open=HA_open) ──
+         "N1 — Native HA brut (close>=open)",
+         "N2 — Native HA 2bull/1bear",
+         "N3 — Native HA 3bull/2bear",
+         "N4 — Native HA 3bull/1bear",
+         "N5 — Native HA 2bull/2bear",
+         "N6 — Native HA 1bull/2bear",
+         "N7 — Native HA 4bull/2bear",
+         "N8 — Native HA 3bull/3bear",
+         // ── Smoothed HA sur chart NATIF HA (double transform) ──
+         "S1 — SHA EMA6 3bull/2bear (ZORADIK actuel)",
+         "S2 — SHA EMA3 3bull/2bear",
+         "S3 — SHA EMA9 3bull/2bear",
+         "S4 — SHA EMA6 2bull/1bear",
+         "S5 — SHA EMA6 1bull/1bear",
+         // ── close > EMA(close, N) ──
+         "E1 — close > EMA(close,6)",
+         "E2 — close > EMA(close,9)",
+         "E3 — close > EMA(close,3)",
+         // ── Smoothed HA CORRECT (EMA sur close régulier) ──
+         "C1 — SHA natif open/close direct",
+         "C2 — SHA EMA(hlc3,6) vs EMA(open,6)",
+         "C3 — EMA(close,6) >= EMA(open,6)"
      ], group=grp)
 
-// Paramètres custom
-ma_type  = input.string("EMA", "Type MA (M19/M20)", options=["EMA","SMA","WMA","HMA"], group=grp)
-ma1_len  = input.int(9,  "MA1 Période (M19/M20)", minval=1, group=grp)
-ma2_len  = input.int(21, "MA2 Période (M19)", minval=1, group=grp)
+// ── CALCULS SHA (formule ZORADIK) ─────────────────────────
+// Attention : sur chart natif HA, open/close/high/low sont déjà HA
+sha_close_raw = (open + high + low + close) / 4
+sha_close_6   = ta.ema(sha_close_raw, 6)
+sha_close_3   = ta.ema(sha_close_raw, 3)
+sha_close_9   = ta.ema(sha_close_raw, 9)
 
-// ── FONCTIONS ─────────────────────────────────────────────
-hma(src, len) =>
-    half = math.floor(len / 2)
-    sqrtLen = math.round(math.sqrt(len))
-    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sqrtLen)
+var float sha_op_6 = na
+var float sha_op_3 = na
+var float sha_op_9 = na
+sha_op_6 := na(sha_op_6[1]) ? (open + close) / 2 : (sha_op_6[1] * 5 + sha_close_6[1]) / 6
+sha_op_3 := na(sha_op_3[1]) ? (open + close) / 2 : (sha_op_3[1] * 2 + sha_close_3[1]) / 3
+sha_op_9 := na(sha_op_9[1]) ? (open + close) / 2 : (sha_op_9[1] * 8 + sha_close_9[1]) / 9
 
-ma(src, len, t) =>
-    t == "EMA" ? ta.ema(src, len) :
-    t == "SMA" ? ta.sma(src, len) :
-    t == "WMA" ? ta.wma(src, len) :
-    hma(src, len)
+sha_bull_6 = sha_close_6 >= sha_op_6
+sha_bull_3 = sha_close_3 >= sha_op_3
+sha_bull_9 = sha_close_9 >= sha_op_9
 
-// ── MAs pré-calculées ────────────────────────────────────
-ema9   = ta.ema(close, 9)
-ema12  = ta.ema(close, 12)
-ema13  = ta.ema(close, 13)
-ema20  = ta.ema(close, 20)
-ema21  = ta.ema(close, 21)
-ema26  = ta.ema(close, 26)
-ema30  = ta.ema(close, 30)
-ema34  = ta.ema(close, 34)
-ema50  = ta.ema(close, 50)
-ema5   = ta.ema(close, 5)
-ema8   = ta.ema(close, 8)
-ema10  = ta.ema(close, 10)
+// ── Natif HA close >= open ──────────────────────────────────
+nat_bull = close >= open
 
-sma9   = ta.sma(close, 9)
-sma13  = ta.sma(close, 13)
-sma20  = ta.sma(close, 20)
-sma21  = ta.sma(close, 21)
-sma34  = ta.sma(close, 34)
-sma50  = ta.sma(close, 50)
-sma5   = ta.sma(close, 5)
+// ── Approche C2/C3 ──────────────────────────────────────────
+ema_c6  = ta.ema(close, 6)
+ema_o6  = ta.ema(open, 6)
+ema_hlc = ta.ema(hlc3, 6)
+ema_c3  = ta.ema(close, 3)
+ema_c9  = ta.ema(close, 9)
 
-wma9   = ta.wma(close, 9)
-wma13  = ta.wma(close, 13)
-wma21  = ta.wma(close, 21)
-wma34  = ta.wma(close, 34)
-
-hma9   = hma(close, 9)
-hma13  = hma(close, 13)
-hma21  = hma(close, 21)
-
-vwma9  = ta.vwma(close, 9)
-vwma13 = ta.vwma(close, 13)
-vwma21 = ta.vwma(close, 21)
-vwma34 = ta.vwma(close, 34)
-
-ma1_custom = ma(close, ma1_len, ma_type)
-ma2_custom = ma(close, ma2_len, ma_type)
+// ── LOGIQUE CONSÉCUTIVE ─────────────────────────────────────
+// Générique : col_bull allumé si N bars BULL consécutifs,
+//             col_bear allumé si M bars BEAR consécutifs
+f_color(bull_cond, bull_n, bear_m) =>
+    var bool cb = false
+    var bool cbr = true
+    b0 = bull_cond
+    b1 = bull_cond[1]
+    b2 = bull_cond[2]
+    b3 = bull_cond[3]
+    // Bull
+    bull_ok = bull_n == 1 ? b0 :
+              bull_n == 2 ? (b0 and b1) :
+              bull_n == 3 ? (b0 and b1 and b2) :
+              bull_n == 4 ? (b0 and b1 and b2 and b3) : b0
+    // Bear
+    bear_ok = bear_m == 1 ? not b0 :
+              bear_m == 2 ? (not b0 and not b1) :
+              bear_m == 3 ? (not b0 and not b1 and not b2) : not b0
+    if bull_ok
+        cb  := true
+        cbr := false
+    else if bear_ok
+        cbr := true
+        cb  := false
+    // Fallback persistance
+    result = cb ? true : cbr ? false : cb[1]
+    result
 
 // ── SÉLECTION ────────────────────────────────────────────────
 col_bull =
-     mode == "M1 — EMA9>EMA21"    ? (ema9   > ema21) :
-     mode == "M2 — EMA12>EMA26"   ? (ema12  > ema26) :
-     mode == "M3 — EMA13>EMA21"   ? (ema13  > ema21) :
-     mode == "M4 — EMA20>EMA50"   ? (ema20  > ema50) :
-     mode == "M5 — EMA5>EMA20"    ? (ema5   > ema20) :
-     mode == "M6 — EMA8>EMA21"    ? (ema8   > ema21) :
-     mode == "M7 — EMA10>EMA30"   ? (ema10  > ema30) :
-     mode == "M8 — EMA13>EMA34"   ? (ema13  > ema34) :
-     mode == "M9 — SMA9>SMA21"    ? (sma9   > sma21) :
-     mode == "M10 — SMA5>SMA20"   ? (sma5   > sma20) :
-     mode == "M11 — SMA13>SMA34"  ? (sma13  > sma34) :
-     mode == "M12 — SMA20>SMA50"  ? (sma20  > sma50) :
-     mode == "M13 — WMA9>WMA21"   ? (wma9   > wma21) :
-     mode == "M14 — WMA13>WMA34"  ? (wma13  > wma34) :
-     mode == "M15 — HMA9>HMA21"   ? (hma9   > hma21) :
-     mode == "M16 — HMA13>HMA21"  ? (hma13  > hma21) :
-     mode == "M17 — VWMA9>VWMA21" ? (vwma9  > vwma21) :
-     mode == "M18 — VWMA13>VWMA34"? (vwma13 > vwma34) :
-     mode == "M19 — Custom MA1>MA2"? (ma1_custom > ma2_custom) :
-     mode == "M20 — Custom close>MA"? (close > ma1_custom) :
+     mode == "N1 — Native HA brut (close>=open)"     ? nat_bull :
+     mode == "N2 — Native HA 2bull/1bear"             ? f_color(nat_bull, 2, 1) :
+     mode == "N3 — Native HA 3bull/2bear"             ? f_color(nat_bull, 3, 2) :
+     mode == "N4 — Native HA 3bull/1bear"             ? f_color(nat_bull, 3, 1) :
+     mode == "N5 — Native HA 2bull/2bear"             ? f_color(nat_bull, 2, 2) :
+     mode == "N6 — Native HA 1bull/2bear"             ? f_color(nat_bull, 1, 2) :
+     mode == "N7 — Native HA 4bull/2bear"             ? f_color(nat_bull, 4, 2) :
+     mode == "N8 — Native HA 3bull/3bear"             ? f_color(nat_bull, 3, 3) :
+     mode == "S1 — SHA EMA6 3bull/2bear (ZORADIK actuel)" ? f_color(sha_bull_6, 3, 2) :
+     mode == "S2 — SHA EMA3 3bull/2bear"              ? f_color(sha_bull_3, 3, 2) :
+     mode == "S3 — SHA EMA9 3bull/2bear"              ? f_color(sha_bull_9, 3, 2) :
+     mode == "S4 — SHA EMA6 2bull/1bear"              ? f_color(sha_bull_6, 2, 1) :
+     mode == "S5 — SHA EMA6 1bull/1bear"              ? f_color(sha_bull_6, 1, 1) :
+     mode == "E1 — close > EMA(close,6)"              ? (close > ema_c6) :
+     mode == "E2 — close > EMA(close,9)"              ? (close > ema_c9) :
+     mode == "E3 — close > EMA(close,3)"              ? (close > ema_c3) :
+     mode == "C1 — SHA natif open/close direct"       ? f_color(nat_bull, 3, 2) :
+     mode == "C2 — SHA EMA(hlc3,6) vs EMA(open,6)"   ? (ema_hlc >= ema_o6) :
+     mode == "C3 — EMA(close,6) >= EMA(open,6)"      ? (ema_c6 >= ema_o6) :
      false
 
 // ── BGCOLOR ──────────────────────────────────────────────────
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
-
-// ── PLOTS des MAs actives ─────────────────────────────────────
-ma_a = mode == "M1 — EMA9>EMA21" or mode == "M6 — EMA8>EMA21" or mode == "M3 — EMA13>EMA21" ?
-     (mode == "M1 — EMA9>EMA21" ? ema9 : mode == "M6 — EMA8>EMA21" ? ema8 : ema13) :
-     mode == "M2 — EMA12>EMA26" ? ema12 :
-     mode == "M4 — EMA20>EMA50" ? ema20 :
-     mode == "M5 — EMA5>EMA20"  ? ema5  :
-     mode == "M7 — EMA10>EMA30" ? ema10 :
-     mode == "M8 — EMA13>EMA34" ? ema13 :
-     mode == "M9 — SMA9>SMA21"  ? sma9  :
-     mode == "M10 — SMA5>SMA20" ? sma5  :
-     mode == "M11 — SMA13>SMA34"? sma13 :
-     mode == "M12 — SMA20>SMA50"? sma20 :
-     mode == "M13 — WMA9>WMA21" ? wma9  :
-     mode == "M14 — WMA13>WMA34"? wma13 :
-     mode == "M15 — HMA9>HMA21" ? hma9  :
-     mode == "M16 — HMA13>HMA21"? hma13 :
-     mode == "M17 — VWMA9>VWMA21" ? vwma9  :
-     mode == "M18 — VWMA13>VWMA34"? vwma13 :
-     ma1_custom
-
-ma_b = mode == "M1 — EMA9>EMA21" or mode == "M6 — EMA8>EMA21" or mode == "M3 — EMA13>EMA21" ? ema21 :
-     mode == "M2 — EMA12>EMA26" ? ema26 :
-     mode == "M4 — EMA20>EMA50" ? ema50 :
-     mode == "M5 — EMA5>EMA20"  ? ema20 :
-     mode == "M7 — EMA10>EMA30" ? ema30 :
-     mode == "M8 — EMA13>EMA34" ? ema34 :
-     mode == "M9 — SMA9>SMA21"  ? sma21 :
-     mode == "M10 — SMA5>SMA20" ? sma20 :
-     mode == "M11 — SMA13>SMA34"? sma34 :
-     mode == "M12 — SMA20>SMA50"? sma50 :
-     mode == "M13 — WMA9>WMA21" ? wma21 :
-     mode == "M14 — WMA13>WMA34"? wma34 :
-     mode == "M15 — HMA9>HMA21" ? hma21 :
-     mode == "M16 — HMA13>HMA21"? hma21 :
-     mode == "M17 — VWMA9>VWMA21" ? vwma21 :
-     mode == "M18 — VWMA13>VWMA34"? vwma34 :
-     ma2_custom
-
-plot(ma_a, "MA1", color=color.new(color.lime, 0), linewidth=2)
-plot(ma_b, "MA2", color=color.new(color.orange, 0), linewidth=1)
 
 // ── TRANSITIONS ──────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -174,28 +134,30 @@ bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
 plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.small)
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
-// ── TABLE ─────────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 8,
+// ── TABLE DE DIAGNOSTIC ──────────────────────────────────────
+var table t = table.new(position.top_right, 2, 10,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
     table.cell(t, 0, 0, "Mode",      text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
     table.cell(t, 1, 0, str.substring(mode, 0, 2), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "MA1",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, str.tostring(ma_a, format.mintick), text_color=color.lime, text_size=size.small)
-    table.cell(t, 0, 2, "MA2",       text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, str.tostring(ma_b, format.mintick), text_color=color.orange, text_size=size.small)
-    table.cell(t, 0, 3, "MA1>MA2",   text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, (ma_a > ma_b) ? "OUI ▲" : "NON ▼",
-         text_color=(ma_a > ma_b) ? color.lime : color.red, text_size=size.small)
-    table.cell(t, 0, 4, "close>MA1", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, (close > ma_a) ? "OUI ▲" : "NON ▼",
-         text_color=(close > ma_a) ? color.lime : color.red, text_size=size.small)
-    table.cell(t, 0, 5, "SIGNAL",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, col_bull ? "▲ BULL" : "▼ BEAR",
+    table.cell(t, 0, 1, "native bull",text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, nat_bull ? "▲" : "▼", text_color=nat_bull?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 2, "SHA6 bull",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, sha_bull_6 ? "▲" : "▼", text_color=sha_bull_6?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 3, "nat[-1]",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, nat_bull[1] ? "▲" : "▼", text_color=nat_bull[1]?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 4, "nat[-2]",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, nat_bull[2] ? "▲" : "▼", text_color=nat_bull[2]?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 5, "c>EMA6",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 5, (close>ema_c6) ? "▲" : "▼", text_color=(close>ema_c6)?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 6, "EMA6>=EMo6",text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 6, (ema_c6>=ema_o6) ? "▲" : "▼", text_color=(ema_c6>=ema_o6)?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 7, "HLC>EMo6",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 7, (ema_hlc>=ema_o6) ? "▲" : "▼", text_color=(ema_hlc>=ema_o6)?color.lime:color.red, text_size=size.normal)
+    table.cell(t, 0, 8, "SIGNAL",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 8, col_bull ? "▲ BULL" : "▼ BEAR",
          text_color=col_bull ? color.lime : color.red, text_size=size.normal,
          bgcolor=col_bull ? color.new(color.blue, 80) : color.new(color.red, 80))
-    table.cell(t, 0, 6, "EMA9",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 6, (ema9>ema21) ? "9>21▲" : "9<21▼", text_color=(ema9>ema21)?color.lime:color.red, text_size=size.small)
-    table.cell(t, 0, 7, "EMA13",     text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 7, (ema13>ema21) ? "13>21▲" : "13<21▼", text_color=(ema13>ema21)?color.lime:color.red, text_size=size.small)
+    table.cell(t, 0, 9, "SHA_op6",   text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 9, str.tostring(sha_op_6, format.mintick), text_color=color.yellow, text_size=size.tiny)
