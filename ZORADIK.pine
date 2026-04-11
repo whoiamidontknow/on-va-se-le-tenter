@@ -41,12 +41,17 @@ ema_m2 = ta.ema(moy_src2, moy_len2)
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — COLORATION HEIKEN ASHI
 // ══════════════════════════════════════════════════════════════
-// Sur chart natif Heiken Ashi, close = HA_close et open = HA_open nativement.
-// Règle : bougie BLEUE si HA_close > EMA(HA_close, 33)
-//         bougie ROUGE sinon
-// EMA 33 identifiée par analyse diagnostique comparative (périodes 25-45).
+// Règle reverse-engineered via HA_DIAGNOSTIC v15 (α0.42 vs α0.43/0.44).
+// Source : "Smoothed HA close" = EMA lissée du prix moyen OHLC4
+//          avec α=0.42 (≈ EMA période 3.76 sur ohlc4)
+// MA     : EMA(close, 33)
+// Règle  : bougie BLEUE si SHA_close > EMA33, sinon ROUGE
+var float sha_close = na
+sha_close := na(sha_close[1]) ? (open + high + low + close) / 4
+     : 0.42 * ((open + high + low + close) / 4) + 0.58 * sha_close[1]
+
 ema_hei  = ta.ema(close, 33)
-col_bull = close > ema_hei
+col_bull = sha_close > ema_hei
 
 barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
 
