@@ -12,7 +12,7 @@ indicator("HA Diagnostic v15", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("F44 — α0.44>EMA33", "Mode",
+mode = input.string("F44 — α0.44", "Mode",
      options=[
          // ── Fractional alpha SHA smoothing ──
          "F40 — α0.40 (=N4)",
