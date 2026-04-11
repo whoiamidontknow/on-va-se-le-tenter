@@ -1,105 +1,117 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v14 — FINE-TUNE "SHAclose(N) > EMA(M)"
+// HA DIAGNOSTIC v15 — ENTRE SHA3 ET SHA4 (fractional alpha)
 // ════════════════════════════════════════════════════════════
-// v13 X33 (SHAclose6 > EMA33) "ça y ressemble, pas parfait".
-// → On balaie N (smoothing SHA) et M (EMA length) autour de 6/33
-// + quelques variantes MA type sur SHAclose6.
+// v14 A4-33 (SHA4>EMA33) extrêmement proche, parfois décalage.
+// → on balaie l'alpha du SHA smoothing entre N=3 (α=0.50)
+//   et N=4 (α=0.40), par pas de 0.01
+// + quelques variantes de smoothing type (SMA/WMA/DEMA/TEMA 3-4)
+// MA1 = EMA33 fixe
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v14", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v15", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("A6-33 — SHA6>EMA33", "Mode",
+mode = input.string("F44 — α0.44>EMA33", "Mode",
      options=[
-         // ── Balayage EMA length (SHA smoothing = 6 fixe) ──
-         "A6-28 — SHA6>EMA28",
-         "A6-30 — SHA6>EMA30",
-         "A6-31 — SHA6>EMA31",
-         "A6-32 — SHA6>EMA32",
-         "A6-33 — SHA6>EMA33",
-         "A6-34 — SHA6>EMA34",
-         "A6-35 — SHA6>EMA35",
-         "A6-36 — SHA6>EMA36",
-         "A6-38 — SHA6>EMA38",
-         "A6-40 — SHA6>EMA40",
-         // ── Balayage SHA smoothing (EMA = 33 fixe) ──
-         "A3-33 — SHA3>EMA33",
-         "A4-33 — SHA4>EMA33",
-         "A5-33 — SHA5>EMA33",
-         "A8-33 — SHA8>EMA33",
-         "A10-33 — SHA10>EMA33",
-         // ── Variantes MA type sur SHA6 ──
-         "B6-33 — SHA6>SMA33",
-         "B6-33W — SHA6>WMA33",
-         "B6-33H — SHA6>HMA33",
-         "B6-34H — SHA6>HMA34",
-         // ── close natif (réf) ──
-         "C-33 — close>EMA33"
+         // ── Fractional alpha SHA smoothing ──
+         "F40 — α0.40 (=N4)",
+         "F41 — α0.41",
+         "F42 — α0.42",
+         "F43 — α0.43",
+         "F44 — α0.44",
+         "F45 — α0.45 (=N3.44)",
+         "F46 — α0.46",
+         "F47 — α0.47",
+         "F48 — α0.48",
+         "F49 — α0.49",
+         "F50 — α0.50 (=N3)",
+         // ── Variantes smoothing type 3/4 ──
+         "S3 — SMA3(ohlc4)",
+         "S4 — SMA4(ohlc4)",
+         "W3 — WMA3(ohlc4)",
+         "W4 — WMA4(ohlc4)",
+         "D3 — DEMA3(ohlc4)",
+         "D4 — DEMA4(ohlc4)",
+         "T3 — TEMA3(ohlc4)",
+         "T4 — TEMA4(ohlc4)",
+         // ── Réf ──
+         "R3 — EMA3(ohlc4)",
+         "R4 — EMA4(ohlc4)"
      ], group=grp)
 
-// ── SHA close variantes (smoothing différents) ──────────────
+// ── Source OHLC4 ────────────────────────────────────────────
 sha_raw = (open + high + low + close) / 4
-sha3  = ta.ema(sha_raw, 3)
-sha4  = ta.ema(sha_raw, 4)
-sha5  = ta.ema(sha_raw, 5)
-sha6  = ta.ema(sha_raw, 6)
-sha8  = ta.ema(sha_raw, 8)
-sha10 = ta.ema(sha_raw, 10)
 
-// ── HMA helper ──────────────────────────────────────────────
-hma(src, len) =>
-    half = math.floor(len / 2)
-    sqrtLen = math.round(math.sqrt(len))
-    ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sqrtLen)
+// ── Fractional alpha EMAs sur sha_raw ───────────────────────
+// Formule récursive : e_t = α·src + (1−α)·e_{t-1}
+var float f40 = na
+f40 := na(f40[1]) ? sha_raw : 0.40 * sha_raw + 0.60 * f40[1]
+var float f41 = na
+f41 := na(f41[1]) ? sha_raw : 0.41 * sha_raw + 0.59 * f41[1]
+var float f42 = na
+f42 := na(f42[1]) ? sha_raw : 0.42 * sha_raw + 0.58 * f42[1]
+var float f43 = na
+f43 := na(f43[1]) ? sha_raw : 0.43 * sha_raw + 0.57 * f43[1]
+var float f44 = na
+f44 := na(f44[1]) ? sha_raw : 0.44 * sha_raw + 0.56 * f44[1]
+var float f45 = na
+f45 := na(f45[1]) ? sha_raw : 0.45 * sha_raw + 0.55 * f45[1]
+var float f46 = na
+f46 := na(f46[1]) ? sha_raw : 0.46 * sha_raw + 0.54 * f46[1]
+var float f47 = na
+f47 := na(f47[1]) ? sha_raw : 0.47 * sha_raw + 0.53 * f47[1]
+var float f48 = na
+f48 := na(f48[1]) ? sha_raw : 0.48 * sha_raw + 0.52 * f48[1]
+var float f49 = na
+f49 := na(f49[1]) ? sha_raw : 0.49 * sha_raw + 0.51 * f49[1]
+var float f50 = na
+f50 := na(f50[1]) ? sha_raw : 0.50 * sha_raw + 0.50 * f50[1]
 
-// ── MAs (close natif) ───────────────────────────────────────
-ema28 = ta.ema(close, 28)
-ema30 = ta.ema(close, 30)
-ema31 = ta.ema(close, 31)
-ema32 = ta.ema(close, 32)
-ema33 = ta.ema(close, 33)
-ema34 = ta.ema(close, 34)
-ema35 = ta.ema(close, 35)
-ema36 = ta.ema(close, 36)
-ema38 = ta.ema(close, 38)
-ema40 = ta.ema(close, 40)
-sma33 = ta.sma(close, 33)
-wma33 = ta.wma(close, 33)
-hma33 = hma(close, 33)
-hma34 = hma(close, 34)
+// ── Variantes smoothing type ────────────────────────────────
+sma3 = ta.sma(sha_raw, 3)
+sma4 = ta.sma(sha_raw, 4)
+wma3 = ta.wma(sha_raw, 3)
+wma4 = ta.wma(sha_raw, 4)
 
-// ── Résolution source + MA1 ─────────────────────────────────
+ema3a = ta.ema(sha_raw, 3)
+ema3b = ta.ema(ema3a, 3)
+dema3 = 2 * ema3a - ema3b
+ema3c = ta.ema(ema3b, 3)
+tema3 = 3 * ema3a - 3 * ema3b + ema3c
+
+ema4a = ta.ema(sha_raw, 4)
+ema4b = ta.ema(ema4a, 4)
+dema4 = 2 * ema4a - ema4b
+ema4c = ta.ema(ema4b, 4)
+tema4 = 3 * ema4a - 3 * ema4b + ema4c
+
+// ── MA1 fixe = EMA33 ────────────────────────────────────────
+ma1 = ta.ema(close, 33)
+
+// ── Résolution source ───────────────────────────────────────
 src_val =
-     mode == "A3-33 — SHA3>EMA33"  ? sha3 :
-     mode == "A4-33 — SHA4>EMA33"  ? sha4 :
-     mode == "A5-33 — SHA5>EMA33"  ? sha5 :
-     mode == "A8-33 — SHA8>EMA33"  ? sha8 :
-     mode == "A10-33 — SHA10>EMA33" ? sha10 :
-     mode == "C-33 — close>EMA33"  ? close :
-     sha6
-
-ma1 =
-     mode == "A6-28 — SHA6>EMA28"  ? ema28 :
-     mode == "A6-30 — SHA6>EMA30"  ? ema30 :
-     mode == "A6-31 — SHA6>EMA31"  ? ema31 :
-     mode == "A6-32 — SHA6>EMA32"  ? ema32 :
-     mode == "A6-33 — SHA6>EMA33"  ? ema33 :
-     mode == "A6-34 — SHA6>EMA34"  ? ema34 :
-     mode == "A6-35 — SHA6>EMA35"  ? ema35 :
-     mode == "A6-36 — SHA6>EMA36"  ? ema36 :
-     mode == "A6-38 — SHA6>EMA38"  ? ema38 :
-     mode == "A6-40 — SHA6>EMA40"  ? ema40 :
-     mode == "A3-33 — SHA3>EMA33"  ? ema33 :
-     mode == "A4-33 — SHA4>EMA33"  ? ema33 :
-     mode == "A5-33 — SHA5>EMA33"  ? ema33 :
-     mode == "A8-33 — SHA8>EMA33"  ? ema33 :
-     mode == "A10-33 — SHA10>EMA33" ? ema33 :
-     mode == "B6-33 — SHA6>SMA33"  ? sma33 :
-     mode == "B6-33W — SHA6>WMA33" ? wma33 :
-     mode == "B6-33H — SHA6>HMA33" ? hma33 :
-     mode == "B6-34H — SHA6>HMA34" ? hma34 :
-     mode == "C-33 — close>EMA33"  ? ema33 :
+     mode == "F40 — α0.40 (=N4)" ? f40 :
+     mode == "F41 — α0.41" ? f41 :
+     mode == "F42 — α0.42" ? f42 :
+     mode == "F43 — α0.43" ? f43 :
+     mode == "F44 — α0.44" ? f44 :
+     mode == "F45 — α0.45 (=N3.44)" ? f45 :
+     mode == "F46 — α0.46" ? f46 :
+     mode == "F47 — α0.47" ? f47 :
+     mode == "F48 — α0.48" ? f48 :
+     mode == "F49 — α0.49" ? f49 :
+     mode == "F50 — α0.50 (=N3)" ? f50 :
+     mode == "S3 — SMA3(ohlc4)" ? sma3 :
+     mode == "S4 — SMA4(ohlc4)" ? sma4 :
+     mode == "W3 — WMA3(ohlc4)" ? wma3 :
+     mode == "W4 — WMA4(ohlc4)" ? wma4 :
+     mode == "D3 — DEMA3(ohlc4)" ? dema3 :
+     mode == "D4 — DEMA4(ohlc4)" ? dema4 :
+     mode == "T3 — TEMA3(ohlc4)" ? tema3 :
+     mode == "T4 — TEMA4(ohlc4)" ? tema4 :
+     mode == "R3 — EMA3(ohlc4)" ? ema3a :
+     mode == "R4 — EMA4(ohlc4)" ? ema4a :
      na
 
 col_bull = src_val > ma1
@@ -108,8 +120,8 @@ col_bull = src_val > ma1
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
 // ── PLOTS ───────────────────────────────────────────────────
-plot(ma1, "MA1 test", color=color.new(color.black, 0), linewidth=2)
-plot(src_val, "SHA/close", color=color.new(color.orange, 0), linewidth=1)
+plot(ma1,     "EMA33",   color=color.new(color.black,  0), linewidth=2)
+plot(src_val, "Src smoothed", color=color.new(color.orange, 0), linewidth=1)
 
 // ── TRANSITIONS ─────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -123,11 +135,11 @@ var table t = table.new(position.top_right, 2, 5,
 
 if barstate.islast
     table.cell(t, 0, 0, "Mode", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, str.substring(mode, 0, 5), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "MA1",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, str.tostring(ma1, format.mintick), text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 2, "Src",  text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, str.tostring(src_val, format.mintick), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 1, 0, str.substring(mode, 0, 4), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "Src",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(src_val, format.mintick), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 2, "EMA33", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, str.tostring(ma1, format.mintick), text_color=color.yellow, text_size=size.small)
     table.cell(t, 0, 3, "Δ",    text_color=color.white, text_size=size.small)
     table.cell(t, 1, 3, str.tostring(src_val - ma1, format.mintick), text_color=(src_val>ma1)?color.lime:color.red, text_size=size.small)
     table.cell(t, 0, 4, "SIG",  text_color=color.white, text_size=size.small)
