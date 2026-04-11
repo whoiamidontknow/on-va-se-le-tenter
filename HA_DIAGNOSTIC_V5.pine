@@ -1,50 +1,51 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// HA DIAGNOSTIC v13 — FAMILLE "close > MA1"
+// HA DIAGNOSTIC v14 — FINE-TUNE "SHAclose(N) > EMA(M)"
 // ════════════════════════════════════════════════════════════
-// Hypothèse visuelle validée :
-//   col_bull = close > MA1 (ligne fine noire)
-//   → il faut isoler QUEL MA est MA1 (type + longueur)
-//
-// On teste uniquement close > MA1 avec différentes variantes :
-//   - EMA (plusieurs longueurs)
-//   - SMA / WMA / HMA / VWMA
-//   - Source close natif vs Smoothed HA close (EMA 6)
+// v13 X33 (SHAclose6 > EMA33) "ça y ressemble, pas parfait".
+// → On balaie N (smoothing SHA) et M (EMA length) autour de 6/33
+// + quelques variantes MA type sur SHAclose6.
 // ════════════════════════════════════════════════════════════
-indicator("HA Diagnostic v13", overlay=true, max_labels_count=500)
+indicator("HA Diagnostic v14", overlay=true, max_labels_count=500)
 
 grp = "=== CONFIG ==="
 
-mode = input.string("E50 — close>EMA50", "Mode",
+mode = input.string("A6-33 — SHA6>EMA33", "Mode",
      options=[
-         // ── EMA close natif ──
-         "E21 — close>EMA21",
-         "E26 — close>EMA26",
-         "E33 — close>EMA33",
-         "E34 — close>EMA34",
-         "E40 — close>EMA40",
-         "E45 — close>EMA45",
-         "E50 — close>EMA50",
-         "E55 — close>EMA55",
-         // ── SMA/WMA/HMA/VWMA close natif ──
-         "S33 — close>SMA33",
-         "S50 — close>SMA50",
-         "W33 — close>WMA33",
-         "W50 — close>WMA50",
-         "H21 — close>HMA21",
-         "H33 — close>HMA33",
-         "H50 — close>HMA50",
-         "V33 — close>VWMA33",
-         "V50 — close>VWMA50",
-         // ── SHA close (smoothed HA) vs EMA ──
-         "X33 — SHAclose>EMA33",
-         "X50 — SHAclose>EMA50",
-         "XH33 — SHAclose>HMA33"
+         // ── Balayage EMA length (SHA smoothing = 6 fixe) ──
+         "A6-28 — SHA6>EMA28",
+         "A6-30 — SHA6>EMA30",
+         "A6-31 — SHA6>EMA31",
+         "A6-32 — SHA6>EMA32",
+         "A6-33 — SHA6>EMA33",
+         "A6-34 — SHA6>EMA34",
+         "A6-35 — SHA6>EMA35",
+         "A6-36 — SHA6>EMA36",
+         "A6-38 — SHA6>EMA38",
+         "A6-40 — SHA6>EMA40",
+         // ── Balayage SHA smoothing (EMA = 33 fixe) ──
+         "A3-33 — SHA3>EMA33",
+         "A4-33 — SHA4>EMA33",
+         "A5-33 — SHA5>EMA33",
+         "A8-33 — SHA8>EMA33",
+         "A10-33 — SHA10>EMA33",
+         // ── Variantes MA type sur SHA6 ──
+         "B6-33 — SHA6>SMA33",
+         "B6-33W — SHA6>WMA33",
+         "B6-33H — SHA6>HMA33",
+         "B6-34H — SHA6>HMA34",
+         // ── close natif (réf) ──
+         "C-33 — close>EMA33"
      ], group=grp)
 
-// ── Smoothed HA close (formule ZORADIK) ─────────────────────
-sha_close_raw = (open + high + low + close) / 4
-sha_close_6   = ta.ema(sha_close_raw, 6)
+// ── SHA close variantes (smoothing différents) ──────────────
+sha_raw = (open + high + low + close) / 4
+sha3  = ta.ema(sha_raw, 3)
+sha4  = ta.ema(sha_raw, 4)
+sha5  = ta.ema(sha_raw, 5)
+sha6  = ta.ema(sha_raw, 6)
+sha8  = ta.ema(sha_raw, 8)
+sha10 = ta.ema(sha_raw, 10)
 
 // ── HMA helper ──────────────────────────────────────────────
 hma(src, len) =>
@@ -52,53 +53,54 @@ hma(src, len) =>
     sqrtLen = math.round(math.sqrt(len))
     ta.wma(2 * ta.wma(src, half) - ta.wma(src, len), sqrtLen)
 
-// ── EMA variantes ───────────────────────────────────────────
-ema21 = ta.ema(close, 21)
-ema26 = ta.ema(close, 26)
+// ── MAs (close natif) ───────────────────────────────────────
+ema28 = ta.ema(close, 28)
+ema30 = ta.ema(close, 30)
+ema31 = ta.ema(close, 31)
+ema32 = ta.ema(close, 32)
 ema33 = ta.ema(close, 33)
 ema34 = ta.ema(close, 34)
+ema35 = ta.ema(close, 35)
+ema36 = ta.ema(close, 36)
+ema38 = ta.ema(close, 38)
 ema40 = ta.ema(close, 40)
-ema45 = ta.ema(close, 45)
-ema50 = ta.ema(close, 50)
-ema55 = ta.ema(close, 55)
-
-// ── Autres MAs ──────────────────────────────────────────────
 sma33 = ta.sma(close, 33)
-sma50 = ta.sma(close, 50)
 wma33 = ta.wma(close, 33)
-wma50 = ta.wma(close, 50)
-hma21 = hma(close, 21)
 hma33 = hma(close, 33)
-hma50 = hma(close, 50)
-vwma33 = ta.vwma(close, 33)
-vwma50 = ta.vwma(close, 50)
+hma34 = hma(close, 34)
 
-// ── SÉLECTION ───────────────────────────────────────────────
+// ── Résolution source + MA1 ─────────────────────────────────
+src_val =
+     mode == "A3-33 — SHA3>EMA33"  ? sha3 :
+     mode == "A4-33 — SHA4>EMA33"  ? sha4 :
+     mode == "A5-33 — SHA5>EMA33"  ? sha5 :
+     mode == "A8-33 — SHA8>EMA33"  ? sha8 :
+     mode == "A10-33 — SHA10>EMA33" ? sha10 :
+     mode == "C-33 — close>EMA33"  ? close :
+     sha6
+
 ma1 =
-     mode == "E21 — close>EMA21" ? ema21 :
-     mode == "E26 — close>EMA26" ? ema26 :
-     mode == "E33 — close>EMA33" ? ema33 :
-     mode == "E34 — close>EMA34" ? ema34 :
-     mode == "E40 — close>EMA40" ? ema40 :
-     mode == "E45 — close>EMA45" ? ema45 :
-     mode == "E50 — close>EMA50" ? ema50 :
-     mode == "E55 — close>EMA55" ? ema55 :
-     mode == "S33 — close>SMA33" ? sma33 :
-     mode == "S50 — close>SMA50" ? sma50 :
-     mode == "W33 — close>WMA33" ? wma33 :
-     mode == "W50 — close>WMA50" ? wma50 :
-     mode == "H21 — close>HMA21" ? hma21 :
-     mode == "H33 — close>HMA33" ? hma33 :
-     mode == "H50 — close>HMA50" ? hma50 :
-     mode == "V33 — close>VWMA33" ? vwma33 :
-     mode == "V50 — close>VWMA50" ? vwma50 :
-     mode == "X33 — SHAclose>EMA33" ? ema33 :
-     mode == "X50 — SHAclose>EMA50" ? ema50 :
-     mode == "XH33 — SHAclose>HMA33" ? hma33 :
+     mode == "A6-28 — SHA6>EMA28"  ? ema28 :
+     mode == "A6-30 — SHA6>EMA30"  ? ema30 :
+     mode == "A6-31 — SHA6>EMA31"  ? ema31 :
+     mode == "A6-32 — SHA6>EMA32"  ? ema32 :
+     mode == "A6-33 — SHA6>EMA33"  ? ema33 :
+     mode == "A6-34 — SHA6>EMA34"  ? ema34 :
+     mode == "A6-35 — SHA6>EMA35"  ? ema35 :
+     mode == "A6-36 — SHA6>EMA36"  ? ema36 :
+     mode == "A6-38 — SHA6>EMA38"  ? ema38 :
+     mode == "A6-40 — SHA6>EMA40"  ? ema40 :
+     mode == "A3-33 — SHA3>EMA33"  ? ema33 :
+     mode == "A4-33 — SHA4>EMA33"  ? ema33 :
+     mode == "A5-33 — SHA5>EMA33"  ? ema33 :
+     mode == "A8-33 — SHA8>EMA33"  ? ema33 :
+     mode == "A10-33 — SHA10>EMA33" ? ema33 :
+     mode == "B6-33 — SHA6>SMA33"  ? sma33 :
+     mode == "B6-33W — SHA6>WMA33" ? wma33 :
+     mode == "B6-33H — SHA6>HMA33" ? hma33 :
+     mode == "B6-34H — SHA6>HMA34" ? hma34 :
+     mode == "C-33 — close>EMA33"  ? ema33 :
      na
-
-use_sha = mode == "X33 — SHAclose>EMA33" or mode == "X50 — SHAclose>EMA50" or mode == "XH33 — SHAclose>HMA33"
-src_val = use_sha ? sha_close_6 : close
 
 col_bull = src_val > ma1
 
@@ -106,8 +108,8 @@ col_bull = src_val > ma1
 bgcolor(col_bull ? color.new(#2196F3, 78) : color.new(#F44336, 78))
 
 // ── PLOTS ───────────────────────────────────────────────────
-plot(ma1, "MA1 (test)", color=color.new(color.black, 0), linewidth=2)
-plot(use_sha ? sha_close_6 : na, "SHA close", color=color.new(color.orange, 0), linewidth=1)
+plot(ma1, "MA1 test", color=color.new(color.black, 0), linewidth=2)
+plot(src_val, "SHA/close", color=color.new(color.orange, 0), linewidth=1)
 
 // ── TRANSITIONS ─────────────────────────────────────────────
 bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
@@ -116,21 +118,19 @@ plotshape(bull_flip, style=shape.triangleup,   location=location.belowbar, color
 plotshape(bear_flip, style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small)
 
 // ── TABLE ───────────────────────────────────────────────────
-var table t = table.new(position.top_right, 2, 6,
+var table t = table.new(position.top_right, 2, 5,
      bgcolor=color.new(color.black, 60), border_width=1)
 
 if barstate.islast
-    table.cell(t, 0, 0, "Mode",   text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, str.substring(mode, 0, 4), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "Source", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 1, use_sha ? "SHA6" : "close", text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 2, "MA1",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 2, str.tostring(ma1, format.mintick), text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 3, "Src",    text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 3, str.tostring(src_val, format.mintick), text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 4, "Δ",      text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 4, str.tostring(src_val - ma1, format.mintick), text_color=(src_val>ma1)?color.lime:color.red, text_size=size.small)
-    table.cell(t, 0, 5, "SIGNAL", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, 5, col_bull ? "▲ BULL" : "▼ BEAR",
+    table.cell(t, 0, 0, "Mode", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, str.substring(mode, 0, 5), text_color=color.yellow, text_size=size.normal, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "MA1",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(ma1, format.mintick), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 2, "Src",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, str.tostring(src_val, format.mintick), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 3, "Δ",    text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 3, str.tostring(src_val - ma1, format.mintick), text_color=(src_val>ma1)?color.lime:color.red, text_size=size.small)
+    table.cell(t, 0, 4, "SIG",  text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 4, col_bull ? "▲" : "▼",
          text_color=col_bull ? color.lime : color.red, text_size=size.normal,
          bgcolor=col_bull ? color.new(color.blue, 80) : color.new(color.red, 80))
