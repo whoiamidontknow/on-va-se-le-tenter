@@ -65,7 +65,7 @@ moy_show2     = input.bool(true,   "Afficher Moyenator 2",                      
 moy_col2      = input.color(color.black, "Couleur ligne Moyenator 2",                     group=grp_moy)
 moy_w2        = input.int(1,       "Epaisseur Moyenator 2",                               group=grp_moy, minval=1, maxval=5)
 moy_fill_on   = input.bool(true,   "Afficher le remplissage",                             group=grp_moy)
-moy_fill_bull = input.color(#2196F3,"Couleur haussiere (Moyenator 1 > Moyenator 2)",      group=grp_moy)
+moy_fill_bull = input.color(#00BCD4,"Couleur haussiere (Moyenator 1 > Moyenator 2)",      group=grp_moy)
 moy_fill_bear = input.color(#F44336,"Couleur baissiere (Moyenator 1 < Moyenator 2)",      group=grp_moy)
 moy_fill_opa  = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)",   group=grp_moy, minval=0, maxval=100)
 moy_no_fill_eq= input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",         group=grp_moy)
@@ -680,26 +680,26 @@ bull_ext_last = input.int(3, 'Bullish OB '
   , minval = 1
   , inline = 'bull')
 
-bg_bull_css = input.color(color.new(#2196F3, 80), ''
+bg_bull_css = input.color(color.new(#1565C0, 80), ''
   , inline = 'bull')
 
-bull_css = input.color(#2196F3, ''
+bull_css = input.color(#1565C0, ''
   , inline = 'bull')
 
-bull_avg_css = input.color(color.new(#2196F3, 50), ''
+bull_avg_css = input.color(color.new(#757575, 50), ''
   , inline = 'bull')
 
 bear_ext_last = input.int(3, 'Bearish OB'
   , minval = 1
   , inline = 'bear')
 
-bg_bear_css = input.color(color.new(#F44336, 80), ''
+bg_bear_css = input.color(color.new(#880E4F, 80), ''
   , inline = 'bear')
 
-bear_css = input.color(#F44336, ''
+bear_css = input.color(#880E4F, ''
   , inline = 'bear')
 
-bear_avg_css = input.color(color.new(#F44336, 50), ''
+bear_avg_css = input.color(color.new(#757575, 50), ''
   , inline = 'bear')
 
 line_style = input.string('⎯⎯⎯', 'Average Line Style'
