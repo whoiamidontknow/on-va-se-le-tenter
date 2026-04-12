@@ -16,23 +16,15 @@ indicator("ZORADIK MAGST DU ", overlay=true, max_lines_count=500,
 // ── COULEURS ──────────────────────────────────────────────────
 grp_hei_col = "=== HEISHINATOR COULEURS ==="
 hei_use_custom = input.bool(false,          "Personnaliser couleurs", group=grp_hei_col)
-hei_bull_col   = input.color(color.blue,    "Couleur haussière",      group=grp_hei_col)
-hei_bear_col   = input.color(color.red,     "Couleur baissière",      group=grp_hei_col)
+hei_bull_col   = input.color(#2196F3,       "Couleur haussière",      group=grp_hei_col)
+hei_bear_col   = input.color(#F44336,       "Couleur baissière",      group=grp_hei_col)
 hei_bull_final = hei_use_custom ? hei_bull_col : color.new(#2196F3, 0)
 hei_bear_final = hei_use_custom ? hei_bear_col : color.new(#F44336, 0)
 
-// ── OVERRIDE MANUEL (optionnel) ───────────────────────────────
-grp_hei_ov  = "=== HEISHINATOR OVERRIDE ==="
-hei_auto_tf  = input.bool(true,  "Alpha automatique selon TF",        group=grp_hei_ov)
-hei_alpha_lo = input.float(0.42, "α pour TF < 30min", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
-hei_alpha_hi = input.float(0.44, "α pour TF ≥ 30min", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
-hei_alpha_fix = input.float(0.43, "α forcé (si auto désactivé)", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
-hei_ema_len  = input.int(33,     "Longueur EMA",     minval=1, maxval=200, group=grp_hei_ov)
-
-// ── ALPHA SELON TF ────────────────────────────────────────────
+// ── ALPHA SELON TF (fixe, non modifiable) ─────────────────────
 hei_tf_seconds = timeframe.in_seconds(timeframe.period)
 hei_is_low_tf  = hei_tf_seconds < 30 * 60
-hei_alpha      = hei_auto_tf ? (hei_is_low_tf ? hei_alpha_lo : hei_alpha_hi) : hei_alpha_fix
+hei_alpha      = hei_is_low_tf ? 0.42 : 0.44
 
 // ── SHA CLOSE (EMA récursif sur ohlc4 avec alpha dynamique) ───
 hei_ohlc4_src = (open + high + low + close) / 4
@@ -42,7 +34,7 @@ hei_sha_close := na(hei_sha_close[1])
      : hei_alpha * hei_ohlc4_src + (1.0 - hei_alpha) * hei_sha_close[1]
 
 // ── EMA SUR CLOSE ─────────────────────────────────────────────
-hei_ema_base = ta.ema(close, hei_ema_len)
+hei_ema_base = ta.ema(close, 33)
 
 // ── RÈGLE DE COLORATION ───────────────────────────────────────
 hei_col_bull = hei_sha_close > hei_ema_base
@@ -67,13 +59,9 @@ plotshape(hei_bear_flip, "Flip ▼", style=shape.triangledown, location=location
 grp_moy       = "=== EPHORE MOYENATOR V5 ==="
 moy_custom    = input.bool(false,  "Personnaliser Couleurs",                              group=grp_moy)
 moy_show1     = input.bool(true,   "Afficher Moyenator 1",                                group=grp_moy)
-moy_src1      = input.source(close,"Source Moyenator 1",                                  group=grp_moy)
-moy_len1      = input.int(50,      "Longueur Moyenator 1",                                group=grp_moy, minval=1)
 moy_col1      = input.color(color.black, "Couleur ligne Moyenator 1",                     group=grp_moy)
 moy_w1        = input.int(2,       "Epaisseur Moyenator 1",                               group=grp_moy, minval=1, maxval=5)
 moy_show2     = input.bool(true,   "Afficher Moyenator 2",                                group=grp_moy)
-moy_src2      = input.source(close,"Source Moyenator 2",                                  group=grp_moy)
-moy_len2      = input.int(60,      "Longueur Moyenator 2",                                group=grp_moy, minval=1)
 moy_col2      = input.color(color.black, "Couleur ligne Moyenator 2",                     group=grp_moy)
 moy_w2        = input.int(1,       "Epaisseur Moyenator 2",                               group=grp_moy, minval=1, maxval=5)
 moy_fill_on   = input.bool(true,   "Afficher le remplissage",                             group=grp_moy)
@@ -82,8 +70,8 @@ moy_fill_bear = input.color(#cc0000,"Couleur baissiere (Moyenator 1 < Moyenator 
 moy_fill_opa  = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)",   group=grp_moy, minval=0, maxval=100)
 moy_no_fill_eq= input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",         group=grp_moy)
 
-ema_m1 = ta.ema(moy_src1, moy_len1)
-ema_m2 = ta.ema(moy_src2, moy_len2)
+ema_m1 = ta.ema(close, 50)
+ema_m2 = ta.ema(close, 60)
 
 // Détection changement de tendance
 var bool moy_was_bull = false
