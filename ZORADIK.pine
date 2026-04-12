@@ -680,10 +680,10 @@ bull_ext_last = input.int(3, 'Bullish OB '
   , minval = 1
   , inline = 'bull')
 
-bg_bull_css = input.color(color.new(#169400, 80), ''
+bg_bull_css = input.color(color.new(#2196F3, 80), ''
   , inline = 'bull')
 
-bull_css = input.color(#169400, ''
+bull_css = input.color(#2196F3, ''
   , inline = 'bull')
 
 bull_avg_css = input.color(color.new(#9598a1, 37), ''
@@ -693,10 +693,10 @@ bear_ext_last = input.int(3, 'Bearish OB'
   , minval = 1
   , inline = 'bear')
 
-bg_bear_css = input.color(color.new(#ff1100, 80), ''
+bg_bear_css = input.color(color.new(#F44336, 80), ''
   , inline = 'bear')
 
-bear_css = input.color(#ff1100, ''
+bear_css = input.color(#F44336, ''
   , inline = 'bear')
 
 bear_avg_css = input.color(color.new(#9598a1, 37), ''
