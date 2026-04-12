@@ -112,7 +112,7 @@ piv_line_w   = input.int(2,     "Largeur de la ligne",         group=grp_piv, mi
 piv_lbl_sz   = input.string("Normal", "Taille labels", group=grp_piv,
      options=["Tiny", "Small", "Normal", "Large", "Huge"])
 piv_s1_lbl_col = input.color(color.red,   "Couleur labels Set 1", group=grp_piv)
-piv_s2_lbl_col = input.color(color.black, "Couleur labels Set 2", group=grp_piv)
+piv_s2_lbl_col = input.color(#000000, "Couleur labels Set 2", group=grp_piv)
 piv_lbl_bold   = input.bool(false, "Labels en gras", group=grp_piv)
 
 // --- SET 1 (Annuel) ---
@@ -154,32 +154,32 @@ piv_s2_custom = input.bool(false,"Personnaliser Couleurs Set 2",  group=grp_piv)
 piv_s2_tf     = input.string("Mensuel","Set 2 Timeframe", group=grp_piv,
      options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
 
-piv_s2_p_col  = input.color(color.black, "P",  group=grp_piv, inline="s2p")
+piv_s2_p_col  = input.color(#000000, "P",  group=grp_piv, inline="s2p")
 piv_s2_p_on   = input.bool(true, "",            group=grp_piv, inline="s2p")
 
-piv_s2_s1_col = input.color(color.black, "S1", group=grp_piv, inline="s2s1")
+piv_s2_s1_col = input.color(#000000, "S1", group=grp_piv, inline="s2s1")
 piv_s2_s1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
-piv_s2_r1_col = input.color(color.black, "R1", group=grp_piv, inline="s2s1")
+piv_s2_r1_col = input.color(#000000, "R1", group=grp_piv, inline="s2s1")
 piv_s2_r1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
 
-piv_s2_s2_col = input.color(color.black, "S2", group=grp_piv, inline="s2s2")
+piv_s2_s2_col = input.color(#000000, "S2", group=grp_piv, inline="s2s2")
 piv_s2_s2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
-piv_s2_r2_col = input.color(color.black, "R2", group=grp_piv, inline="s2s2")
+piv_s2_r2_col = input.color(#000000, "R2", group=grp_piv, inline="s2s2")
 piv_s2_r2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
 
-piv_s2_s3_col = input.color(color.black, "S3", group=grp_piv, inline="s2s3")
+piv_s2_s3_col = input.color(#000000, "S3", group=grp_piv, inline="s2s3")
 piv_s2_s3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
-piv_s2_r3_col = input.color(color.black, "R3", group=grp_piv, inline="s2s3")
+piv_s2_r3_col = input.color(#000000, "R3", group=grp_piv, inline="s2s3")
 piv_s2_r3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
 
-piv_s2_s4_col = input.color(color.black, "S4", group=grp_piv, inline="s2s4")
+piv_s2_s4_col = input.color(#000000, "S4", group=grp_piv, inline="s2s4")
 piv_s2_s4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
-piv_s2_r4_col = input.color(color.black, "R4", group=grp_piv, inline="s2s4")
+piv_s2_r4_col = input.color(#000000, "R4", group=grp_piv, inline="s2s4")
 piv_s2_r4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
 
-piv_s2_s5_col = input.color(color.black, "S5", group=grp_piv, inline="s2s5")
+piv_s2_s5_col = input.color(#000000, "S5", group=grp_piv, inline="s2s5")
 piv_s2_s5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
-piv_s2_r5_col = input.color(color.black, "R5", group=grp_piv, inline="s2s5")
+piv_s2_r5_col = input.color(#000000, "R5", group=grp_piv, inline="s2s5")
 piv_s2_r5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
 
 // ══════════════════════════════════════════════════════════════
