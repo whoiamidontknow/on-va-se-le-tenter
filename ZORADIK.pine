@@ -109,6 +109,8 @@ piv_daily    = input.bool(true, "Utiliser des valeurs a base journaliere", group
 piv_show_lbl = input.bool(true, "Afficher les etiquettes",     group=grp_piv)
 piv_show_px  = input.bool(true, "Afficher les prix",           group=grp_piv)
 piv_line_w   = input.int(2,     "Largeur de la ligne",         group=grp_piv, minval=1, maxval=5)
+piv_ext_bars = input.int(150,  "Extension segment (barres)",  group=grp_piv, minval=10, maxval=490, step=10,
+     tooltip="Nombre de barres dans le futur pour l'affichage des segments Pivator (max 490)")
 
 // --- SET 1 (Annuel) ---
 piv_s1_custom = input.bool(false,"Personnaliser Couleurs Set 1", group=grp_piv)
@@ -401,13 +403,13 @@ if piv_s2_enable and new_tf2
 f_bi_end(target_time) =>
     tf_ms = timeframe.in_seconds(timeframe.period) * 1000
     remaining = math.round((target_time - timenow) / tf_ms)
-    bar_index + math.max(math.min(remaining, 500), 20)
+    bar_index + math.max(math.min(math.min(remaining, piv_ext_bars), 490), 10)
 
 if barstate.islast
     // — Set 1 —
     if not na(s1_start_bi)
         s1_end = f_bi_end(s1_target_t2)
-        s1_lbi = s1_end + 3
+        s1_lbi = math.min(s1_end + 3, bar_index + 499)
 
         line.delete(ln_s1_p)
         line.delete(ln_s1_r1)
@@ -458,7 +460,7 @@ if barstate.islast
     // — Set 2 —
     if piv_s2_enable and not na(s2_start_bi)
         s2_end = f_bi_end(s2_target_t2)
-        s2_lbi = s2_end + 3
+        s2_lbi = math.min(s2_end + 3, bar_index + 499)
 
         line.delete(ln_s2_p)
         line.delete(ln_s2_r1)
