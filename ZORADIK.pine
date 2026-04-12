@@ -3,70 +3,113 @@ indicator("ZORADIK MAGST DU ", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=200)
 
 // ══════════════════════════════════════════════════════════════
-// HEISHINATOR V4 — INPUTS
+// HEISHINATOR V4 — Replica (Ephore Market Ultimate)
 // ══════════════════════════════════════════════════════════════
-grp_hei        = "=== EPHORE HEISHINATOR V4 ==="
-hei_custom     = input.bool(false, "Personnaliser Couleurs",         group=grp_hei)
-hei_bull_color = input.color(color.blue, "Couleur Bougie Haussiere", group=grp_hei)
-hei_bear_color = input.color(color.red,  "Couleur Bougie Baissiere", group=grp_hei)
-hei_bull_color_final = hei_custom ? hei_bull_color : color.new(color.blue, 0)
-hei_bear_color_final = hei_custom ? hei_bear_color : color.new(color.red,  0)
+// Reverse-engineered via HA_DIAGNOSTIC v13→v16 :
+//   col_bull = SHA_close > EMA(close, 33)
+//   SHA_close = EMA récursif de ohlc4 avec alpha adaptatif :
+//     - TF < 30min  → α = 0.42  (validé 2m, 15m)
+//     - TF ≥ 30min  → α = 0.44  (validé 1h, 4h)
+// SHA_close_t = α * ohlc4_t + (1 − α) * SHA_close_{t-1}
+// Utiliser sur chart Heiken Ashi (open/close = HA natifs).
+
+// ── COULEURS ──────────────────────────────────────────────────
+grp_hei_col = "=== HEISHINATOR COULEURS ==="
+hei_use_custom = input.bool(false,          "Personnaliser couleurs", group=grp_hei_col)
+hei_bull_col   = input.color(color.blue,    "Couleur haussière",      group=grp_hei_col)
+hei_bear_col   = input.color(color.red,     "Couleur baissière",      group=grp_hei_col)
+hei_bull_final = hei_use_custom ? hei_bull_col : color.new(#2196F3, 0)
+hei_bear_final = hei_use_custom ? hei_bear_col : color.new(#F44336, 0)
+
+// ── OVERRIDE MANUEL (optionnel) ───────────────────────────────
+grp_hei_ov  = "=== HEISHINATOR OVERRIDE ==="
+hei_auto_tf  = input.bool(true,  "Alpha automatique selon TF",        group=grp_hei_ov)
+hei_alpha_lo = input.float(0.42, "α pour TF < 30min", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
+hei_alpha_hi = input.float(0.44, "α pour TF ≥ 30min", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
+hei_alpha_fix = input.float(0.43, "α forcé (si auto désactivé)", step=0.01, minval=0.01, maxval=1.0, group=grp_hei_ov)
+hei_ema_len  = input.int(33,     "Longueur EMA",     minval=1, maxval=200, group=grp_hei_ov)
+
+// ── ALPHA SELON TF ────────────────────────────────────────────
+hei_tf_seconds = timeframe.in_seconds(timeframe.period)
+hei_is_low_tf  = hei_tf_seconds < 30 * 60
+hei_alpha      = hei_auto_tf ? (hei_is_low_tf ? hei_alpha_lo : hei_alpha_hi) : hei_alpha_fix
+
+// ── SHA CLOSE (EMA récursif sur ohlc4 avec alpha dynamique) ───
+hei_ohlc4_src = (open + high + low + close) / 4
+var float hei_sha_close = na
+hei_sha_close := na(hei_sha_close[1])
+     ? hei_ohlc4_src
+     : hei_alpha * hei_ohlc4_src + (1.0 - hei_alpha) * hei_sha_close[1]
+
+// ── EMA SUR CLOSE ─────────────────────────────────────────────
+hei_ema_base = ta.ema(close, hei_ema_len)
+
+// ── RÈGLE DE COLORATION ───────────────────────────────────────
+hei_col_bull = hei_sha_close > hei_ema_base
+col_bull     = hei_col_bull
+
+// ── APPLICATION ───────────────────────────────────────────────
+barcolor(col_bull ? hei_bull_final : hei_bear_final)
+
+// ── PLOTS DIAGNOSTIC (masqués par défaut) ─────────────────────
+plot(hei_sha_close, "SHA close", color=color.new(color.orange, 0), linewidth=1, display=display.none)
+plot(hei_ema_base,  "EMA33",     color=color.new(color.black,  0), linewidth=2, display=display.none)
+
+// ── TRANSITIONS (masqués par défaut) ──────────────────────────
+hei_bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+hei_bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+plotshape(hei_bull_flip, "Flip ▲", style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.tiny, display=display.none)
+plotshape(hei_bear_flip, "Flip ▼", style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.tiny, display=display.none)
 
 // ══════════════════════════════════════════════════════════════
-// MOYENATOR V5 — INPUTS
+// MOYENATOR V5
 // ══════════════════════════════════════════════════════════════
-grp_moy        = "=== EPHORE MOYENATOR V5 ==="
-moy_show1      = input.bool(true,   "Afficher Moyenator 1",                               group=grp_moy)
-moy_src1       = input.source(close,"Source Moyenator 1",                                 group=grp_moy)
-moy_len1       = input.int(50,      "Longueur Moyenator 1",                               group=grp_moy, minval=1)
-moy_col1       = input.color(color.black, "Couleur ligne Moyenator 1",                    group=grp_moy)
-moy_w1         = input.int(2,       "Epaisseur Moyenator 1",                              group=grp_moy, minval=1, maxval=5)
-moy_show2      = input.bool(true,   "Afficher Moyenator 2",                               group=grp_moy)
-moy_src2       = input.source(close,"Source Moyenator 2",                                 group=grp_moy)
-moy_len2       = input.int(60,      "Longueur Moyenator 2",                               group=grp_moy, minval=1)
-moy_col2       = input.color(color.black, "Couleur ligne Moyenator 2",                    group=grp_moy)
-moy_w2         = input.int(1,       "Epaisseur Moyenator 2",                              group=grp_moy, minval=1, maxval=5)
-moy_fill_on    = input.bool(true,   "Afficher le remplissage",                            group=grp_moy)
-moy_fill_bull  = input.color(#00bcd4,"Couleur haussiere (Moyenator 1 > Moyenator 2)",     group=grp_moy)
-moy_fill_bear  = input.color(#cc0000,"Couleur baissiere (Moyenator 1 < Moyenator 2)",     group=grp_moy)
-moy_fill_opa   = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)", group=grp_moy, minval=0, maxval=100)
-moy_no_fill_eq = input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",        group=grp_moy)
+grp_moy       = "=== EPHORE MOYENATOR V5 ==="
+moy_custom    = input.bool(false,  "Personnaliser Couleurs",                              group=grp_moy)
+moy_show1     = input.bool(true,   "Afficher Moyenator 1",                                group=grp_moy)
+moy_src1      = input.source(close,"Source Moyenator 1",                                  group=grp_moy)
+moy_len1      = input.int(50,      "Longueur Moyenator 1",                                group=grp_moy, minval=1)
+moy_col1      = input.color(color.black, "Couleur ligne Moyenator 1",                     group=grp_moy)
+moy_w1        = input.int(2,       "Epaisseur Moyenator 1",                               group=grp_moy, minval=1, maxval=5)
+moy_show2     = input.bool(true,   "Afficher Moyenator 2",                                group=grp_moy)
+moy_src2      = input.source(close,"Source Moyenator 2",                                  group=grp_moy)
+moy_len2      = input.int(60,      "Longueur Moyenator 2",                                group=grp_moy, minval=1)
+moy_col2      = input.color(color.black, "Couleur ligne Moyenator 2",                     group=grp_moy)
+moy_w2        = input.int(1,       "Epaisseur Moyenator 2",                               group=grp_moy, minval=1, maxval=5)
+moy_fill_on   = input.bool(true,   "Afficher le remplissage",                             group=grp_moy)
+moy_fill_bull = input.color(#00bcd4,"Couleur haussiere (Moyenator 1 > Moyenator 2)",      group=grp_moy)
+moy_fill_bear = input.color(#cc0000,"Couleur baissiere (Moyenator 1 < Moyenator 2)",      group=grp_moy)
+moy_fill_opa  = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)",   group=grp_moy, minval=0, maxval=100)
+moy_no_fill_eq= input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",         group=grp_moy)
 
-// ══════════════════════════════════════════════════════════════
-// EMAs — calculées ici car utilisées par HEISHINATOR et MOYENATOR
-// ══════════════════════════════════════════════════════════════
 ema_m1 = ta.ema(moy_src1, moy_len1)
 ema_m2 = ta.ema(moy_src2, moy_len2)
 
-// ══════════════════════════════════════════════════════════════
-// HEISHINATOR V4 — COLORATION HEIKEN ASHI
-// ══════════════════════════════════════════════════════════════
-// Règle reverse-engineered via HA_DIAGNOSTIC v15 (α0.42 vs α0.43/0.44).
-// Source : "Smoothed HA close" = EMA lissée du prix moyen OHLC4
-//          avec α=0.42 (≈ EMA période 3.76 sur ohlc4)
-// MA     : EMA(close, 33)
-// Règle  : bougie BLEUE si SHA_close > EMA33, sinon ROUGE
-var float sha_close = na
-sha_close := na(sha_close[1]) ? (open + high + low + close) / 4
-     : 0.42 * ((open + high + low + close) / 4) + 0.58 * sha_close[1]
+// Détection changement de tendance
+var bool moy_was_bull = false
+moy_is_bull_now = hei_col_bull and low  > ema_m1
+moy_is_bear_now = not hei_col_bull and high < ema_m1
+moy_change_bull = moy_is_bull_now and not moy_was_bull
+moy_change_bear = moy_is_bear_now and     moy_was_bull
+if moy_is_bull_now
+    moy_was_bull := true
+else if moy_is_bear_now
+    moy_was_bull := false
 
-ema_hei  = ta.ema(close, 33)
-col_bull = sha_close > ema_hei
-
-barcolor(col_bull ? hei_bull_color_final : hei_bear_color_final)
-
-// ══════════════════════════════════════════════════════════════
-// MOYENATOR V5 — TRACÉ
-// ══════════════════════════════════════════════════════════════
+// Tracé EMA
 p_moy1 = plot(moy_show1 ? ema_m1 : na, "Moyenator 1", color=moy_col1, linewidth=moy_w1)
 p_moy2 = plot(moy_show2 ? ema_m2 : na, "Moyenator 2", color=moy_col2, linewidth=moy_w2)
 
+// Remplissage avec gestion opacité et égalité
 moy_are_equal  = math.abs(ema_m1 - ema_m2) < syminfo.mintick
 moy_fill_color = not moy_fill_on ? na :
      (moy_no_fill_eq and moy_are_equal) ? na :
      ema_m1 > ema_m2 ? color.new(moy_fill_bull, moy_fill_opa) :
      ema_m1 < ema_m2 ? color.new(moy_fill_bear, moy_fill_opa) : na
 fill(p_moy1, p_moy2, color=moy_fill_color, title="Fill Moyenator")
+
+
+
 
 // ══════════════════════════════════════════════════════════════
 // PIVATOR DUAL V2 — INPUTS
@@ -75,31 +118,39 @@ grp_piv      = "=== EPHORE PIVATOR DUAL V2 ==="
 piv_type     = input.string("Traditionnel","Type", group=grp_piv,
      options=["Traditionnel","Fibonacci","Woodie","Camarilla","DeMark"])
 piv_lookback = input.int(1, "Nombre de pivots en arriere", group=grp_piv, minval=1, maxval=5)
+piv_daily    = input.bool(true, "Utiliser des valeurs a base journaliere", group=grp_piv)
 piv_show_lbl = input.bool(true, "Afficher les etiquettes",     group=grp_piv)
 piv_show_px  = input.bool(true, "Afficher les prix",           group=grp_piv)
 piv_line_w   = input.int(2,     "Largeur de la ligne",         group=grp_piv, minval=1, maxval=5)
 
 // --- SET 1 (Annuel) ---
+piv_s1_custom = input.bool(false,"Personnaliser Couleurs Set 1", group=grp_piv)
 piv_s1_tf     = input.string("Annuel","Set 1 Timeframe", group=grp_piv,
      options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
 piv_s1_p_col  = input.color(color.red, "P",  group=grp_piv, inline="s1p")
 piv_s1_p_on   = input.bool(true, "",          group=grp_piv, inline="s1p")
+
 piv_s1_s1_col = input.color(color.red, "S1", group=grp_piv, inline="s1s1")
 piv_s1_s1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
 piv_s1_r1_col = input.color(color.red, "R1", group=grp_piv, inline="s1s1")
 piv_s1_r1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
+
 piv_s1_s2_col = input.color(color.red, "S2", group=grp_piv, inline="s1s2")
 piv_s1_s2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
 piv_s1_r2_col = input.color(color.red, "R2", group=grp_piv, inline="s1s2")
 piv_s1_r2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
+
 piv_s1_s3_col = input.color(color.red, "S3", group=grp_piv, inline="s1s3")
 piv_s1_s3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
 piv_s1_r3_col = input.color(color.red, "R3", group=grp_piv, inline="s1s3")
 piv_s1_r3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
+
 piv_s1_s4_col = input.color(color.red, "S4", group=grp_piv, inline="s1s4")
 piv_s1_s4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
 piv_s1_r4_col = input.color(color.red, "R4", group=grp_piv, inline="s1s4")
 piv_s1_r4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
+
 piv_s1_s5_col = input.color(color.red, "S5", group=grp_piv, inline="s1s5")
 piv_s1_s5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
 piv_s1_r5_col = input.color(color.red, "R5", group=grp_piv, inline="s1s5")
@@ -107,26 +158,33 @@ piv_s1_r5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
 
 // --- SET 2 (Mensuel) ---
 piv_s2_enable = input.bool(true, "Enable Set 2",                  group=grp_piv)
+piv_s2_custom = input.bool(false,"Personnaliser Couleurs Set 2",  group=grp_piv)
 piv_s2_tf     = input.string("Mensuel","Set 2 Timeframe", group=grp_piv,
      options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
 piv_s2_p_col  = input.color(color.black, "P",  group=grp_piv, inline="s2p")
 piv_s2_p_on   = input.bool(true, "",            group=grp_piv, inline="s2p")
+
 piv_s2_s1_col = input.color(color.black, "S1", group=grp_piv, inline="s2s1")
 piv_s2_s1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
 piv_s2_r1_col = input.color(color.black, "R1", group=grp_piv, inline="s2s1")
 piv_s2_r1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
+
 piv_s2_s2_col = input.color(color.black, "S2", group=grp_piv, inline="s2s2")
 piv_s2_s2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
 piv_s2_r2_col = input.color(color.black, "R2", group=grp_piv, inline="s2s2")
 piv_s2_r2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
+
 piv_s2_s3_col = input.color(color.black, "S3", group=grp_piv, inline="s2s3")
 piv_s2_s3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
 piv_s2_r3_col = input.color(color.black, "R3", group=grp_piv, inline="s2s3")
 piv_s2_r3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
+
 piv_s2_s4_col = input.color(color.black, "S4", group=grp_piv, inline="s2s4")
 piv_s2_s4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
 piv_s2_r4_col = input.color(color.black, "R4", group=grp_piv, inline="s2s4")
 piv_s2_r4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
+
 piv_s2_s5_col = input.color(color.black, "S5", group=grp_piv, inline="s2s5")
 piv_s2_s5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
 piv_s2_r5_col = input.color(color.black, "R5", group=grp_piv, inline="s2s5")
@@ -143,17 +201,10 @@ f_tf_string(s) =>
      s == "Semestriel"   ? "6M"  : "12M"
 
 f_calc_pivots(h, l, c, o, typ) =>
-    float p  = na
-    float r1 = na
-    float s1 = na
-    float r2 = na
-    float s2 = na
-    float r3 = na
-    float s3 = na
-    float r4 = na
-    float s4 = na
-    float r5 = na
-    float s5 = na
+    float p  = na, float r1 = na, float s1 = na
+    float r2 = na, float s2 = na, float r3 = na, float s3 = na
+    float r4 = na, float s4 = na, float r5 = na, float s5 = na
+
     if typ == "Fibonacci"
         p  := (h + l + c) / 3
         rng = h - l
@@ -180,32 +231,32 @@ f_calc_pivots(h, l, c, o, typ) =>
         r5 := r4 + (h - l)
         s5 := s4 - (h - l)
     else if typ == "Camarilla"
-        p  := (h + l + c) / 3
-        rng = h - l
-        r1 := c + rng * 1.1 / 12
-        s1 := c - rng * 1.1 / 12
-        r2 := c + rng * 1.1 / 6
-        s2 := c - rng * 1.1 / 6
-        r3 := c + rng * 1.1 / 4
-        s3 := c - rng * 1.1 / 4
-        r4 := c + rng * 1.1 / 2
-        s4 := c - rng * 1.1 / 2
-        r5 := c + rng * 1.1 * 5 / 6
-        s5 := c - rng * 1.1 * 5 / 6
+        p   := (h + l + c) / 3
+        rng  = h - l
+        r1  := c + rng * 1.1 / 12
+        s1  := c - rng * 1.1 / 12
+        r2  := c + rng * 1.1 / 6
+        s2  := c - rng * 1.1 / 6
+        r3  := c + rng * 1.1 / 4
+        s3  := c - rng * 1.1 / 4
+        r4  := c + rng * 1.1 / 2
+        s4  := c - rng * 1.1 / 2
+        r5  := c + rng * 1.1 * 5 / 6
+        s5  := c - rng * 1.1 * 5 / 6
     else if typ == "DeMark"
-        x   = c < o ? h + 2 * l + c : c > o ? 2 * h + l + c : h + l + 2 * c
-        p  := x / 4
-        r1 := x / 2 - l
-        s1 := x / 2 - h
-        r2 := r1
-        s2 := s1
-        r3 := r1
-        s3 := s1
-        r4 := r1
-        s4 := s1
-        r5 := r1
-        s5 := s1
-    else
+        x    = c < o ? h + 2 * l + c : c > o ? 2 * h + l + c : h + l + 2 * c
+        p   := x / 4
+        r1  := x / 2 - l
+        s1  := x / 2 - h
+        r2  := r1
+        s2  := s1
+        r3  := r1
+        s3  := s1
+        r4  := r1
+        s4  := s1
+        r5  := r1
+        s5  := s1
+    else // Traditionnel
         p  := (h + l + c) / 3
         r1 := 2 * p - l
         s1 := 2 * p - h
@@ -222,7 +273,7 @@ f_calc_pivots(h, l, c, o, typ) =>
 f_lbl_text(v, n) => piv_show_px ? n + " " + str.tostring(v, "#.##") : n
 
 // ══════════════════════════════════════════════════════════════
-// TIMESTAMP FIN DE PERIODE
+// TIMESTAMP FIN DE PERIODE (+1 jour 12h)
 // ══════════════════════════════════════════════════════════════
 f_end_time(tf_name) =>
     int result = na
@@ -251,7 +302,7 @@ f_end_time(tf_name) =>
         result := timestamp(ny, nm, 2, 12, 0, 0)
     else if tf_name == "Hebdomadaire"
         result := time + 8 * 86400 * 1000
-    else
+    else // Journalier
         result := time + 2 * 86400 * 1000
     result
 
@@ -259,10 +310,13 @@ f_end_time(tf_name) =>
 // SET 1 — DONNEES & DESSIN
 // ══════════════════════════════════════════════════════════════
 tf1_str = f_tf_string(piv_s1_tf)
+
 [tf1_h, tf1_l, tf1_c, tf1_o] = request.security(syminfo.tickerid, tf1_str,
      [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
      lookahead=barmerge.lookahead_on)
+
 new_tf1 = ta.change(time(tf1_str)) != 0
+
 [s1_p, s1_r1, s1_s1, s1_r2, s1_s2, s1_r3, s1_s3, s1_r4, s1_s4, s1_r5, s1_s5] =
      f_calc_pivots(tf1_h, tf1_l, tf1_c, tf1_o, piv_type)
 
@@ -284,9 +338,11 @@ if new_tf1
     label.delete(lb_s1_r2), label.delete(lb_s1_s2), label.delete(lb_s1_r3)
     label.delete(lb_s1_s3), label.delete(lb_s1_r4), label.delete(lb_s1_s4)
     label.delete(lb_s1_r5), label.delete(lb_s1_s5)
+
     t1     = time
     t2     = f_end_time(piv_s1_tf)
     t2_lbl = t2 + 12 * 3600 * 1000
+
     ln_s1_p  := piv_s1_p_on  ? line.new(t1, s1_p,  t2, s1_p,  xloc=xloc.bar_time, color=piv_s1_p_col,  width=piv_line_w, style=line.style_solid) : na
     ln_s1_r1 := piv_s1_r1_on ? line.new(t1, s1_r1, t2, s1_r1, xloc=xloc.bar_time, color=piv_s1_r1_col, width=piv_line_w, style=line.style_solid) : na
     ln_s1_s1 := piv_s1_s1_on ? line.new(t1, s1_s1, t2, s1_s1, xloc=xloc.bar_time, color=piv_s1_s1_col, width=piv_line_w, style=line.style_solid) : na
@@ -298,6 +354,7 @@ if new_tf1
     ln_s1_s4 := piv_s1_s4_on ? line.new(t1, s1_s4, t2, s1_s4, xloc=xloc.bar_time, color=piv_s1_s4_col, width=piv_line_w, style=line.style_solid) : na
     ln_s1_r5 := piv_s1_r5_on ? line.new(t1, s1_r5, t2, s1_r5, xloc=xloc.bar_time, color=piv_s1_r5_col, width=piv_line_w, style=line.style_solid) : na
     ln_s1_s5 := piv_s1_s5_on ? line.new(t1, s1_s5, t2, s1_s5, xloc=xloc.bar_time, color=piv_s1_s5_col, width=piv_line_w, style=line.style_solid) : na
+
     lb_s1_p  := piv_s1_p_on  and piv_show_lbl ? label.new(t2_lbl, s1_p,  f_lbl_text(s1_p,  "P"),  xloc=xloc.bar_time, textcolor=piv_s1_p_col,  color=color.new(color.black,100), style=label.style_none, size=size.small) : na
     lb_s1_r1 := piv_s1_r1_on and piv_show_lbl ? label.new(t2_lbl, s1_r1, f_lbl_text(s1_r1, "R1"), xloc=xloc.bar_time, textcolor=piv_s1_r1_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
     lb_s1_s1 := piv_s1_s1_on and piv_show_lbl ? label.new(t2_lbl, s1_s1, f_lbl_text(s1_s1, "S1"), xloc=xloc.bar_time, textcolor=piv_s1_s1_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
@@ -314,10 +371,13 @@ if new_tf1
 // SET 2 — DONNEES & DESSIN
 // ══════════════════════════════════════════════════════════════
 tf2_str = f_tf_string(piv_s2_tf)
+
 [tf2_h, tf2_l, tf2_c, tf2_o] = request.security(syminfo.tickerid, tf2_str,
      [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
      lookahead=barmerge.lookahead_on)
+
 new_tf2 = ta.change(time(tf2_str)) != 0
+
 [s2_p, s2_r1, s2_s1, s2_r2, s2_s2, s2_r3, s2_s3, s2_r4, s2_s4, s2_r5, s2_s5] =
      f_calc_pivots(tf2_h, tf2_l, tf2_c, tf2_o, piv_type)
 
@@ -339,9 +399,11 @@ if piv_s2_enable and new_tf2
     label.delete(lb_s2_r2), label.delete(lb_s2_s2), label.delete(lb_s2_r3)
     label.delete(lb_s2_s3), label.delete(lb_s2_r4), label.delete(lb_s2_s4)
     label.delete(lb_s2_r5), label.delete(lb_s2_s5)
+
     t1     = time
     t2     = f_end_time(piv_s2_tf)
     t2_lbl = t2 + 12 * 3600 * 1000
+
     ln_s2_p  := piv_s2_p_on  ? line.new(t1, s2_p,  t2, s2_p,  xloc=xloc.bar_time, color=piv_s2_p_col,  width=piv_line_w, style=line.style_solid) : na
     ln_s2_r1 := piv_s2_r1_on ? line.new(t1, s2_r1, t2, s2_r1, xloc=xloc.bar_time, color=piv_s2_r1_col, width=piv_line_w, style=line.style_solid) : na
     ln_s2_s1 := piv_s2_s1_on ? line.new(t1, s2_s1, t2, s2_s1, xloc=xloc.bar_time, color=piv_s2_s1_col, width=piv_line_w, style=line.style_solid) : na
@@ -353,6 +415,7 @@ if piv_s2_enable and new_tf2
     ln_s2_s4 := piv_s2_s4_on ? line.new(t1, s2_s4, t2, s2_s4, xloc=xloc.bar_time, color=piv_s2_s4_col, width=piv_line_w, style=line.style_solid) : na
     ln_s2_r5 := piv_s2_r5_on ? line.new(t1, s2_r5, t2, s2_r5, xloc=xloc.bar_time, color=piv_s2_r5_col, width=piv_line_w, style=line.style_solid) : na
     ln_s2_s5 := piv_s2_s5_on ? line.new(t1, s2_s5, t2, s2_s5, xloc=xloc.bar_time, color=piv_s2_s5_col, width=piv_line_w, style=line.style_solid) : na
+
     lb_s2_p  := piv_s2_p_on  and piv_show_lbl ? label.new(t2_lbl, s2_p,  f_lbl_text(s2_p,  "P"),  xloc=xloc.bar_time, textcolor=piv_s2_p_col,  color=color.new(color.black,100), style=label.style_none, size=size.small) : na
     lb_s2_r1 := piv_s2_r1_on and piv_show_lbl ? label.new(t2_lbl, s2_r1, f_lbl_text(s2_r1, "R1"), xloc=xloc.bar_time, textcolor=piv_s2_r1_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
     lb_s2_s1 := piv_s2_s1_on and piv_show_lbl ? label.new(t2_lbl, s2_s1, f_lbl_text(s2_s1, "S1"), xloc=xloc.bar_time, textcolor=piv_s2_s1_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
@@ -365,38 +428,49 @@ if piv_s2_enable and new_tf2
     lb_s2_r5 := piv_s2_r5_on and piv_show_lbl ? label.new(t2_lbl, s2_r5, f_lbl_text(s2_r5, "R5"), xloc=xloc.bar_time, textcolor=piv_s2_r5_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
     lb_s2_s5 := piv_s2_s5_on and piv_show_lbl ? label.new(t2_lbl, s2_s5, f_lbl_text(s2_s5, "S5"), xloc=xloc.bar_time, textcolor=piv_s2_s5_col, color=color.new(color.black,100), style=label.style_none, size=size.small) : na
 
+
+
 // ══════════════════════════════════════════════════════════════
 // TABLEAU PRINCIPAL V6
 // ══════════════════════════════════════════════════════════════
 grp_main     = "=== EPHORE TABLEAU PRINCIPAL ==="
 main_show    = input.bool(true, "Afficher Tableau Principal", group=grp_main)
-main_pos     = input.string("Top Right", "Position", group=grp_main,
-     options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
-main_sz      = input.string("Normal", "Taille Texte", group=grp_main,
-     options=["Tiny", "Small", "Normal", "Large", "Huge"])
-main_tf1     = input.timeframe("5",  "TF1 Price Action", group=grp_main)
+main_pos     = input.string("Top Right", "Position", group=grp_main, options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+main_sz      = input.string("Normal", "Taille Texte", group=grp_main, options=["Tiny", "Small", "Normal", "Large", "Huge"])
+main_tf1     = input.timeframe("5", "TF1 Price Action", group=grp_main)
 main_tf2     = input.timeframe("15", "TF2 Price Action", group=grp_main)
 main_tf3     = input.timeframe("60", "TF3 Price Action", group=grp_main)
 main_ticker2 = input.symbol("", "Ticker 2 (volume)", group=grp_main)
 main_vix_sym = input.symbol("CBOE:VIX", "Symbole VIX", group=grp_main)
 
-// ─── PALETTE ───
-c_bg    = color.rgb(21, 22, 45)
-c_border= color.rgb(95, 97, 125)
-c_bull  = color.rgb(56, 149, 255)
-c_bear  = color.rgb(255, 82, 99)
-c_neut  = color.rgb(130, 130, 150)
 
-// ─── CALCULS ───
+// ─── PALETTE STYLE TABLEAU ───
+c_bg         = color.rgb(21, 22, 45)     // fond général
+c_border     = color.rgb(95, 97, 125)    // bordures
+c_label      = color.rgb(190, 190, 205)  // texte gris clair
+
+c_bull       = color.rgb(56, 149, 255)   // bleu
+c_bear       = color.rgb(255, 82, 99)    // rouge
+c_neut       = color.rgb(130, 130, 150)  // neutre gris
+
+c_cell_blue  = color.rgb(24, 38, 92)     // fond bleu foncé
+c_cell_red   = color.rgb(74, 26, 49)     // fond rouge/bordeaux
+c_cell_neut  = color.rgb(45, 46, 70)     // fond neutre
+c_cell_gold  = color.rgb(98, 63, 16)     // fond orange/marron
+
+// ─── CALCULS INDICATEURS ───
+
+// Trend : SuperTrend
 [st_val, st_dir] = ta.supertrend(3, 10)
 main_trend_bull = st_dir < 0
 main_trend_lbl  = main_trend_bull ? "Bullish" : "Bearish"
 main_trend_col  = main_trend_bull ? c_bull : c_bear
 
+// Cross Signal : croisement EMA1 x EMA2
 ema_cross_up = ta.crossover(ema_m1, ema_m2)
 ema_cross_dn = ta.crossunder(ema_m1, ema_m2)
 var string cross_lbl = "—"
-var color  cross_col = color.new(color.gray, 60)
+var color cross_col = color.new(color.gray, 60)
 if ema_cross_up
     cross_lbl := "Bullish"
     cross_col := c_bull
@@ -407,6 +481,7 @@ else
     cross_lbl := "—"
     cross_col := color.new(color.gray, 60)
 
+// Bull Score / Bear Score (sur 3 : SuperTrend + EMA + VWAP)
 vwap_val     = ta.vwap(hlc3)
 main_bs_st   = main_trend_bull ? 1 : 0
 main_bs_ema  = close > ema_m1 ? 1 : 0
@@ -418,32 +493,41 @@ bear_sc_str  = str.tostring(main_bear_sc) + " / 3"
 bull_sc_col  = main_bull_sc >= 2 ? c_bull : main_bull_sc == 1 ? c_neut : c_bear
 bear_sc_col  = main_bear_sc >= 2 ? c_bear : main_bear_sc == 1 ? c_neut : c_bull
 
+// YoYo : variation % depuis ouverture journalière
 day_open = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_on)
 yoyo_pct = day_open > 0 ? (close - day_open) / day_open * 100 : 0.0
 yoyo_lbl = (yoyo_pct >= 0 ? "+" : "") + str.tostring(math.round(yoyo_pct * 10) / 10) + "%"
 yoyo_col = yoyo_pct > 0.3 ? c_bull : yoyo_pct < -0.3 ? c_bear : c_neut
 
+// CCI (30)
 cci_30    = ta.cci(close, 30)
 cci_lbl_m = str.tostring(math.round(cci_30 * 100) / 100)
 cci_col_m = cci_30 > 100 ? c_bull : cci_30 < -100 ? c_bear : c_neut
 
+// RSI (14)
 rsi_14    = ta.rsi(close, 14)
 rsi_lbl_m = str.tostring(math.round(rsi_14 * 100) / 100)
 rsi_col_m = rsi_14 > 60 ? c_bull : rsi_14 < 40 ? c_bear : c_neut
 
+// MACD
 [macd_line, macd_sig, macd_hist] = ta.macd(close, 12, 26, 9)
 macd_bull = macd_line > macd_sig
 macd_lbl  = macd_bull ? "Bullish" : "Bearish"
 macd_col  = macd_bull ? c_bull : c_bear
 
+// Gap Probability
 gap_up_count = 0
 gap_dn_count = 0
 total_days   = 0
+
 d_open_series  = request.security(syminfo.tickerid, "D", open,  lookahead=barmerge.lookahead_on)
 d_close_series = request.security(syminfo.tickerid, "D", close, lookahead=barmerge.lookahead_on)
+
+
 for k = 1 to 20
     d_open       = d_open_series[k]
     d_prev_close = d_close_series[k + 1]
+
     if not na(d_open) and not na(d_prev_close)
         total_days += 1
         if d_open > d_prev_close
@@ -458,24 +542,29 @@ gap_dn_lbl = str.tostring(gap_dn_pct) + "%"
 gap_up_col = gap_up_pct > 60 ? c_bull : gap_up_pct < 40 ? c_bear : c_neut
 gap_dn_col = gap_dn_pct > 60 ? c_bear : gap_dn_pct < 40 ? c_bull : c_neut
 
+// Divergence RSI
 rsi_div_bull = rsi_14 < 30 and close > close[1] and rsi_14 > rsi_14[1]
 rsi_div_bear = rsi_14 > 70 and close < close[1] and rsi_14 < rsi_14[1]
 div_lbl      = rsi_div_bull ? "Bull" : rsi_div_bear ? "Bear" : "None"
 div_col      = rsi_div_bull ? c_bull : rsi_div_bear ? c_bear : color.new(color.gray, 60)
 
-vix_close   = request.security(main_vix_sym, "D", close,             lookahead=barmerge.lookahead_off)
-vix_lbl     = not na(vix_close) ? str.tostring(math.round(vix_close * 100) / 100) : "N/A"
-vix_col     = not na(vix_close) ? (vix_close > 30 ? c_bear : vix_close < 15 ? c_bull : c_neut) : color.new(color.gray, 60)
-vix_vol     = request.security(main_vix_sym, "D", volume,            lookahead=barmerge.lookahead_off)
-vix_vol_sma = request.security(main_vix_sym, "D", ta.sma(volume, 20),lookahead=barmerge.lookahead_off)
-vix_vol_lbl = not na(vix_vol) and not na(vix_vol_sma) ?
-     (vix_vol > vix_vol_sma * 1.5 ? "Unusual" : vix_vol > vix_vol_sma ? "High" : "Normal") : "N/A"
+// VIX
+vix_close = request.security(main_vix_sym, "D", close, lookahead=barmerge.lookahead_off)
+vix_sma   = request.security(main_vix_sym, "D", ta.sma(close, 20), lookahead=barmerge.lookahead_off)
+vix_lbl   = not na(vix_close) ? str.tostring(math.round(vix_close * 100) / 100) : "N/A"
+vix_col   = not na(vix_close) ? (vix_close > 30 ? c_bear : vix_close < 15 ? c_bull : c_neut) : color.new(color.gray, 60)
+
+// VIX Volume
+vix_vol     = request.security(main_vix_sym, "D", volume, lookahead=barmerge.lookahead_off)
+vix_vol_sma = request.security(main_vix_sym, "D", ta.sma(volume, 20), lookahead=barmerge.lookahead_off)
+vix_vol_lbl = not na(vix_vol) and not na(vix_vol_sma) ? (vix_vol > vix_vol_sma * 1.5 ? "Unusual" : vix_vol > vix_vol_sma ? "High" : "Normal") : "N/A"
 vix_vol_col = vix_vol_lbl == "Unusual" ? c_bear : vix_vol_lbl == "High" ? c_neut : color.new(color.gray, 60)
 
+// TF Price Action (SuperTrend + EMA sur chaque TF)
 f_pa(tf) =>
     [_stv, _std] = request.security(syminfo.tickerid, tf, ta.supertrend(3, 10), lookahead=barmerge.lookahead_off)
-    _ema1 = request.security(syminfo.tickerid, tf, ta.ema(close, 50),            lookahead=barmerge.lookahead_off)
-    _c    = request.security(syminfo.tickerid, tf, close,                         lookahead=barmerge.lookahead_off)
+    _ema1 = request.security(syminfo.tickerid, tf, ta.ema(close, 50), lookahead=barmerge.lookahead_off)
+    _c    = request.security(syminfo.tickerid, tf, close, lookahead=barmerge.lookahead_off)
     st_ok  = _std < 0
     ema_ok = _c > _ema1
     score  = (st_ok ? 1 : 0) + (ema_ok ? 1 : 0)
@@ -488,180 +577,332 @@ tf3_pa = f_pa(main_tf3)
 f_pa_col(s) =>
     s == "SUPERBULL" ? color.new(#00e5ff, 0) : s == "Bullish" ? c_bull : c_bear
 
-vol_ratio  = ta.sma(volume, 20)
-vol1_lbl   = volume > vol_ratio * 2 ? "Spike" : volume > vol_ratio * 1.2 ? "High" :
-     volume < vol_ratio * 0.5 ? "Melt" : "Normal"
-vol1_col   = vol1_lbl == "Spike" ? c_bull : vol1_lbl == "High" ? c_neut :
-     vol1_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
+// Ticker Volume Analysis
+vol_ratio   = ta.sma(volume, 20)
+vol_current = volume
+vol1_lbl    = vol_current > vol_ratio * 2 ? "Spike" : vol_current > vol_ratio * 1.2 ? "High" : vol_current < vol_ratio * 0.5 ? "Melt" : "Normal"
+vol1_col    = vol1_lbl == "Spike" ? c_bull : vol1_lbl == "High" ? c_neut : vol1_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
 
-t2_vol     = main_ticker2 != "" ? request.security(main_ticker2, timeframe.period, volume,             lookahead=barmerge.lookahead_off) : na
+// Ticker 2 Volume
+t2_vol     = main_ticker2 != "" ? request.security(main_ticker2, timeframe.period, volume, lookahead=barmerge.lookahead_off) : na
 t2_vol_sma = main_ticker2 != "" ? request.security(main_ticker2, timeframe.period, ta.sma(volume, 20), lookahead=barmerge.lookahead_off) : na
-vol2_lbl   = na(t2_vol) or na(t2_vol_sma) ? "N/A" :
-     t2_vol > t2_vol_sma * 2 ? "Spike" : t2_vol > t2_vol_sma * 1.2 ? "High" :
-     t2_vol < t2_vol_sma * 0.5 ? "Melt" : "Normal"
-vol2_col   = vol2_lbl == "Spike" ? c_bull : vol2_lbl == "High" ? c_neut :
-     vol2_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
+vol2_lbl   = na(t2_vol) or na(t2_vol_sma) ? "N/A" : t2_vol > t2_vol_sma * 2 ? "Spike" : t2_vol > t2_vol_sma * 1.2 ? "High" : t2_vol < t2_vol_sma * 0.5 ? "Melt" : "Normal"
+vol2_col   = vol2_lbl == "Spike" ? c_bull : vol2_lbl == "High" ? c_neut : vol2_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
 
 // ─── CONSTRUCTION TABLEAU ───
-m_pos = main_pos == "Bottom Right" ? position.bottom_right :
-     main_pos == "Bottom Left"  ? position.bottom_left  :
-     main_pos == "Top Left"     ? position.top_left     :
-     main_pos == "Middle Right" ? position.middle_right :
-     main_pos == "Middle Left"  ? position.middle_left  : position.top_right
+var m_pos = position.top_right
+
+if main_pos == "Bottom Right"
+    m_pos := position.bottom_right
+else if main_pos == "Bottom Left"
+    m_pos := position.bottom_left
+else if main_pos == "Top Right"
+    m_pos := position.top_right
+else if main_pos == "Top Left"
+    m_pos := position.top_left
+else if main_pos == "Middle Right"
+    m_pos := position.middle_right
+else if main_pos == "Middle Left"
+    m_pos := position.middle_left
 
 var table tbl_main = na
+
 if barstate.isfirst
     tbl_main := table.new(m_pos, 4, 9, bgcolor=c_bg, border_color=c_border, border_width=1)
 
 f_sz(_s) =>
-    _s == "Tiny"   ? size.tiny   :
-     _s == "Small"  ? size.small  :
-     _s == "Normal" ? size.normal :
-     _s == "Large"  ? size.large  : size.huge
+    if _s == "Tiny"
+        size.tiny
+    else if _s == "Small"
+        size.small
+    else if _s == "Normal"
+        size.normal
+    else if _s == "Large"
+        size.large
+    else
+        size.huge
 
-if barstate.islast and main_show
-    sz = f_sz(main_sz)
-    table.cell(tbl_main, 0, 0, "Trend",        text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 0, main_trend_lbl, text_color=color.white,  text_size=sz, bgcolor=main_trend_col)
-    table.cell(tbl_main, 2, 0, "Cross Signal", text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 0, cross_lbl,      text_color=color.white,  text_size=sz, bgcolor=cross_col)
-    table.cell(tbl_main, 0, 1, "Bull Score",   text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 1, bull_sc_str,    text_color=color.white,  text_size=sz, bgcolor=bull_sc_col)
-    table.cell(tbl_main, 2, 1, "CCI (30)",     text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 1, cci_lbl_m,      text_color=color.white,  text_size=sz, bgcolor=cci_col_m)
-    table.cell(tbl_main, 0, 2, "Bear Score",   text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 2, bear_sc_str,    text_color=color.white,  text_size=sz, bgcolor=bear_sc_col)
-    table.cell(tbl_main, 2, 2, "RSI (14)",     text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 2, rsi_lbl_m,      text_color=color.white,  text_size=sz, bgcolor=rsi_col_m)
-    table.cell(tbl_main, 0, 3, "YoYo",         text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 3, yoyo_lbl,       text_color=color.white,  text_size=sz, bgcolor=yoyo_col)
-    table.cell(tbl_main, 2, 3, "MACD",         text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 3, macd_lbl,       text_color=color.white,  text_size=sz, bgcolor=macd_col)
-    table.cell(tbl_main, 0, 4, "Gap ↑ Prob",   text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 4, gap_up_lbl,     text_color=color.white,  text_size=sz, bgcolor=gap_up_col)
-    table.cell(tbl_main, 2, 4, "TF1 PA",       text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 4, tf1_pa,         text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf1_pa))
-    table.cell(tbl_main, 0, 5, "Gap ↓ Prob",   text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 5, gap_dn_lbl,     text_color=color.white,  text_size=sz, bgcolor=gap_dn_col)
-    table.cell(tbl_main, 2, 5, "TF2 PA",       text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 5, tf2_pa,         text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf2_pa))
-    table.cell(tbl_main, 0, 6, "Divergence",   text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 6, div_lbl,        text_color=color.white,  text_size=sz, bgcolor=div_col)
-    table.cell(tbl_main, 2, 6, "TF3 PA",       text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 6, tf3_pa,         text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf3_pa))
-    table.cell(tbl_main, 0, 7, "Vix",          text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 7, vix_lbl,        text_color=color.white,  text_size=sz, bgcolor=vix_col)
-    table.cell(tbl_main, 2, 7, "Vix Vol",      text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 7, vix_vol_lbl,    text_color=color.white,  text_size=sz, bgcolor=vix_vol_col)
-    table.cell(tbl_main, 0, 8, "Ticker 1 Vol", text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 1, 8, vol1_lbl,       text_color=color.white,  text_size=sz, bgcolor=vol1_col)
-    table.cell(tbl_main, 2, 8, "Ticker 2 Vol", text_color=color.silver, text_size=sz)
-    table.cell(tbl_main, 3, 8, vol2_lbl,       text_color=color.white,  text_size=sz, bgcolor=vol2_col)
+if barstate.islast
+    if main_show
+        sz = f_sz(main_sz)
 
-// ══════════════════════════════════════════════════════════════
-// DETECTOR — ORDER BLOCKS
-// ══════════════════════════════════════════════════════════════
-length        = input.int(5, "Volume Pivot Length", minval=1)
-bull_ext_last = input.int(3, "Bullish OB",  minval=1, inline="bull")
-bg_bull_css   = input.color(color.new(#169400, 80), "", inline="bull")
-bull_css      = input.color(#169400, "",             inline="bull")
-bull_avg_css  = input.color(color.new(#9598a1, 37), "", inline="bull")
-bear_ext_last = input.int(3, "Bearish OB",  minval=1, inline="bear")
-bg_bear_css   = input.color(color.new(#ff1100, 80), "", inline="bear")
-bear_css      = input.color(#ff1100, "",             inline="bear")
-bear_avg_css  = input.color(color.new(#9598a1, 37), "", inline="bear")
-line_style    = input.string("⎯⎯⎯", "Average Line Style", options=["⎯⎯⎯", "----", "····"])
-line_width    = input.int(1, "Average Line Width", minval=1)
-mitigation    = input.string("Wick", "Mitigation Methods", options=["Wick", "Close"])
+        // Row 0 : Trend | val | Cross Signal | val
+        table.cell(tbl_main, 0, 0, "Trend",         text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 0, main_trend_lbl,  text_color=color.white,  text_size=sz, bgcolor=main_trend_col)
+        table.cell(tbl_main, 2, 0, "Cross Signal",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 0, cross_lbl,       text_color=color.white,  text_size=sz, bgcolor=cross_col)
 
+        // Row 1 : Bull Score | val | CCI (30) | val
+        table.cell(tbl_main, 0, 1, "Bull Score",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 1, bull_sc_str,     text_color=color.white,  text_size=sz, bgcolor=bull_sc_col)
+        table.cell(tbl_main, 2, 1, "CCI (30)",      text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 1, cci_lbl_m,       text_color=color.white,  text_size=sz, bgcolor=cci_col_m)
+
+        // Row 2 : Bear Score | val | RSI (14) | val
+        table.cell(tbl_main, 0, 2, "Bear Score",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 2, bear_sc_str,     text_color=color.white,  text_size=sz, bgcolor=bear_sc_col)
+        table.cell(tbl_main, 2, 2, "RSI (14)",      text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 2, rsi_lbl_m,       text_color=color.white,  text_size=sz, bgcolor=rsi_col_m)
+
+        // Row 3 : YoYo | val | MACD | val
+        table.cell(tbl_main, 0, 3, "YoYo",          text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 3, yoyo_lbl,        text_color=color.white,  text_size=sz, bgcolor=yoyo_col)
+        table.cell(tbl_main, 2, 3, "MACD",          text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 3, macd_lbl,        text_color=color.white,  text_size=sz, bgcolor=macd_col)
+
+        // Row 4 : Gap ↑ Prob | val | TF1 PA | val
+        table.cell(tbl_main, 0, 4, "Gap ↑ Prob",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 4, gap_up_lbl,      text_color=color.white,  text_size=sz, bgcolor=gap_up_col)
+        table.cell(tbl_main, 2, 4, "TF1 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 4, tf1_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf1_pa))
+
+        // Row 5 : Gap ↓ Prob | val | TF2 PA | val
+        table.cell(tbl_main, 0, 5, "Gap ↓ Prob",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 5, gap_dn_lbl,      text_color=color.white,  text_size=sz, bgcolor=gap_dn_col)
+        table.cell(tbl_main, 2, 5, "TF2 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 5, tf2_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf2_pa))
+
+        // Row 6 : Divergence | val | TF3 PA | val
+        table.cell(tbl_main, 0, 6, "Divergence",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 6, div_lbl,         text_color=color.white,  text_size=sz, bgcolor=div_col)
+        table.cell(tbl_main, 2, 6, "TF3 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 6, tf3_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf3_pa))
+
+        // Row 7 : Vix | val | Vix Vol | val
+        table.cell(tbl_main, 0, 7, "Vix",           text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 7, vix_lbl,         text_color=color.white,  text_size=sz, bgcolor=vix_col)
+        table.cell(tbl_main, 2, 7, "Vix Vol",       text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 7, vix_vol_lbl,     text_color=color.white,  text_size=sz, bgcolor=vix_vol_col)
+
+        // Row 8 : Ticker 1 Vol | val | Ticker 2 Vol | val
+        table.cell(tbl_main, 0, 8, "Ticker 1 Vol",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 8, vol1_lbl,        text_color=color.white,  text_size=sz, bgcolor=vol1_col)
+        table.cell(tbl_main, 2, 8, "Ticker 2 Vol",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 8, vol2_lbl,        text_color=color.white,  text_size=sz, bgcolor=vol2_col)
+
+
+
+//------------------------------------------------------------------------------
+//DETECTOR ORDER BLCOK
+//-----------------------------------------------------------------------------{
+length = input.int(5, 'Volume Pivot Length'
+  , minval = 1)
+
+bull_ext_last = input.int(3, 'Bullish OB '
+  , minval = 1
+  , inline = 'bull')
+
+bg_bull_css = input.color(color.new(#169400, 80), ''
+  , inline = 'bull')
+
+bull_css = input.color(#169400, ''
+  , inline = 'bull')
+
+bull_avg_css = input.color(color.new(#9598a1, 37), ''
+  , inline = 'bull')
+
+bear_ext_last = input.int(3, 'Bearish OB'
+  , minval = 1
+  , inline = 'bear')
+
+bg_bear_css = input.color(color.new(#ff1100, 80), ''
+  , inline = 'bear')
+
+bear_css = input.color(#ff1100, ''
+  , inline = 'bear')
+
+bear_avg_css = input.color(color.new(#9598a1, 37), ''
+  , inline = 'bear')
+
+line_style = input.string('⎯⎯⎯', 'Average Line Style'
+  , options = ['⎯⎯⎯', '----', '····'])
+
+line_width = input.int(1, 'Average Line Width'
+  , minval = 1)
+
+mitigation = input.string('Wick', 'Mitigation Methods'
+  , options = ['Wick', 'Close'])
+
+//-----------------------------------------------------------------------------}
+//Functions
+//-----------------------------------------------------------------------------{
+//Line Style function
 get_line_style(style) =>
-    style == "----" ? line.style_dashed :
-     style == "····" ? line.style_dotted : line.style_solid
+    out = switch style
+        '⎯⎯⎯'  => line.style_solid
+        '----' => line.style_dashed
+        '····' => line.style_dotted
 
-get_coordinates(condition, top, btm, ob_val) =>
+//Function to get order block coordinates
+get_coordinates(condition, top, btm, ob_val)=>
     var ob_top  = array.new_float(0)
     var ob_btm  = array.new_float(0)
     var ob_avg  = array.new_float(0)
     var ob_left = array.new_int(0)
+
     float ob = na
+
+    //Append coordinates to arrays
     if condition
         avg = math.avg(top, btm)
-        array.unshift(ob_top,  top)
-        array.unshift(ob_btm,  btm)
-        array.unshift(ob_avg,  avg)
+
+        array.unshift(ob_top, top)
+        array.unshift(ob_btm, btm)
+        array.unshift(ob_avg, avg)
         array.unshift(ob_left, time[length])
+
         ob := ob_val
+
     [ob_top, ob_btm, ob_avg, ob_left, ob]
 
-remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull) =>
-    mitigated    = false
+//Function to remove mitigated order blocks from coordinate arrays
+remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
+    mitigated = false
     target_array = bull ? ob_btm : ob_top
+
     for element in target_array
         idx = array.indexof(target_array, element)
-        if bull ? target < element : target > element
+
+        if (bull ? target < element : target > element)
             mitigated := true
-            array.remove(ob_top,  idx)
-            array.remove(ob_btm,  idx)
-            array.remove(ob_avg,  idx)
+
+            array.remove(ob_top, idx)
+            array.remove(ob_btm, idx)
+            array.remove(ob_avg, idx)
             array.remove(ob_left, idx)
+
     mitigated
 
-set_order_blocks(ob_top, ob_btm, ob_left, ob_avg, ext_last, bg_css, border_css, lvl_css) =>
+//Function to set order blocks
+set_order_blocks(ob_top, ob_btm, ob_left, ob_avg, ext_last, bg_css, border_css, lvl_css)=>
     var ob_box = array.new_box(0)
     var ob_lvl = array.new_line(0)
+
+    //Fill arrays with boxes/lines
     if barstate.isfirst
-        for i = 0 to ext_last - 1
-            array.unshift(ob_box, box.new(na, na, na, na,
-                 xloc=xloc.bar_time, extend=extend.right,
-                 bgcolor=bg_css, border_color=color.new(border_css, 70)))
-            array.unshift(ob_lvl, line.new(na, na, na, na,
-                 xloc=xloc.bar_time, extend=extend.right,
-                 color=lvl_css, style=get_line_style(line_style), width=line_width))
+        for i = 0 to ext_last-1
+            array.unshift(ob_box, box.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend= extend.right
+              , bgcolor = bg_css
+              , border_color = color.new(border_css, 70)))
+
+            array.unshift(ob_lvl, line.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend = extend.right
+              , color = lvl_css
+              , style = get_line_style(line_style)
+              , width = line_width))
+
+    //Set order blocks
     if barstate.islast
         if array.size(ob_top) > 0
-            for i = 0 to math.min(ext_last - 1, array.size(ob_top) - 1)
+            for i = 0 to math.min(ext_last-1, array.size(ob_top)-1)
                 get_box = array.get(ob_box, i)
                 get_lvl = array.get(ob_lvl, i)
-                box.set_lefttop(get_box,     array.get(ob_left, i), array.get(ob_top, i))
-                box.set_rightbottom(get_box, array.get(ob_left, i), array.get(ob_btm, i))
-                line.set_xy1(get_lvl, array.get(ob_left, i),     array.get(ob_avg, i))
-                line.set_xy2(get_lvl, array.get(ob_left, i) + 1, array.get(ob_avg, i))
 
-var int  os          = 0
-var float target_bull = 0.
-var float target_bear = 0.
+                box.set_lefttop(get_box, array.get(ob_left, i), array.get(ob_top, i))
+                box.set_rightbottom(get_box, array.get(ob_left, i), array.get(ob_btm, i))
+
+                line.set_xy1(get_lvl, array.get(ob_left, i), array.get(ob_avg, i))
+                line.set_xy2(get_lvl, array.get(ob_left, i)+1, array.get(ob_avg, i))
+
+
+//-----------------------------------------------------------------------------}
+//Global elements
+//-----------------------------------------------------------------------------{
+var os = 0
+var target_bull = 0.
+var target_bear = 0.
+
+n = bar_index
 upper = ta.highest(length)
 lower = ta.lowest(length)
 
-if mitigation == "Close"
+if mitigation == 'Close'
     target_bull := ta.lowest(close, length)
     target_bear := ta.highest(close, length)
 else
     target_bull := lower
     target_bear := upper
 
-os   := high[length] > upper ? 0 : low[length] < lower ? 1 : os[1]
-phv   = not na(ta.pivothigh(volume, length, length))
+os := high[length] > upper ? 0 : low[length] < lower ? 1 : os[1]
 
-[bull_top, bull_btm, bull_avg, bull_left, bull_ob] =
-     get_coordinates(phv and os == 1, hl2[length], low[length], low[length])
-[bear_top, bear_btm, bear_avg, bear_left, bear_ob] =
-     get_coordinates(phv and os == 0, high[length], hl2[length], high[length])
+phv = not na(ta.pivothigh(volume, length, length))
 
-mitigated_bull = remove_mitigated(bull_top, bull_btm, bull_left, bull_avg, target_bull, true)
-mitigated_bear = remove_mitigated(bear_top, bear_btm, bear_left, bear_avg, target_bear, false)
+//-----------------------------------------------------------------------------}
+//Get bullish/bearish order blocks coordinates
+//-----------------------------------------------------------------------------{
+[bull_top
+  , bull_btm
+  , bull_avg
+  , bull_left
+  , bull_ob] = get_coordinates(phv and os == 1, hl2[length], low[length], low[length])
 
-set_order_blocks(bull_top, bull_btm, bull_left, bull_avg, bull_ext_last, bg_bull_css, bull_css, bull_avg_css)
-set_order_blocks(bear_top, bear_btm, bear_left, bear_avg, bear_ext_last, bg_bear_css, bear_css, bear_avg_css)
+[bear_top
+  , bear_btm
+  , bear_avg
+  , bear_left
+  , bear_ob] = get_coordinates(phv and os == 0, high[length], hl2[length], high[length])
 
-plot(bull_ob, "Bull OB", bull_css, 2, plot.style_linebr, offset=-length, display=display.none)
-plot(bear_ob, "Bear OB", bear_css, 2, plot.style_linebr, offset=-length, display=display.none)
+//-----------------------------------------------------------------------------}
+//Remove mitigated order blocks
+//-----------------------------------------------------------------------------{
+mitigated_bull = remove_mitigated(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , target_bull
+  , true)
 
+mitigated_bear = remove_mitigated(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , target_bear
+  , false)
+
+//-----------------------------------------------------------------------------}
+//Display order blocks
+//-----------------------------------------------------------------------------{
+//Set bullish order blocks
+set_order_blocks(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , bull_ext_last
+  , bg_bull_css
+  , bull_css
+  , bull_avg_css)
+
+//Set bearish order blocks
+set_order_blocks(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , bear_ext_last
+  , bg_bear_css
+  , bear_css
+  , bear_avg_css)
+
+//Show detected order blocks
+plot(bull_ob, 'Bull OB', bull_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+plot(bear_ob, 'Bear OB', bear_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+
+//condition alerte
 bull_ob_alert = not na(bull_ob)
 bear_ob_alert = not na(bear_ob)
 
+
+
 // ══════════════════════════════════════════════════════════════
-// ALERTES
+// ALERTES PIVOTS
 // ══════════════════════════════════════════════════════════════
 alertcondition(ta.cross(close, s1_p),  "Set1 P cross",  "Prix croise Pivot Set 1")
 alertcondition(ta.cross(close, s1_r1), "Set1 R1 cross", "Prix croise R1 Set 1")
@@ -673,7 +914,9 @@ alertcondition(ta.cross(close, s2_r1), "Set2 R1 cross", "Prix croise R1 Set 2")
 alertcondition(ta.cross(close, s2_s1), "Set2 S1 cross", "Prix croise S1 Set 2")
 alertcondition(ta.cross(close, s2_r2), "Set2 R2 cross", "Prix croise R2 Set 2")
 alertcondition(ta.cross(close, s2_s2), "Set2 S2 cross", "Prix croise S2 Set 2")
-alertcondition(bull_ob_alert,   "Bullish OB Formed",     "Bullish Order Block detected")
-alertcondition(bear_ob_alert,   "Bearish OB Formed",     "Bearish Order Block detected")
-alertcondition(mitigated_bull,  "Bullish OB Mitigated",  "Bullish order block mitigated")
-alertcondition(mitigated_bear,  "Bearish OB Mitigated",  "Bearish order block mitigated")
+alertcondition(bull_ob_alert, "Bullish OB Formed", "Bullish Order Block detected")
+alertcondition(bear_ob_alert, "Bearish OB Formed", "Bearish Order Block detected")
+
+alertcondition(mitigated_bull, 'Bullish OB Mitigated', 'Bullish order block mitigated')
+
+alertcondition(mitigated_bear, 'Bearish OB Mitigated', 'bearish order block mitigated')
