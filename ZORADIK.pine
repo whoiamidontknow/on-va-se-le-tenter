@@ -313,10 +313,6 @@ var line ln_s1_p  = na, var line ln_s1_r1 = na, var line ln_s1_s1 = na
 var line ln_s1_r2 = na, var line ln_s1_s2 = na, var line ln_s1_r3 = na
 var line ln_s1_s3 = na, var line ln_s1_r4 = na, var line ln_s1_s4 = na
 var line ln_s1_r5 = na, var line ln_s1_s5 = na
-var label lb_s1_p  = na, var label lb_s1_r1 = na, var label lb_s1_s1 = na
-var label lb_s1_r2 = na, var label lb_s1_s2 = na, var label lb_s1_r3 = na
-var label lb_s1_s3 = na, var label lb_s1_r4 = na, var label lb_s1_s4 = na
-var label lb_s1_r5 = na, var label lb_s1_s5 = na
 
 // Stockage des valeurs pour labels droite
 var float rv_s1_p  = na, var float rv_s1_r1 = na, var float rv_s1_s1 = na
@@ -724,10 +720,10 @@ bear_ext_last = input.int(3, 'Bearish OB'
   , minval = 1
   , inline = 'bear')
 
-bg_bear_css = input.color(color.new(#880E4F, 80), ''
+bg_bear_css = input.color(color.new(#EF5350, 80), ''
   , inline = 'bear')
 
-bear_css = input.color(#880E4F, ''
+bear_css = input.color(#EF5350, ''
   , inline = 'bear')
 
 bear_avg_css = input.color(color.new(#757575, 50), ''
