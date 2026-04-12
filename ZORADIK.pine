@@ -320,6 +320,7 @@ var float rv_s1_r2 = na, var float rv_s1_s2 = na, var float rv_s1_r3 = na
 var float rv_s1_s3 = na, var float rv_s1_r4 = na, var float rv_s1_s4 = na
 var float rv_s1_r5 = na, var float rv_s1_s5 = na
 var int s1_target_t2 = na
+var int s1_start_bi  = na
 
 if new_tf1
     line.delete(ln_s1_p),  line.delete(ln_s1_r1), line.delete(ln_s1_s1)
@@ -331,21 +332,8 @@ if new_tf1
     label.delete(lb_s1_s3), label.delete(lb_s1_r4), label.delete(lb_s1_s4)
     label.delete(lb_s1_r5), label.delete(lb_s1_s5)
 
-    t1 = time
+    s1_start_bi  := bar_index
     s1_target_t2 := f_end_time(piv_s1_tf)
-    t2 = s1_target_t2
-
-    ln_s1_p  := piv_s1_p_on  ? line.new(t1, s1_p,  t2, s1_p,  xloc=xloc.bar_time, color=piv_s1_p_col,  width=piv_line_w, style=line.style_solid) : na
-    ln_s1_r1 := piv_s1_r1_on ? line.new(t1, s1_r1, t2, s1_r1, xloc=xloc.bar_time, color=piv_s1_r1_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_s1 := piv_s1_s1_on ? line.new(t1, s1_s1, t2, s1_s1, xloc=xloc.bar_time, color=piv_s1_s1_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_r2 := piv_s1_r2_on ? line.new(t1, s1_r2, t2, s1_r2, xloc=xloc.bar_time, color=piv_s1_r2_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_s2 := piv_s1_s2_on ? line.new(t1, s1_s2, t2, s1_s2, xloc=xloc.bar_time, color=piv_s1_s2_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_r3 := piv_s1_r3_on ? line.new(t1, s1_r3, t2, s1_r3, xloc=xloc.bar_time, color=piv_s1_r3_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_s3 := piv_s1_s3_on ? line.new(t1, s1_s3, t2, s1_s3, xloc=xloc.bar_time, color=piv_s1_s3_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_r4 := piv_s1_r4_on ? line.new(t1, s1_r4, t2, s1_r4, xloc=xloc.bar_time, color=piv_s1_r4_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_s4 := piv_s1_s4_on ? line.new(t1, s1_s4, t2, s1_s4, xloc=xloc.bar_time, color=piv_s1_s4_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_r5 := piv_s1_r5_on ? line.new(t1, s1_r5, t2, s1_r5, xloc=xloc.bar_time, color=piv_s1_r5_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s1_s5 := piv_s1_s5_on ? line.new(t1, s1_s5, t2, s1_s5, xloc=xloc.bar_time, color=piv_s1_s5_col, width=piv_line_w, style=line.style_solid) : na
 
     rv_s1_p  := s1_p
     rv_s1_r1 := s1_r1,  rv_s1_s1 := s1_s1
@@ -381,6 +369,7 @@ var float rv_s2_r2 = na, var float rv_s2_s2 = na, var float rv_s2_r3 = na
 var float rv_s2_s3 = na, var float rv_s2_r4 = na, var float rv_s2_s4 = na
 var float rv_s2_r5 = na, var float rv_s2_s5 = na
 var int s2_target_t2 = na
+var int s2_start_bi  = na
 
 if piv_s2_enable and new_tf2
     line.delete(ln_s2_p),  line.delete(ln_s2_r1), line.delete(ln_s2_s1)
@@ -392,21 +381,8 @@ if piv_s2_enable and new_tf2
     label.delete(lb_s2_s3), label.delete(lb_s2_r4), label.delete(lb_s2_s4)
     label.delete(lb_s2_r5), label.delete(lb_s2_s5)
 
-    t1 = time
+    s2_start_bi  := bar_index
     s2_target_t2 := f_end_time(piv_s2_tf)
-    t2 = s2_target_t2
-
-    ln_s2_p  := piv_s2_p_on  ? line.new(t1, s2_p,  t2, s2_p,  xloc=xloc.bar_time, color=piv_s2_p_col,  width=piv_line_w, style=line.style_solid) : na
-    ln_s2_r1 := piv_s2_r1_on ? line.new(t1, s2_r1, t2, s2_r1, xloc=xloc.bar_time, color=piv_s2_r1_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_s1 := piv_s2_s1_on ? line.new(t1, s2_s1, t2, s2_s1, xloc=xloc.bar_time, color=piv_s2_s1_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_r2 := piv_s2_r2_on ? line.new(t1, s2_r2, t2, s2_r2, xloc=xloc.bar_time, color=piv_s2_r2_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_s2 := piv_s2_s2_on ? line.new(t1, s2_s2, t2, s2_s2, xloc=xloc.bar_time, color=piv_s2_s2_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_r3 := piv_s2_r3_on ? line.new(t1, s2_r3, t2, s2_r3, xloc=xloc.bar_time, color=piv_s2_r3_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_s3 := piv_s2_s3_on ? line.new(t1, s2_s3, t2, s2_s3, xloc=xloc.bar_time, color=piv_s2_s3_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_r4 := piv_s2_r4_on ? line.new(t1, s2_r4, t2, s2_r4, xloc=xloc.bar_time, color=piv_s2_r4_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_s4 := piv_s2_s4_on ? line.new(t1, s2_s4, t2, s2_s4, xloc=xloc.bar_time, color=piv_s2_s4_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_r5 := piv_s2_r5_on ? line.new(t1, s2_r5, t2, s2_r5, xloc=xloc.bar_time, color=piv_s2_r5_col, width=piv_line_w, style=line.style_solid) : na
-    ln_s2_s5 := piv_s2_s5_on ? line.new(t1, s2_s5, t2, s2_s5, xloc=xloc.bar_time, color=piv_s2_s5_col, width=piv_line_w, style=line.style_solid) : na
 
     rv_s2_p  := s2_p
     rv_s2_r1 := s2_r1,  rv_s2_s1 := s2_s1
@@ -416,67 +392,119 @@ if piv_s2_enable and new_tf2
     rv_s2_r5 := s2_r5,  rv_s2_s5 := s2_s5
 
 // ══════════════════════════════════════════════════════════════
-// MISE À JOUR SEGMENTS + LABELS — sur chaque dernière barre
+// DESSIN SEGMENTS + LABELS — xloc.bar_index (rendu garanti)
 // ══════════════════════════════════════════════════════════════
-// TradingView limite le rendu à ~500 bougies dans le futur.
-// On clamp t2 pour que les segments soient toujours visibles,
-// et on place les labels au bout du segment.
+// xloc.bar_time ne rend pas les lignes dont l'endpoint est trop
+// loin dans le futur. On utilise bar_index à la place.
+// Les lignes sont recréées sur chaque barstate.islast.
 
-f_clamp_t2(target) =>
-    max_future = last_bar_time + 300 * timeframe.in_seconds(timeframe.period) * 1000
-    math.min(target, max_future)
-
-f_update_line(ln, t2_clamped) =>
-    if not na(ln)
-        line.set_x2(ln, t2_clamped)
-
-f_mk_lbl(lbl, on, v, txt, col, t2_lbl) =>
-    label.delete(lbl)
-    on and piv_show_lbl and not na(v) ?
-         label.new(t2_lbl, v, txt, xloc=xloc.bar_time,
-              textcolor=col, color=color.new(color.black, 100),
-              style=label.style_none, size=size.small) : na
+f_bi_end(target_time) =>
+    tf_ms = timeframe.in_seconds(timeframe.period) * 1000
+    remaining = math.round((target_time - timenow) / tf_ms)
+    bar_index + math.max(math.min(remaining, 500), 20)
 
 if barstate.islast
     // — Set 1 —
-    if not na(s1_target_t2)
-        s1_t2c = f_clamp_t2(s1_target_t2)
-        s1_lbl = s1_t2c + 4 * 3600 * 1000
-        f_update_line(ln_s1_p,  s1_t2c), f_update_line(ln_s1_r1, s1_t2c), f_update_line(ln_s1_s1, s1_t2c)
-        f_update_line(ln_s1_r2, s1_t2c), f_update_line(ln_s1_s2, s1_t2c), f_update_line(ln_s1_r3, s1_t2c)
-        f_update_line(ln_s1_s3, s1_t2c), f_update_line(ln_s1_r4, s1_t2c), f_update_line(ln_s1_s4, s1_t2c)
-        f_update_line(ln_s1_r5, s1_t2c), f_update_line(ln_s1_s5, s1_t2c)
-        lb_s1_p  := f_mk_lbl(lb_s1_p,  piv_s1_p_on,  rv_s1_p,  f_lbl_text(rv_s1_p,  "P"),  piv_s1_p_col,  s1_lbl)
-        lb_s1_r1 := f_mk_lbl(lb_s1_r1, piv_s1_r1_on, rv_s1_r1, f_lbl_text(rv_s1_r1, "R1"), piv_s1_r1_col, s1_lbl)
-        lb_s1_s1 := f_mk_lbl(lb_s1_s1, piv_s1_s1_on, rv_s1_s1, f_lbl_text(rv_s1_s1, "S1"), piv_s1_s1_col, s1_lbl)
-        lb_s1_r2 := f_mk_lbl(lb_s1_r2, piv_s1_r2_on, rv_s1_r2, f_lbl_text(rv_s1_r2, "R2"), piv_s1_r2_col, s1_lbl)
-        lb_s1_s2 := f_mk_lbl(lb_s1_s2, piv_s1_s2_on, rv_s1_s2, f_lbl_text(rv_s1_s2, "S2"), piv_s1_s2_col, s1_lbl)
-        lb_s1_r3 := f_mk_lbl(lb_s1_r3, piv_s1_r3_on, rv_s1_r3, f_lbl_text(rv_s1_r3, "R3"), piv_s1_r3_col, s1_lbl)
-        lb_s1_s3 := f_mk_lbl(lb_s1_s3, piv_s1_s3_on, rv_s1_s3, f_lbl_text(rv_s1_s3, "S3"), piv_s1_s3_col, s1_lbl)
-        lb_s1_r4 := f_mk_lbl(lb_s1_r4, piv_s1_r4_on, rv_s1_r4, f_lbl_text(rv_s1_r4, "R4"), piv_s1_r4_col, s1_lbl)
-        lb_s1_s4 := f_mk_lbl(lb_s1_s4, piv_s1_s4_on, rv_s1_s4, f_lbl_text(rv_s1_s4, "S4"), piv_s1_s4_col, s1_lbl)
-        lb_s1_r5 := f_mk_lbl(lb_s1_r5, piv_s1_r5_on, rv_s1_r5, f_lbl_text(rv_s1_r5, "R5"), piv_s1_r5_col, s1_lbl)
-        lb_s1_s5 := f_mk_lbl(lb_s1_s5, piv_s1_s5_on, rv_s1_s5, f_lbl_text(rv_s1_s5, "S5"), piv_s1_s5_col, s1_lbl)
+    if not na(s1_start_bi)
+        s1_end = f_bi_end(s1_target_t2)
+        s1_lbi = s1_end + 3
+
+        line.delete(ln_s1_p)
+        line.delete(ln_s1_r1)
+        line.delete(ln_s1_s1)
+        line.delete(ln_s1_r2)
+        line.delete(ln_s1_s2)
+        line.delete(ln_s1_r3)
+        line.delete(ln_s1_s3)
+        line.delete(ln_s1_r4)
+        line.delete(ln_s1_s4)
+        line.delete(ln_s1_r5)
+        line.delete(ln_s1_s5)
+        ln_s1_p  := piv_s1_p_on  and not na(rv_s1_p)  ? line.new(s1_start_bi, rv_s1_p,  s1_end, rv_s1_p,  xloc=xloc.bar_index, color=piv_s1_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r1 := piv_s1_r1_on and not na(rv_s1_r1) ? line.new(s1_start_bi, rv_s1_r1, s1_end, rv_s1_r1, xloc=xloc.bar_index, color=piv_s1_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s1 := piv_s1_s1_on and not na(rv_s1_s1) ? line.new(s1_start_bi, rv_s1_s1, s1_end, rv_s1_s1, xloc=xloc.bar_index, color=piv_s1_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r2 := piv_s1_r2_on and not na(rv_s1_r2) ? line.new(s1_start_bi, rv_s1_r2, s1_end, rv_s1_r2, xloc=xloc.bar_index, color=piv_s1_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s2 := piv_s1_s2_on and not na(rv_s1_s2) ? line.new(s1_start_bi, rv_s1_s2, s1_end, rv_s1_s2, xloc=xloc.bar_index, color=piv_s1_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r3 := piv_s1_r3_on and not na(rv_s1_r3) ? line.new(s1_start_bi, rv_s1_r3, s1_end, rv_s1_r3, xloc=xloc.bar_index, color=piv_s1_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s3 := piv_s1_s3_on and not na(rv_s1_s3) ? line.new(s1_start_bi, rv_s1_s3, s1_end, rv_s1_s3, xloc=xloc.bar_index, color=piv_s1_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r4 := piv_s1_r4_on and not na(rv_s1_r4) ? line.new(s1_start_bi, rv_s1_r4, s1_end, rv_s1_r4, xloc=xloc.bar_index, color=piv_s1_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s4 := piv_s1_s4_on and not na(rv_s1_s4) ? line.new(s1_start_bi, rv_s1_s4, s1_end, rv_s1_s4, xloc=xloc.bar_index, color=piv_s1_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r5 := piv_s1_r5_on and not na(rv_s1_r5) ? line.new(s1_start_bi, rv_s1_r5, s1_end, rv_s1_r5, xloc=xloc.bar_index, color=piv_s1_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s5 := piv_s1_s5_on and not na(rv_s1_s5) ? line.new(s1_start_bi, rv_s1_s5, s1_end, rv_s1_s5, xloc=xloc.bar_index, color=piv_s1_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s1_p)
+        label.delete(lb_s1_r1)
+        label.delete(lb_s1_s1)
+        label.delete(lb_s1_r2)
+        label.delete(lb_s1_s2)
+        label.delete(lb_s1_r3)
+        label.delete(lb_s1_s3)
+        label.delete(lb_s1_r4)
+        label.delete(lb_s1_s4)
+        label.delete(lb_s1_r5)
+        label.delete(lb_s1_s5)
+        lb_s1_p  := piv_s1_p_on  and piv_show_lbl and not na(rv_s1_p)  ? label.new(s1_lbi, rv_s1_p,  f_lbl_text(rv_s1_p,  "P"),  xloc=xloc.bar_index, textcolor=piv_s1_p_col,  color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_r1 := piv_s1_r1_on and piv_show_lbl and not na(rv_s1_r1) ? label.new(s1_lbi, rv_s1_r1, f_lbl_text(rv_s1_r1, "R1"), xloc=xloc.bar_index, textcolor=piv_s1_r1_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_s1 := piv_s1_s1_on and piv_show_lbl and not na(rv_s1_s1) ? label.new(s1_lbi, rv_s1_s1, f_lbl_text(rv_s1_s1, "S1"), xloc=xloc.bar_index, textcolor=piv_s1_s1_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_r2 := piv_s1_r2_on and piv_show_lbl and not na(rv_s1_r2) ? label.new(s1_lbi, rv_s1_r2, f_lbl_text(rv_s1_r2, "R2"), xloc=xloc.bar_index, textcolor=piv_s1_r2_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_s2 := piv_s1_s2_on and piv_show_lbl and not na(rv_s1_s2) ? label.new(s1_lbi, rv_s1_s2, f_lbl_text(rv_s1_s2, "S2"), xloc=xloc.bar_index, textcolor=piv_s1_s2_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_r3 := piv_s1_r3_on and piv_show_lbl and not na(rv_s1_r3) ? label.new(s1_lbi, rv_s1_r3, f_lbl_text(rv_s1_r3, "R3"), xloc=xloc.bar_index, textcolor=piv_s1_r3_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_s3 := piv_s1_s3_on and piv_show_lbl and not na(rv_s1_s3) ? label.new(s1_lbi, rv_s1_s3, f_lbl_text(rv_s1_s3, "S3"), xloc=xloc.bar_index, textcolor=piv_s1_s3_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_r4 := piv_s1_r4_on and piv_show_lbl and not na(rv_s1_r4) ? label.new(s1_lbi, rv_s1_r4, f_lbl_text(rv_s1_r4, "R4"), xloc=xloc.bar_index, textcolor=piv_s1_r4_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_s4 := piv_s1_s4_on and piv_show_lbl and not na(rv_s1_s4) ? label.new(s1_lbi, rv_s1_s4, f_lbl_text(rv_s1_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s1_s4_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_r5 := piv_s1_r5_on and piv_show_lbl and not na(rv_s1_r5) ? label.new(s1_lbi, rv_s1_r5, f_lbl_text(rv_s1_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s1_r5_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s1_s5 := piv_s1_s5_on and piv_show_lbl and not na(rv_s1_s5) ? label.new(s1_lbi, rv_s1_s5, f_lbl_text(rv_s1_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s1_s5_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
 
     // — Set 2 —
-    if piv_s2_enable and not na(s2_target_t2)
-        s2_t2c = f_clamp_t2(s2_target_t2)
-        s2_lbl = s2_t2c + 4 * 3600 * 1000
-        f_update_line(ln_s2_p,  s2_t2c), f_update_line(ln_s2_r1, s2_t2c), f_update_line(ln_s2_s1, s2_t2c)
-        f_update_line(ln_s2_r2, s2_t2c), f_update_line(ln_s2_s2, s2_t2c), f_update_line(ln_s2_r3, s2_t2c)
-        f_update_line(ln_s2_s3, s2_t2c), f_update_line(ln_s2_r4, s2_t2c), f_update_line(ln_s2_s4, s2_t2c)
-        f_update_line(ln_s2_r5, s2_t2c), f_update_line(ln_s2_s5, s2_t2c)
-        lb_s2_p  := f_mk_lbl(lb_s2_p,  piv_s2_p_on,  rv_s2_p,  f_lbl_text(rv_s2_p,  "P"),  piv_s2_p_col,  s2_lbl)
-        lb_s2_r1 := f_mk_lbl(lb_s2_r1, piv_s2_r1_on, rv_s2_r1, f_lbl_text(rv_s2_r1, "R1"), piv_s2_r1_col, s2_lbl)
-        lb_s2_s1 := f_mk_lbl(lb_s2_s1, piv_s2_s1_on, rv_s2_s1, f_lbl_text(rv_s2_s1, "S1"), piv_s2_s1_col, s2_lbl)
-        lb_s2_r2 := f_mk_lbl(lb_s2_r2, piv_s2_r2_on, rv_s2_r2, f_lbl_text(rv_s2_r2, "R2"), piv_s2_r2_col, s2_lbl)
-        lb_s2_s2 := f_mk_lbl(lb_s2_s2, piv_s2_s2_on, rv_s2_s2, f_lbl_text(rv_s2_s2, "S2"), piv_s2_s2_col, s2_lbl)
-        lb_s2_r3 := f_mk_lbl(lb_s2_r3, piv_s2_r3_on, rv_s2_r3, f_lbl_text(rv_s2_r3, "R3"), piv_s2_r3_col, s2_lbl)
-        lb_s2_s3 := f_mk_lbl(lb_s2_s3, piv_s2_s3_on, rv_s2_s3, f_lbl_text(rv_s2_s3, "S3"), piv_s2_s3_col, s2_lbl)
-        lb_s2_r4 := f_mk_lbl(lb_s2_r4, piv_s2_r4_on, rv_s2_r4, f_lbl_text(rv_s2_r4, "R4"), piv_s2_r4_col, s2_lbl)
-        lb_s2_s4 := f_mk_lbl(lb_s2_s4, piv_s2_s4_on, rv_s2_s4, f_lbl_text(rv_s2_s4, "S4"), piv_s2_s4_col, s2_lbl)
-        lb_s2_r5 := f_mk_lbl(lb_s2_r5, piv_s2_r5_on, rv_s2_r5, f_lbl_text(rv_s2_r5, "R5"), piv_s2_r5_col, s2_lbl)
-        lb_s2_s5 := f_mk_lbl(lb_s2_s5, piv_s2_s5_on, rv_s2_s5, f_lbl_text(rv_s2_s5, "S5"), piv_s2_s5_col, s2_lbl)
+    if piv_s2_enable and not na(s2_start_bi)
+        s2_end = f_bi_end(s2_target_t2)
+        s2_lbi = s2_end + 3
+
+        line.delete(ln_s2_p)
+        line.delete(ln_s2_r1)
+        line.delete(ln_s2_s1)
+        line.delete(ln_s2_r2)
+        line.delete(ln_s2_s2)
+        line.delete(ln_s2_r3)
+        line.delete(ln_s2_s3)
+        line.delete(ln_s2_r4)
+        line.delete(ln_s2_s4)
+        line.delete(ln_s2_r5)
+        line.delete(ln_s2_s5)
+        ln_s2_p  := piv_s2_p_on  and not na(rv_s2_p)  ? line.new(s2_start_bi, rv_s2_p,  s2_end, rv_s2_p,  xloc=xloc.bar_index, color=piv_s2_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r1 := piv_s2_r1_on and not na(rv_s2_r1) ? line.new(s2_start_bi, rv_s2_r1, s2_end, rv_s2_r1, xloc=xloc.bar_index, color=piv_s2_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s1 := piv_s2_s1_on and not na(rv_s2_s1) ? line.new(s2_start_bi, rv_s2_s1, s2_end, rv_s2_s1, xloc=xloc.bar_index, color=piv_s2_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r2 := piv_s2_r2_on and not na(rv_s2_r2) ? line.new(s2_start_bi, rv_s2_r2, s2_end, rv_s2_r2, xloc=xloc.bar_index, color=piv_s2_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s2 := piv_s2_s2_on and not na(rv_s2_s2) ? line.new(s2_start_bi, rv_s2_s2, s2_end, rv_s2_s2, xloc=xloc.bar_index, color=piv_s2_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r3 := piv_s2_r3_on and not na(rv_s2_r3) ? line.new(s2_start_bi, rv_s2_r3, s2_end, rv_s2_r3, xloc=xloc.bar_index, color=piv_s2_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s3 := piv_s2_s3_on and not na(rv_s2_s3) ? line.new(s2_start_bi, rv_s2_s3, s2_end, rv_s2_s3, xloc=xloc.bar_index, color=piv_s2_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r4 := piv_s2_r4_on and not na(rv_s2_r4) ? line.new(s2_start_bi, rv_s2_r4, s2_end, rv_s2_r4, xloc=xloc.bar_index, color=piv_s2_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s4 := piv_s2_s4_on and not na(rv_s2_s4) ? line.new(s2_start_bi, rv_s2_s4, s2_end, rv_s2_s4, xloc=xloc.bar_index, color=piv_s2_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r5 := piv_s2_r5_on and not na(rv_s2_r5) ? line.new(s2_start_bi, rv_s2_r5, s2_end, rv_s2_r5, xloc=xloc.bar_index, color=piv_s2_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s5 := piv_s2_s5_on and not na(rv_s2_s5) ? line.new(s2_start_bi, rv_s2_s5, s2_end, rv_s2_s5, xloc=xloc.bar_index, color=piv_s2_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s2_p)
+        label.delete(lb_s2_r1)
+        label.delete(lb_s2_s1)
+        label.delete(lb_s2_r2)
+        label.delete(lb_s2_s2)
+        label.delete(lb_s2_r3)
+        label.delete(lb_s2_s3)
+        label.delete(lb_s2_r4)
+        label.delete(lb_s2_s4)
+        label.delete(lb_s2_r5)
+        label.delete(lb_s2_s5)
+        lb_s2_p  := piv_s2_p_on  and piv_show_lbl and not na(rv_s2_p)  ? label.new(s2_lbi, rv_s2_p,  f_lbl_text(rv_s2_p,  "P"),  xloc=xloc.bar_index, textcolor=piv_s2_p_col,  color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_r1 := piv_s2_r1_on and piv_show_lbl and not na(rv_s2_r1) ? label.new(s2_lbi, rv_s2_r1, f_lbl_text(rv_s2_r1, "R1"), xloc=xloc.bar_index, textcolor=piv_s2_r1_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_s1 := piv_s2_s1_on and piv_show_lbl and not na(rv_s2_s1) ? label.new(s2_lbi, rv_s2_s1, f_lbl_text(rv_s2_s1, "S1"), xloc=xloc.bar_index, textcolor=piv_s2_s1_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_r2 := piv_s2_r2_on and piv_show_lbl and not na(rv_s2_r2) ? label.new(s2_lbi, rv_s2_r2, f_lbl_text(rv_s2_r2, "R2"), xloc=xloc.bar_index, textcolor=piv_s2_r2_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_s2 := piv_s2_s2_on and piv_show_lbl and not na(rv_s2_s2) ? label.new(s2_lbi, rv_s2_s2, f_lbl_text(rv_s2_s2, "S2"), xloc=xloc.bar_index, textcolor=piv_s2_s2_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_r3 := piv_s2_r3_on and piv_show_lbl and not na(rv_s2_r3) ? label.new(s2_lbi, rv_s2_r3, f_lbl_text(rv_s2_r3, "R3"), xloc=xloc.bar_index, textcolor=piv_s2_r3_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_s3 := piv_s2_s3_on and piv_show_lbl and not na(rv_s2_s3) ? label.new(s2_lbi, rv_s2_s3, f_lbl_text(rv_s2_s3, "S3"), xloc=xloc.bar_index, textcolor=piv_s2_s3_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_r4 := piv_s2_r4_on and piv_show_lbl and not na(rv_s2_r4) ? label.new(s2_lbi, rv_s2_r4, f_lbl_text(rv_s2_r4, "R4"), xloc=xloc.bar_index, textcolor=piv_s2_r4_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_s4 := piv_s2_s4_on and piv_show_lbl and not na(rv_s2_s4) ? label.new(s2_lbi, rv_s2_s4, f_lbl_text(rv_s2_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s2_s4_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_r5 := piv_s2_r5_on and piv_show_lbl and not na(rv_s2_r5) ? label.new(s2_lbi, rv_s2_r5, f_lbl_text(rv_s2_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s2_r5_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
+        lb_s2_s5 := piv_s2_s5_on and piv_show_lbl and not na(rv_s2_s5) ? label.new(s2_lbi, rv_s2_s5, f_lbl_text(rv_s2_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s2_s5_col, color=color.new(color.black, 100), style=label.style_none, size=size.small) : na
 
 // ══════════════════════════════════════════════════════════════
 // TABLEAU PRINCIPAL V6
