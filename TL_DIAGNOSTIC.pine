@@ -1,0 +1,307 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// TL DIAGNOSTIC V1 — Reverse Engineering Trendlines
+// ════════════════════════════════════════════════════════════
+// Affiche TOUT : pivots détectés, trendlines candidates,
+// touches comptées, breakouts. Pour comparer avec l'original.
+// ════════════════════════════════════════════════════════════
+indicator("TL Diagnostic V1", overlay=true,
+     max_lines_count=500, max_labels_count=500)
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS
+// ══════════════════════════════════════════════════════════════
+grp = "=== CONFIG ==="
+
+piv_len        = input.int(10,           "Pivot High Bars for Anchor",    group=grp, minval=2, maxval=50)
+buffer_pct     = input.float(0.1,        "Price Buffer %",               group=grp, minval=0.0, maxval=5.0, step=0.05)
+min_touches    = input.int(3,            "Min Touches",                   group=grp, minval=1, maxval=10)
+tl_col         = input.color(color.gray, "Trendline Color",              group=grp, inline="c1")
+tl_w           = input.int(2,            "Width",                         group=grp, minval=1, maxval=5, inline="c1")
+tl_ext         = input.bool(true,        "Extend Trendlines",            group=grp)
+lookback_bars  = input.int(100,          "Lookback Pivot High (bars)",    group=grp, minval=10, maxval=500)
+brk_on         = input.bool(true,        "Show Breakouts",               group=grp, inline="brk")
+brk_col        = input.color(color.lime, "Breakout Color",               group=grp, inline="brk")
+max_tl         = input.int(1,            "Trendlines to show",           group=grp, minval=1, maxval=10)
+
+grp_dbg = "=== DEBUG ==="
+show_pivots    = input.bool(true,        "Afficher Pivot Highs",         group=grp_dbg)
+show_piv_lbl   = input.bool(true,        "Labels sur Pivots",            group=grp_dbg)
+piv_col        = input.color(color.orange, "Couleur Pivots",             group=grp_dbg)
+show_all_cand  = input.bool(false,       "Afficher TOUTES les candidates", group=grp_dbg)
+cand_col       = input.color(color.new(color.blue, 70), "Couleur candidates", group=grp_dbg)
+show_touches   = input.bool(true,        "Afficher touches sur trendline", group=grp_dbg)
+touch_col      = input.color(color.yellow, "Couleur touches",            group=grp_dbg)
+show_table     = input.bool(true,        "Afficher Tableau Debug",       group=grp_dbg)
+
+// Pivot Low aussi (pour trendlines haussières)
+grp_lo = "=== PIVOT LOW (trendlines haussières) ==="
+use_piv_low    = input.bool(false,       "Activer Pivot Low Trendlines", group=grp_lo)
+piv_lo_col     = input.color(color.aqua, "Couleur Pivot Low",           group=grp_lo)
+
+// ══════════════════════════════════════════════════════════════
+// PIVOT DETECTION
+// ══════════════════════════════════════════════════════════════
+ph = ta.pivothigh(high, piv_len, piv_len)
+pl = ta.pivotlow(low, piv_len, piv_len)
+
+var float[] ph_price = array.new_float(0)
+var int[]   ph_bar   = array.new_int(0)
+var float[] pl_price = array.new_float(0)
+var int[]   pl_bar   = array.new_int(0)
+
+if not na(ph)
+    array.unshift(ph_price, ph)
+    array.unshift(ph_bar,   bar_index - piv_len)
+    if array.size(ph_price) > 50
+        array.pop(ph_price)
+        array.pop(ph_bar)
+
+if not na(pl) and use_piv_low
+    array.unshift(pl_price, pl)
+    array.unshift(pl_bar,   bar_index - piv_len)
+    if array.size(pl_price) > 50
+        array.pop(pl_price)
+        array.pop(pl_bar)
+
+// Afficher les pivots détectés
+plotshape(show_pivots and not na(ph), "PH", style=shape.triangledown,
+     location=location.abovebar, color=piv_col, size=size.tiny, offset=-piv_len)
+plotshape(show_pivots and use_piv_low and not na(pl), "PL", style=shape.triangleup,
+     location=location.belowbar, color=piv_lo_col, size=size.tiny, offset=-piv_len)
+
+// ══════════════════════════════════════════════════════════════
+// FONCTIONS
+// ══════════════════════════════════════════════════════════════
+f_tl_val(x1, y1, slope, x) =>
+    y1 + slope * (x - x1)
+
+f_touches(x1, y1, slope, pp, pb, buf_pct) =>
+    count = 0
+    sz = array.size(pp)
+    for i = 0 to math.min(sz - 1, 49)
+        px = array.get(pb, i)
+        py = array.get(pp, i)
+        tl_y = f_tl_val(x1, y1, slope, px)
+        buf = tl_y * buf_pct / 100.0
+        if py >= tl_y - buf and py <= tl_y + buf and px >= x1
+            count += 1
+    count
+
+// ══════════════════════════════════════════════════════════════
+// STOCKAGE
+// ══════════════════════════════════════════════════════════════
+var float[] cd_x1    = array.new_float(0)
+var float[] cd_y1    = array.new_float(0)
+var float[] cd_slope = array.new_float(0)
+var int[]   cd_touch = array.new_int(0)
+var int[]   cd_type  = array.new_int(0)   // 0 = descending (PH), 1 = ascending (PL)
+
+var line[]  drawn_lines  = array.new_line(0)
+var label[] drawn_labels = array.new_label(0)
+
+// ══════════════════════════════════════════════════════════════
+// CALCUL & DESSIN
+// ══════════════════════════════════════════════════════════════
+if barstate.islast
+    // Nettoyer
+    while array.size(drawn_lines) > 0
+        line.delete(array.pop(drawn_lines))
+    while array.size(drawn_labels) > 0
+        label.delete(array.pop(drawn_labels))
+
+    array.clear(cd_x1)
+    array.clear(cd_y1)
+    array.clear(cd_slope)
+    array.clear(cd_touch)
+    array.clear(cd_type)
+
+    // ── Pivot High labels ──
+    if show_piv_lbl
+        for i = 0 to math.min(array.size(ph_price) - 1, 20)
+            px = array.get(ph_bar, i)
+            py = array.get(ph_price, i)
+            if bar_index - px < lookback_bars
+                lbl = label.new(px, py, "PH" + str.tostring(i) + "\n" + str.tostring(py, format.mintick),
+                     xloc=xloc.bar_index, textcolor=piv_col,
+                     color=color.new(piv_col, 90),
+                     style=label.style_label_down, size=size.tiny)
+                array.push(drawn_labels, lbl)
+
+    // ── Chercher trendlines descendantes (Pivot Highs) ──
+    sz_ph = array.size(ph_price)
+    for i = 0 to math.min(sz_ph - 1, 19)
+        for j = i + 1 to math.min(sz_ph - 1, 29)
+            x1_v = array.get(ph_bar, j)
+            y1_v = array.get(ph_price, j)
+            x2_v = array.get(ph_bar, i)
+            y2_v = array.get(ph_price, i)
+
+            if x2_v > x1_v and bar_index - x1_v < lookback_bars
+                slope = (y2_v - y1_v) / (x2_v - x1_v)
+                touches = f_touches(x1_v, y1_v, slope, ph_price, ph_bar, buffer_pct)
+
+                if touches >= min_touches or show_all_cand
+                    array.push(cd_x1,    float(x1_v))
+                    array.push(cd_y1,    y1_v)
+                    array.push(cd_slope, slope)
+                    array.push(cd_touch, touches)
+                    array.push(cd_type,  0)
+
+    // ── Chercher trendlines montantes (Pivot Lows) ──
+    if use_piv_low
+        sz_pl = array.size(pl_price)
+        for i = 0 to math.min(sz_pl - 1, 19)
+            for j = i + 1 to math.min(sz_pl - 1, 29)
+                x1_v = array.get(pl_bar, j)
+                y1_v = array.get(pl_price, j)
+                x2_v = array.get(pl_bar, i)
+                y2_v = array.get(pl_price, i)
+
+                if x2_v > x1_v and bar_index - x1_v < lookback_bars
+                    slope = (y2_v - y1_v) / (x2_v - x1_v)
+                    touches = f_touches(x1_v, y1_v, slope, pl_price, pl_bar, buffer_pct)
+
+                    if touches >= min_touches or show_all_cand
+                        array.push(cd_x1,    float(x1_v))
+                        array.push(cd_y1,    y1_v)
+                        array.push(cd_slope, slope)
+                        array.push(cd_touch, touches)
+                        array.push(cd_type,  1)
+
+    // ── Tri par touches (descending) ──
+    for i = 0 to math.max(array.size(cd_touch) - 2, 0)
+        if i >= array.size(cd_touch) - 1
+            break
+        max_idx = i
+        max_t   = array.get(cd_touch, i)
+        for j = i + 1 to array.size(cd_touch) - 1
+            if array.get(cd_touch, j) > max_t
+                max_idx := j
+                max_t   := array.get(cd_touch, j)
+        if max_idx != i
+            t0 = array.get(cd_x1, i)
+            array.set(cd_x1, i, array.get(cd_x1, max_idx))
+            array.set(cd_x1, max_idx, t0)
+            t1 = array.get(cd_y1, i)
+            array.set(cd_y1, i, array.get(cd_y1, max_idx))
+            array.set(cd_y1, max_idx, t1)
+            t2 = array.get(cd_slope, i)
+            array.set(cd_slope, i, array.get(cd_slope, max_idx))
+            array.set(cd_slope, max_idx, t2)
+            t3 = array.get(cd_touch, i)
+            array.set(cd_touch, i, array.get(cd_touch, max_idx))
+            array.set(cd_touch, max_idx, t3)
+            t4 = array.get(cd_type, i)
+            array.set(cd_type, i, array.get(cd_type, max_idx))
+            array.set(cd_type, max_idx, t4)
+
+    // ── Dessiner ──
+    total_cand = array.size(cd_touch)
+    best_touches = total_cand > 0 ? array.get(cd_touch, 0) : 0
+    drawn_count = 0
+
+    for i = 0 to math.max(total_cand - 1, 0)
+        if i >= total_cand
+            break
+        tc = array.get(cd_touch, i)
+        tp = array.get(cd_type, i)
+        cx1 = int(array.get(cd_x1, i))
+        cy1 = array.get(cd_y1, i)
+        sl  = array.get(cd_slope, i)
+
+        is_valid = tc >= min_touches
+        is_top   = drawn_count < max_tl and is_valid
+
+        // Couleur selon rang
+        col = is_top ? tl_col : (show_all_cand ? cand_col : na)
+        w   = is_top ? tl_w : 1
+
+        if not na(col)
+            end_x = tl_ext ? bar_index + 50 : bar_index
+            end_y = f_tl_val(cx1, cy1, sl, end_x)
+
+            ln = line.new(cx1, cy1, end_x, end_y,
+                 xloc=xloc.bar_index, color=col, width=w,
+                 style=is_top ? line.style_solid : line.style_dashed)
+            array.push(drawn_lines, ln)
+
+            // Label avec info
+            mid_x = int(math.round((cx1 + bar_index) / 2))
+            mid_y = f_tl_val(cx1, cy1, sl, mid_x)
+            info = (tp == 0 ? "DESC" : "ASC") + " | " + str.tostring(tc) + " touches"
+            if is_top
+                info := "★ " + info + " ★"
+            lbl = label.new(mid_x, mid_y, info,
+                 xloc=xloc.bar_index, textcolor=is_top ? color.white : color.silver,
+                 color=color.new(is_top ? tl_col : cand_col, 80),
+                 style=tp == 0 ? label.style_label_down : label.style_label_up,
+                 size=size.tiny)
+            array.push(drawn_labels, lbl)
+
+            if is_top
+                drawn_count += 1
+
+                // Marquer les touches sur la trendline
+                if show_touches
+                    src_p = tp == 0 ? ph_price : pl_price
+                    src_b = tp == 0 ? ph_bar   : pl_bar
+                    for k = 0 to math.min(array.size(src_p) - 1, 49)
+                        kx = array.get(src_b, k)
+                        ky = array.get(src_p, k)
+                        tly = f_tl_val(cx1, cy1, sl, kx)
+                        buf = tly * buffer_pct / 100.0
+                        if ky >= tly - buf and ky <= tly + buf and kx >= cx1
+                            tc_lbl = label.new(kx, ky, "✦",
+                                 xloc=xloc.bar_index, textcolor=touch_col,
+                                 color=color.new(touch_col, 100),
+                                 style=label.style_label_down, size=size.small)
+                            array.push(drawn_labels, tc_lbl)
+
+                // Breakout
+                if brk_on
+                    tl_now  = f_tl_val(cx1, cy1, sl, bar_index)
+                    tl_prev = f_tl_val(cx1, cy1, sl, bar_index - 1)
+                    if tp == 0 and close > tl_now and close[1] <= tl_prev
+                        bl = label.new(bar_index, low, "BREAKOUT ▲",
+                             xloc=xloc.bar_index, textcolor=brk_col,
+                             color=color.new(brk_col, 70),
+                             style=label.style_label_up, size=size.normal)
+                        array.push(drawn_labels, bl)
+                    if tp == 1 and close < tl_now and close[1] >= tl_prev
+                        bl = label.new(bar_index, high, "BREAKDOWN ▼",
+                             xloc=xloc.bar_index, textcolor=color.red,
+                             color=color.new(color.red, 70),
+                             style=label.style_label_down, size=size.normal)
+                        array.push(drawn_labels, bl)
+
+    // ── Tableau debug ──
+    if show_table
+        var table t = table.new(position.top_right, 2, 7,
+             bgcolor=color.new(#2A2A2A, 10), border_width=1,
+             border_color=color.rgb(80, 80, 80))
+
+        table.cell(t, 0, 0, "TL Diag V1",     text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 20))
+        table.cell(t, 1, 0, "Ephore",          text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 20))
+
+        table.cell(t, 0, 1, "Pivots PH",       text_color=color.white, text_size=size.small)
+        table.cell(t, 1, 1, str.tostring(array.size(ph_price)), text_color=piv_col, text_size=size.small)
+
+        table.cell(t, 0, 2, "Candidates",      text_color=color.white, text_size=size.small)
+        table.cell(t, 1, 2, str.tostring(total_cand), text_color=color.yellow, text_size=size.small)
+
+        table.cell(t, 0, 3, "Valides (≥" + str.tostring(min_touches) + "t)", text_color=color.white, text_size=size.small)
+        valid_count = 0
+        for i = 0 to math.max(total_cand - 1, 0)
+            if i < total_cand and array.get(cd_touch, i) >= min_touches
+                valid_count += 1
+        table.cell(t, 1, 3, str.tostring(valid_count), text_color=valid_count > 0 ? color.lime : color.red, text_size=size.small)
+
+        table.cell(t, 0, 4, "Best touches",    text_color=color.white, text_size=size.small)
+        table.cell(t, 1, 4, str.tostring(best_touches), text_color=best_touches >= min_touches ? color.lime : color.red, text_size=size.small)
+
+        table.cell(t, 0, 5, "Buffer %",        text_color=color.white, text_size=size.small)
+        table.cell(t, 1, 5, str.tostring(buffer_pct, "0.##") + "%", text_color=color.yellow, text_size=size.small)
+
+        table.cell(t, 0, 6, "Piv Len",         text_color=color.white, text_size=size.small)
+        table.cell(t, 1, 6, str.tostring(piv_len), text_color=color.yellow, text_size=size.small)
