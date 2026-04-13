@@ -73,22 +73,25 @@ if tl_enable and not na(ph) and array.size(ph_price) >= 2
     top_y1 = 0.0
     top_sl = 0.0
 
-    for i = 0 to math.min(sz - 1, 19)
-        for j = i + 1 to math.min(sz - 1, 29)
-            x1_v = array.get(ph_bar, j)
-            y1_v = array.get(ph_price, j)
-            x2_v = array.get(ph_bar, i)
-            y2_v = array.get(ph_price, i)
+    max_i = math.min(sz - 1, 19)
+    max_j = math.min(sz - 1, 29)
+    for i = 0 to max_i
+        for j = i + 1 to max_j
+            if j < sz
+                x1_v = array.get(ph_bar, j)
+                y1_v = array.get(ph_price, j)
+                x2_v = array.get(ph_bar, i)
+                y2_v = array.get(ph_price, i)
 
-            if x2_v > x1_v and bar_index - x1_v <= tl_lookback
-                slope = (y2_v - y1_v) / (x2_v - x1_v)
-                if slope <= 0
-                    touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
-                    if touches >= tl_min_touches and touches > top_tc
-                        top_tc := touches
-                        top_x1 := float(x1_v)
-                        top_y1 := y1_v
-                        top_sl := slope
+                if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                    slope = (y2_v - y1_v) / (x2_v - x1_v)
+                    if slope <= 0
+                        touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
+                        if touches >= tl_min_touches and touches > top_tc
+                            top_tc := touches
+                            top_x1 := float(x1_v)
+                            top_y1 := y1_v
+                            top_sl := slope
 
     if top_tc >= tl_min_touches
         best_x1    := top_x1
