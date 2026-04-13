@@ -1,0 +1,258 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// EPHORE SIGNATOR V6 — Flèches sur 2ème bougie consécutive
+// ════════════════════════════════════════════════════════════
+// Signal : flèche à la 2ème bougie consécutive bull ou bear
+//   - Haussier (2 bougies bleues) → flèche blanche ▲
+//   - Baissier (2 bougies rouges) → flèche noire ▼
+// Quality Filter : scoring multi-critères pour classer
+//   les signaux en FORT ou MOYEN.
+// ════════════════════════════════════════════════════════════
+indicator("Ephore Signator V6", overlay=true, max_labels_count=500)
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS — SIGNATOR
+// ══════════════════════════════════════════════════════════════
+grp_sig = "=== EPHORE SIGNATOR V6 ==="
+
+sig_show_tbl   = input.bool(true,    "Afficher Tableau Signator",      group=grp_sig)
+sig_tbl_pos    = input.string("Top Right", "Position Tableau",         group=grp_sig,
+     options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+sig_custom_col = input.bool(true,    "Personnaliser Couleurs Flèches", group=grp_sig)
+
+sig_show_fort  = input.bool(true,    "Afficher flèches FORT",          group=grp_sig)
+sig_fort_long  = input.color(#FFFFFF, "Couleur flèche Long (FORT)",    group=grp_sig)
+sig_fort_short = input.color(#000000, "Couleur flèche Short (FORT)",   group=grp_sig)
+
+sig_show_moyen = input.bool(false,   "Afficher flèches MOYEN",        group=grp_sig)
+sig_moyen_long = input.color(#B2B2B2, "Couleur flèche Long (MOYEN)",  group=grp_sig)
+sig_moyen_short= input.color(#333333, "Couleur flèche Short (MOYEN)", group=grp_sig)
+
+sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
+sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
+sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
+     options=["Normal", "Rapide", "Lent"])
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS — CANDLE QUALITY FILTER V1
+// ══════════════════════════════════════════════════════════════
+grp_cqf = "=== CANDLE QUALITY FILTER V1 ==="
+
+cqf_enable     = input.bool(true,    "Activer le Filtre Qualité Bougie", group=grp_cqf)
+
+// — Structure —
+cqf_struct_on  = input.bool(true,    "① Activer Filtre Structure",       group=grp_cqf)
+cqf_body_ratio = input.float(0.5,    "├ Ratio Corps/Range Min",          group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
+cqf_close_pos  = input.float(0.33,   "├ Position Close (tiers)",         group=grp_cqf, minval=0.0, maxval=1.0, step=0.01)
+cqf_wick_max   = input.float(0.35,   "├ Mèche Adverse Max",             group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
+
+// — Momentum ATR —
+cqf_mom_on     = input.bool(true,    "② Activer Filtre Momentum ATR",    group=grp_cqf)
+cqf_atr_len    = input.int(14,       "├ Période ATR",                    group=grp_cqf, minval=1, maxval=100)
+cqf_range_min  = input.float(0.5,    "├ Range Min (x ATR)",              group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
+
+// — Volume —
+cqf_vol_on     = input.bool(true,    "③ Activer Filtre Volume",          group=grp_cqf)
+cqf_vol_len    = input.int(20,       "├ Période SMA Volume",             group=grp_cqf, minval=1, maxval=200)
+cqf_vol_ratio  = input.float(1.0,    "├ Ratio Volume Min",               group=grp_cqf, minval=0.0, maxval=10.0, step=0.1)
+
+// — Engulfing —
+cqf_eng_on     = input.bool(true,    "④ Activer Filtre Engulfing",       group=grp_cqf)
+cqf_eng_full   = input.bool(true,    "├ Exiger Engulfing Complet",       group=grp_cqf)
+
+// — Gap Conviction —
+cqf_gap_on     = input.bool(true,    "⑤ Activer Filtre Gap Conviction",  group=grp_cqf)
+cqf_gap_type   = input.string("ATR", "├ Type de Mesure",                 group=grp_cqf, options=["ATR", "%"])
+cqf_gap_atr    = input.float(0.3,    "├ Gap Min (x ATR)",                group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
+cqf_gap_pct    = input.float(0.5,    "├ Gap Min (%)",                    group=grp_cqf, minval=0.0, maxval=10.0, step=0.1)
+
+// — Scoring —
+cqf_score_on   = input.bool(true,    "⑥ Utiliser Mode Scoring",          group=grp_cqf)
+cqf_score_min  = input.int(50,       "├ Score Minimum (0~100)",          group=grp_cqf, minval=0, maxval=100)
+cqf_w_struct   = input.int(25,       "├ Poids Structure",                group=grp_cqf, minval=0, maxval=100)
+cqf_w_mom      = input.int(25,       "├ Poids Momentum",                 group=grp_cqf, minval=0, maxval=100)
+cqf_w_vol      = input.int(25,       "├ Poids Volume",                   group=grp_cqf, minval=0, maxval=100)
+cqf_w_gap      = input.int(25,       "├ Poids Gap",                      group=grp_cqf, minval=0, maxval=100)
+
+// ══════════════════════════════════════════════════════════════
+// DÉTECTION BOUGIES CONSÉCUTIVES
+// ══════════════════════════════════════════════════════════════
+is_bull = close > open
+is_bear = close < open
+
+// Lag mode : combien de bougies consécutives avant signal
+lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
+
+// Compteur de bougies consécutives
+var int bull_count = 0
+var int bear_count = 0
+
+if is_bull
+    bull_count += 1
+    bear_count := 0
+else if is_bear
+    bear_count += 1
+    bull_count := 0
+else
+    bull_count := 0
+    bear_count := 0
+
+// Signal brut : N-ème bougie consécutive
+raw_long  = bull_count == lag
+raw_short = bear_count == lag
+
+// ══════════════════════════════════════════════════════════════
+// CANDLE QUALITY FILTER — CALCULS
+// ══════════════════════════════════════════════════════════════
+body      = math.abs(close - open)
+range_hl  = high - low
+body_ratio = range_hl > 0 ? body / range_hl : 0.0
+
+// Mèche adverse : pour bull c'est la mèche haute, pour bear la mèche basse
+wick_bull_adverse = range_hl > 0 ? (high - close) / range_hl : 0.0
+wick_bear_adverse = range_hl > 0 ? (open - low)   / range_hl : 0.0   // pour bear: close < open, mèche basse = close - low mais on veut l'adverse = open - low... correction:
+// Pour bear (close < open): corps = open - close, mèche adverse (haute) = high - open
+wick_adverse = is_bull ? (high - close) / math.max(range_hl, syminfo.mintick) : (close < open ? (high - open) / math.max(range_hl, syminfo.mintick) : 0.0)
+
+// Position du close dans le range (0 = bas, 1 = haut)
+close_position = range_hl > 0 ? (close - low) / range_hl : 0.5
+
+// ATR
+atr_val = ta.atr(cqf_atr_len)
+
+// Volume
+vol_sma = ta.sma(volume, cqf_vol_len)
+vol_ratio_val = vol_sma > 0 ? volume / vol_sma : 0.0
+
+// Engulfing
+eng_bull = is_bull and close > open[1] and open < close[1]   // bougie actuelle englobe la précédente
+eng_bear = is_bear and open > close[1] and close < open[1]
+eng_bull_full = eng_bull and high > high[1] and low < low[1]
+eng_bear_full = eng_bear and high > high[1] and low < low[1]
+
+// Gap
+gap_val = math.abs(open - close[1])
+gap_atr_ratio = atr_val > 0 ? gap_val / atr_val : 0.0
+gap_pct_val   = close[1] > 0 ? (gap_val / close[1]) * 100 : 0.0
+
+// ══════════════════════════════════════════════════════════════
+// SCORING
+// ══════════════════════════════════════════════════════════════
+f_score() =>
+    if not cqf_enable
+        100.0
+    else if not cqf_score_on
+        // Mode binaire : chaque filtre actif doit passer
+        pass_struct = not cqf_struct_on or (body_ratio >= cqf_body_ratio and wick_adverse <= cqf_wick_max and (is_bull ? close_position >= (1.0 - cqf_close_pos) : close_position <= cqf_close_pos))
+        pass_mom    = not cqf_mom_on    or (range_hl >= cqf_range_min * atr_val)
+        pass_vol    = not cqf_vol_on    or (vol_ratio_val >= cqf_vol_ratio)
+        pass_eng    = not cqf_eng_on    or (is_bull ? (cqf_eng_full ? eng_bull_full : eng_bull) : (cqf_eng_full ? eng_bear_full : eng_bear))
+        pass_gap    = not cqf_gap_on    or (cqf_gap_type == "ATR" ? gap_atr_ratio >= cqf_gap_atr : gap_pct_val >= cqf_gap_pct)
+        pass_struct and pass_mom and pass_vol and pass_eng and pass_gap ? 100.0 : 0.0
+    else
+        // Mode scoring pondéré
+        total_w = float(cqf_w_struct + cqf_w_mom + cqf_w_vol + cqf_w_gap)
+        if total_w == 0
+            100.0
+        else
+            s_struct = 0.0
+            if cqf_struct_on and cqf_w_struct > 0
+                br = math.min(body_ratio / math.max(cqf_body_ratio, 0.01), 1.0)
+                wa = 1.0 - math.min(wick_adverse / math.max(cqf_wick_max, 0.01), 1.0)
+                cp = is_bull ? math.min(close_position / math.max(1.0 - cqf_close_pos, 0.01), 1.0) : math.min((1.0 - close_position) / math.max(1.0 - cqf_close_pos, 0.01), 1.0)
+                s_struct := (br + wa + cp) / 3.0 * 100.0
+            else
+                s_struct := 100.0
+
+            s_mom = 0.0
+            if cqf_mom_on and cqf_w_mom > 0
+                s_mom := math.min(range_hl / math.max(cqf_range_min * atr_val, syminfo.mintick), 1.0) * 100.0
+            else
+                s_mom := 100.0
+
+            s_vol = 0.0
+            if cqf_vol_on and cqf_w_vol > 0
+                s_vol := math.min(vol_ratio_val / math.max(cqf_vol_ratio, 0.01), 1.0) * 100.0
+            else
+                s_vol := 100.0
+
+            s_gap = 0.0
+            if cqf_gap_on and cqf_w_gap > 0
+                if cqf_gap_type == "ATR"
+                    s_gap := math.min(gap_atr_ratio / math.max(cqf_gap_atr, 0.01), 1.0) * 100.0
+                else
+                    s_gap := math.min(gap_pct_val / math.max(cqf_gap_pct, 0.01), 1.0) * 100.0
+            else
+                s_gap := 100.0
+
+            (s_struct * cqf_w_struct + s_mom * cqf_w_mom + s_vol * cqf_w_vol + s_gap * cqf_w_gap) / total_w
+
+score = f_score()
+
+// ══════════════════════════════════════════════════════════════
+// CLASSIFICATION SIGNAL
+// ══════════════════════════════════════════════════════════════
+is_fort  = score >= cqf_score_min
+is_moyen = score >= sig_force_min and score < cqf_score_min
+
+// Filtrage final
+sig_long_fort   = raw_long  and (not sig_filter_on or is_fort)
+sig_short_fort  = raw_short and (not sig_filter_on or is_fort)
+sig_long_moyen  = raw_long  and sig_filter_on and is_moyen
+sig_short_moyen = raw_short and sig_filter_on and is_moyen
+
+// ══════════════════════════════════════════════════════════════
+// COULEURS FLÈCHES
+// ══════════════════════════════════════════════════════════════
+col_fort_l  = sig_custom_col ? sig_fort_long   : #FFFFFF
+col_fort_s  = sig_custom_col ? sig_fort_short  : #000000
+col_moyen_l = sig_custom_col ? sig_moyen_long  : #B2B2B2
+col_moyen_s = sig_custom_col ? sig_moyen_short : #333333
+
+// ══════════════════════════════════════════════════════════════
+// AFFICHAGE FLÈCHES
+// ══════════════════════════════════════════════════════════════
+// FORT
+plotshape(sig_show_fort and sig_long_fort,  "Long FORT",  style=shape.arrowup,
+     location=location.belowbar, color=col_fort_l, size=size.normal)
+plotshape(sig_show_fort and sig_short_fort, "Short FORT", style=shape.arrowdown,
+     location=location.abovebar, color=col_fort_s, size=size.normal)
+
+// MOYEN
+plotshape(sig_show_moyen and sig_long_moyen,  "Long MOYEN",  style=shape.arrowup,
+     location=location.belowbar, color=col_moyen_l, size=size.small)
+plotshape(sig_show_moyen and sig_short_moyen, "Short MOYEN", style=shape.arrowdown,
+     location=location.abovebar, color=col_moyen_s, size=size.small)
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU INFO
+// ══════════════════════════════════════════════════════════════
+if sig_show_tbl and barstate.islast
+    pos = sig_tbl_pos == "Top Right" ? position.top_right :
+         sig_tbl_pos == "Top Left" ? position.top_left :
+         sig_tbl_pos == "Bottom Right" ? position.bottom_right :
+         sig_tbl_pos == "Bottom Left" ? position.bottom_left :
+         sig_tbl_pos == "Middle Right" ? position.middle_right :
+         position.middle_left
+
+    var table tbl = table.new(pos, 2, 5, bgcolor=color.new(#151622, 10), border_width=1, border_color=color.rgb(95, 97, 125))
+
+    table.cell(tbl, 0, 0, "Signator V6", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(tbl, 1, 0, "Ephore",      text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 20))
+
+    table.cell(tbl, 0, 1, "Score",    text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 1, str.tostring(score, "0.0"), text_color=score >= cqf_score_min ? color.lime : score >= sig_force_min ? color.yellow : color.red, text_size=size.small)
+
+    table.cell(tbl, 0, 2, "Seuil",    text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 2, str.tostring(sig_force_min), text_color=color.yellow, text_size=size.small)
+
+    last_sig = sig_long_fort or sig_long_moyen ? "▲ LONG" : sig_short_fort or sig_short_moyen ? "▼ SHORT" : "—"
+    last_col = sig_long_fort or sig_long_moyen ? color.lime : sig_short_fort or sig_short_moyen ? color.red : color.gray
+
+    table.cell(tbl, 0, 3, "Signal",   text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 3, last_sig,   text_color=last_col, text_size=size.normal)
+
+    table.cell(tbl, 0, 4, "Qualité",  text_color=color.white, text_size=size.small)
+    qual = is_fort ? "FORT" : is_moyen ? "MOYEN" : "FAIBLE"
+    qual_col = is_fort ? color.lime : is_moyen ? color.yellow : color.red
+    table.cell(tbl, 1, 4, qual, text_color=qual_col, text_size=size.small)
