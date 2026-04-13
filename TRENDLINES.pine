@@ -121,60 +121,60 @@ f_find_and_draw(pp, pb, en, buf, mt, col, w, ext, lb, brk_on, brk_col, max_n, li
                             array.push(csl, slope)
                             array.push(ctc, touches)
 
-        // Tri par touches
-        for i = 0 to math.max(array.size(ctc) - 2, 0)
-            if i >= array.size(ctc) - 1
-                break
-            max_idx = i
-            max_t   = array.get(ctc, i)
-            for j = i + 1 to array.size(ctc) - 1
-                if array.get(ctc, j) > max_t
-                    max_idx := j
-                    max_t   := array.get(ctc, j)
-            if max_idx != i
-                t0 = array.get(cx1, i)
-                array.set(cx1, i, array.get(cx1, max_idx))
-                array.set(cx1, max_idx, t0)
-                t1 = array.get(cy1, i)
-                array.set(cy1, i, array.get(cy1, max_idx))
-                array.set(cy1, max_idx, t1)
-                t2 = array.get(csl, i)
-                array.set(csl, i, array.get(csl, max_idx))
-                array.set(csl, max_idx, t2)
-                t3 = array.get(ctc, i)
-                array.set(ctc, i, array.get(ctc, max_idx))
-                array.set(ctc, max_idx, t3)
+        // Tri par touches (seulement si >= 2 candidats)
+        if array.size(ctc) >= 2
+            for i = 0 to array.size(ctc) - 2
+                max_idx = i
+                max_t   = array.get(ctc, i)
+                for j = i + 1 to array.size(ctc) - 1
+                    if array.get(ctc, j) > max_t
+                        max_idx := j
+                        max_t   := array.get(ctc, j)
+                if max_idx != i
+                    t0 = array.get(cx1, i)
+                    array.set(cx1, i, array.get(cx1, max_idx))
+                    array.set(cx1, max_idx, t0)
+                    t1 = array.get(cy1, i)
+                    array.set(cy1, i, array.get(cy1, max_idx))
+                    array.set(cy1, max_idx, t1)
+                    t2 = array.get(csl, i)
+                    array.set(csl, i, array.get(csl, max_idx))
+                    array.set(csl, max_idx, t2)
+                    t3 = array.get(ctc, i)
+                    array.set(ctc, i, array.get(ctc, max_idx))
+                    array.set(ctc, max_idx, t3)
 
-        // Dessiner
-        for i = 0 to math.min(array.size(ctc) - 1, max_n - 1)
-            lx1 = int(array.get(cx1, i))
-            ly1 = array.get(cy1, i)
-            sl  = array.get(csl, i)
+        // Dessiner (seulement si candidats trouvés)
+        if array.size(ctc) > 0
+            for i = 0 to math.min(array.size(ctc) - 1, max_n - 1)
+                lx1 = int(array.get(cx1, i))
+                ly1 = array.get(cy1, i)
+                sl  = array.get(csl, i)
 
-            end_x = ext ? bar_index + 50 : bar_index
-            end_y = f_tl_value(lx1, ly1, sl, end_x)
+                end_x = ext ? bar_index + 50 : bar_index
+                end_y = f_tl_value(lx1, ly1, sl, end_x)
 
-            ln = line.new(lx1, ly1, end_x, end_y,
-                 xloc=xloc.bar_index, color=col, width=w,
-                 style=line.style_solid)
-            array.push(lines_arr, ln)
+                ln = line.new(lx1, ly1, end_x, end_y,
+                     xloc=xloc.bar_index, color=col, width=w,
+                     style=line.style_solid)
+                array.push(lines_arr, ln)
 
-            // Breakout / Breakdown
-            if brk_on
-                tl_now  = f_tl_value(lx1, ly1, sl, bar_index)
-                tl_prev = f_tl_value(lx1, ly1, sl, bar_index - 1)
-                if is_desc and close > tl_now and close[1] <= tl_prev
-                    lbl = label.new(bar_index, low, "Breakout",
-                         xloc=xloc.bar_index, textcolor=brk_col,
-                         color=color.new(brk_col, 80),
-                         style=label.style_label_up, size=size.small)
-                    array.push(labels_arr, lbl)
-                if not is_desc and close < tl_now and close[1] >= tl_prev
-                    lbl = label.new(bar_index, high, "Breakdown",
-                         xloc=xloc.bar_index, textcolor=brk_col,
-                         color=color.new(brk_col, 80),
-                         style=label.style_label_down, size=size.small)
-                    array.push(labels_arr, lbl)
+                // Breakout / Breakdown
+                if brk_on
+                    tl_now  = f_tl_value(lx1, ly1, sl, bar_index)
+                    tl_prev = f_tl_value(lx1, ly1, sl, bar_index - 1)
+                    if is_desc and close > tl_now and close[1] <= tl_prev
+                        lbl = label.new(bar_index, low, "Breakout",
+                             xloc=xloc.bar_index, textcolor=brk_col,
+                             color=color.new(brk_col, 80),
+                             style=label.style_label_up, size=size.small)
+                        array.push(labels_arr, lbl)
+                    if not is_desc and close < tl_now and close[1] >= tl_prev
+                        lbl = label.new(bar_index, high, "Breakdown",
+                             xloc=xloc.bar_index, textcolor=brk_col,
+                             color=color.new(brk_col, 80),
+                             style=label.style_label_down, size=size.small)
+                        array.push(labels_arr, lbl)
 
 // ══════════════════════════════════════════════════════════════
 // STOCKAGE & DESSIN
