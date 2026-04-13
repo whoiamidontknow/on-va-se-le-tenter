@@ -29,9 +29,10 @@ sig_moyen_long = input.color(#B2B2B2, "Couleur flèche Long (MOYEN)",  group=grp
 sig_moyen_short= input.color(#333333, "Couleur flèche Short (MOYEN)", group=grp_sig)
 
 sig_filter_on  = input.bool(true,    "Activer Filtre",                 group=grp_sig)
-sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
+sig_force_min  = input.int(35,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
 sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
      options=["Normal", "Rapide", "Lent"])
+sig_cooldown   = input.int(10,       "Cooldown (bars min entre signaux)", group=grp_sig, minval=1, maxval=100)
 
 // ══════════════════════════════════════════════════════════════
 // INPUTS — CANDLE QUALITY FILTER V1
@@ -42,14 +43,14 @@ cqf_enable     = input.bool(true,    "Activer le Filtre Qualité Bougie", group=
 
 // — Structure —
 cqf_struct_on  = input.bool(true,    "① Activer Filtre Structure",       group=grp_cqf)
-cqf_body_ratio = input.float(0.5,    "├ Ratio Corps/Range Min",          group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
+cqf_body_ratio = input.float(0.55,   "├ Ratio Corps/Range Min",          group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
 cqf_close_pos  = input.float(0.33,   "├ Position Close (tiers)",         group=grp_cqf, minval=0.0, maxval=1.0, step=0.01)
 cqf_wick_max   = input.float(0.35,   "├ Mèche Adverse Max",             group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
 
 // — Momentum ATR —
 cqf_mom_on     = input.bool(true,    "② Activer Filtre Momentum ATR",    group=grp_cqf)
 cqf_atr_len    = input.int(14,       "├ Période ATR",                    group=grp_cqf, minval=1, maxval=100)
-cqf_range_min  = input.float(0.5,    "├ Range Min (x ATR)",              group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
+cqf_range_min  = input.float(0.7,    "├ Range Min (x ATR)",              group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
 
 // — Volume —
 cqf_vol_on     = input.bool(true,    "③ Activer Filtre Volume",          group=grp_cqf)
@@ -68,7 +69,7 @@ cqf_gap_pct    = input.float(0.5,    "├ Gap Min (%)",                    group
 
 // — Scoring —
 cqf_score_on   = input.bool(true,    "⑥ Utiliser Mode Scoring",          group=grp_cqf)
-cqf_score_min  = input.int(50,       "├ Score Minimum (0~100)",          group=grp_cqf, minval=0, maxval=100)
+cqf_score_min  = input.int(65,       "├ Score Minimum (0~100)",          group=grp_cqf, minval=0, maxval=100)
 cqf_w_struct   = input.int(25,       "├ Poids Structure",                group=grp_cqf, minval=0, maxval=100)
 cqf_w_mom      = input.int(25,       "├ Poids Momentum",                 group=grp_cqf, minval=0, maxval=100)
 cqf_w_vol      = input.int(25,       "├ Poids Volume",                   group=grp_cqf, minval=0, maxval=100)
@@ -98,7 +99,7 @@ bull_flip = is_bull and not is_bull[1]   // passage bear → bull
 bear_flip = is_bear and not is_bear[1]   // passage bull → bear
 
 // Lag mode : combien de bougies APRÈS le flip avant signal
-lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
+lag = sig_lag_mode == "Rapide" ? 2 : sig_lag_mode == "Lent" ? 5 : 3
 
 // Compteur de bougies depuis le dernier flip
 var int bull_count = 0
@@ -135,6 +136,25 @@ if raw_long
     bull_fired := true
 if raw_short
     bear_fired := true
+
+// ── COOLDOWN : empêche les signaux répétés du même type pendant N bars ──
+var int bars_since_long  = 9999
+var int bars_since_short = 9999
+bars_since_long  += 1
+bars_since_short += 1
+
+cooldown_ok_long  = bars_since_long  >= sig_cooldown
+cooldown_ok_short = bars_since_short >= sig_cooldown
+
+// Appliquer cooldown aux signaux bruts
+raw_long  := raw_long  and cooldown_ok_long
+raw_short := raw_short and cooldown_ok_short
+
+// Reset compteur cooldown quand un signal passe
+if raw_long
+    bars_since_long := 0
+if raw_short
+    bars_since_short := 0
 
 // ══════════════════════════════════════════════════════════════
 // CANDLE QUALITY FILTER — CALCULS
