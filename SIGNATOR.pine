@@ -28,7 +28,7 @@ sig_show_moyen = input.bool(false,   "Afficher flèches MOYEN",        group=grp
 sig_moyen_long = input.color(#B2B2B2, "Couleur flèche Long (MOYEN)",  group=grp_sig)
 sig_moyen_short= input.color(#333333, "Couleur flèche Short (MOYEN)", group=grp_sig)
 
-sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
+sig_filter_on  = input.bool(true,    "Activer Filtre",                 group=grp_sig)
 sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
 sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
      options=["Normal", "Rapide", "Lent"])
@@ -93,26 +93,48 @@ ema_base = ta.ema(close, 33)
 is_bull = sha_close > ema_base
 is_bear = sha_close <= ema_base
 
-// Lag mode : combien de bougies consécutives avant signal
+// Détection du FLIP (changement de couleur Heishinator)
+bull_flip = is_bull and not is_bull[1]   // passage bear → bull
+bear_flip = is_bear and not is_bear[1]   // passage bull → bear
+
+// Lag mode : combien de bougies APRÈS le flip avant signal
 lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
 
-// Compteur de bougies consécutives
+// Compteur de bougies depuis le dernier flip
 var int bull_count = 0
 var int bear_count = 0
+var bool bull_fired = false
+var bool bear_fired = false
 
-if is_bull
-    bull_count += 1
+if bull_flip
+    bull_count := 1
+    bull_fired := false
     bear_count := 0
-else if is_bear
-    bear_count += 1
-    bull_count := 0
+else if is_bull
+    bull_count += 1
 else
     bull_count := 0
-    bear_count := 0
+    bull_fired := false
 
-// Signal brut : N-ème bougie consécutive
-raw_long  = bull_count == lag
-raw_short = bear_count == lag
+if bear_flip
+    bear_count := 1
+    bear_fired := false
+    bull_count := 0
+else if is_bear
+    bear_count += 1
+else
+    bear_count := 0
+    bear_fired := false
+
+// Signal brut : N-ème bougie après le flip, UNE SEULE FOIS par flip
+raw_long  = bull_count == lag and not bull_fired
+raw_short = bear_count == lag and not bear_fired
+
+// Marquer comme tiré pour ne pas répéter
+if raw_long
+    bull_fired := true
+if raw_short
+    bear_fired := true
 
 // ══════════════════════════════════════════════════════════════
 // CANDLE QUALITY FILTER — CALCULS
@@ -205,12 +227,14 @@ score = f_score()
 // ══════════════════════════════════════════════════════════════
 // CLASSIFICATION SIGNAL
 // ══════════════════════════════════════════════════════════════
+// Le score est TOUJOURS calculé. Le filtre contrôle la sélectivité.
 is_fort  = score >= cqf_score_min
 is_moyen = score >= sig_force_min and score < cqf_score_min
 
-// Filtrage final
-sig_long_fort   = raw_long  and (not sig_filter_on or is_fort)
-sig_short_fort  = raw_short and (not sig_filter_on or is_fort)
+// Filtrage final : quand filtre ON, seuls les FORT/MOYEN passent
+// Quand filtre OFF, tous les signaux bruts passent comme FORT (pas de filtrage)
+sig_long_fort   = raw_long  and (sig_filter_on ? is_fort  : true)
+sig_short_fort  = raw_short and (sig_filter_on ? is_fort  : true)
 sig_long_moyen  = raw_long  and sig_filter_on and is_moyen
 sig_short_moyen = raw_short and sig_filter_on and is_moyen
 
@@ -240,6 +264,35 @@ plotshape(sig_show_moyen and sig_short_moyen, "Short MOYEN", style=shape.arrowdo
 // ══════════════════════════════════════════════════════════════
 // TABLEAU INFO
 // ══════════════════════════════════════════════════════════════
+// TF label
+tf_sec = timeframe.in_seconds(timeframe.period)
+tf_lbl = tf_sec < 60 ? str.tostring(tf_sec) + "s" :
+     tf_sec < 3600 ? str.tostring(tf_sec / 60, "0") + " min" :
+     tf_sec < 86400 ? str.tostring(tf_sec / 3600, "0") + "h" :
+     str.tostring(tf_sec / 86400, "0") + "D"
+
+// Body% de la bougie actuelle
+body_pct = range_hl > 0 ? body / range_hl * 100 : 0.0
+
+// Filtres status
+filtre_status = not cqf_enable ? "OFF" : is_fort ? "OPTIMAL" : is_moyen ? "MOYEN" : "FAIBLE"
+filtre_col    = not cqf_enable ? color.gray : is_fort ? color.lime : is_moyen ? color.yellow : color.red
+filtre_icon   = not cqf_enable ? "—" : is_fort ? "✔" : is_moyen ? "~" : "✘"
+
+// Tendance Heishinator
+tend_lbl  = is_bull ? "Haussière" : "Baissière"
+tend_col  = is_bull ? color.lime : color.red
+tend_icon = is_bull ? "⬆" : "⬇"
+
+// Heishinator direction
+hei_lbl  = is_bull ? "Haussière" : "Baissière"
+hei_col  = is_bull ? color.lime : color.red
+hei_icon = is_bull ? "⬆" : "⬇"
+
+// Score label
+score_lbl = is_fort ? "Fort" : is_moyen ? "Moyen" : "Faible"
+score_col = is_fort ? color.white : is_moyen ? color.yellow : color.red
+
 if sig_show_tbl and barstate.islast
     pos = sig_tbl_pos == "Top Right" ? position.top_right :
          sig_tbl_pos == "Top Left" ? position.top_left :
@@ -248,24 +301,39 @@ if sig_show_tbl and barstate.islast
          sig_tbl_pos == "Middle Right" ? position.middle_right :
          position.middle_left
 
-    var table tbl = table.new(pos, 2, 5, bgcolor=color.new(#151622, 10), border_width=1, border_color=color.rgb(95, 97, 125))
+    var table tbl = table.new(pos, 3, 7, bgcolor=color.new(#2A2A2A, 10), border_width=1, border_color=color.rgb(80, 80, 80))
 
-    table.cell(tbl, 0, 0, "Signator V6", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(tbl, 1, 0, "Ephore",      text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    // Row 0 — Heishinator
+    table.cell(tbl, 0, 0, "Heishinator", text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 0, hei_icon,      text_color=hei_col,      text_size=size.small)
+    table.cell(tbl, 2, 0, hei_lbl,       text_color=hei_col,      text_size=size.small)
 
-    table.cell(tbl, 0, 1, "Score",    text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 1, str.tostring(score, "0.0"), text_color=score >= cqf_score_min ? color.lime : score >= sig_force_min ? color.yellow : color.red, text_size=size.small)
+    // Row 1 — Filtres
+    table.cell(tbl, 0, 1, "Filtres",     text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 1, filtre_icon,   text_color=filtre_col,   text_size=size.small)
+    table.cell(tbl, 2, 1, filtre_status, text_color=filtre_col,   text_size=size.small)
 
-    table.cell(tbl, 0, 2, "Seuil",    text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 2, str.tostring(sig_force_min), text_color=color.yellow, text_size=size.small)
+    // Row 2 — Tendance
+    table.cell(tbl, 0, 2, "Tendance",    text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 2, tend_icon,     text_color=tend_col,     text_size=size.small)
+    table.cell(tbl, 2, 2, tend_lbl,      text_color=tend_col,     text_size=size.small)
 
-    last_sig = sig_long_fort or sig_long_moyen ? "▲ LONG" : sig_short_fort or sig_short_moyen ? "▼ SHORT" : "—"
-    last_col = sig_long_fort or sig_long_moyen ? color.lime : sig_short_fort or sig_short_moyen ? color.red : color.gray
+    // Row 3 — Score
+    table.cell(tbl, 0, 3, "Score",       text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 3, "",            text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 2, 3, score_lbl,     text_color=score_col,    text_size=size.small)
 
-    table.cell(tbl, 0, 3, "Signal",   text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 3, last_sig,   text_color=last_col, text_size=size.normal)
+    // Row 4 — TF
+    table.cell(tbl, 0, 4, "TF",          text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 4, "",            text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 2, 4, tf_lbl,        text_color=color.gray,   text_size=size.small)
 
-    table.cell(tbl, 0, 4, "Qualité",  text_color=color.white, text_size=size.small)
-    qual = is_fort ? "FORT" : is_moyen ? "MOYEN" : "FAIBLE"
-    qual_col = is_fort ? color.lime : is_moyen ? color.yellow : color.red
-    table.cell(tbl, 1, 4, qual, text_color=qual_col, text_size=size.small)
+    // Row 5 — CQF (score numérique)
+    table.cell(tbl, 0, 5, "CQF",         text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 5, "",            text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 2, 5, str.tostring(score, "0") + "%", text_color=score >= cqf_score_min ? color.lime : score >= sig_force_min ? color.yellow : color.red, text_size=size.small)
+
+    // Row 6 — Body%
+    table.cell(tbl, 0, 6, "Body%",       text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 6, "",            text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 2, 6, str.tostring(body_pct, "0") + "%", text_color=body_pct >= 50 ? color.lime : body_pct >= 30 ? color.yellow : color.red, text_size=size.small)
