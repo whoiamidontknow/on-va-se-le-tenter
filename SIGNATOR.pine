@@ -75,10 +75,23 @@ cqf_w_vol      = input.int(25,       "├ Poids Volume",                   group
 cqf_w_gap      = input.int(25,       "├ Poids Gap",                      group=grp_cqf, minval=0, maxval=100)
 
 // ══════════════════════════════════════════════════════════════
-// DÉTECTION BOUGIES CONSÉCUTIVES
+// HEISHINATOR — SHA CLOSE vs EMA33
 // ══════════════════════════════════════════════════════════════
-is_bull = close > open
-is_bear = close < open
+tf_seconds = timeframe.in_seconds(timeframe.period)
+is_low_tf  = tf_seconds < 30 * 60
+alpha      = is_low_tf ? 0.42 : 0.44
+
+ohlc4_src  = (open + high + low + close) / 4
+var float sha_close = na
+sha_close := na(sha_close[1]) ? ohlc4_src : alpha * ohlc4_src + (1.0 - alpha) * sha_close[1]
+
+ema_base = ta.ema(close, 33)
+
+// ══════════════════════════════════════════════════════════════
+// DÉTECTION BOUGIES CONSÉCUTIVES (basée sur Heishinator)
+// ══════════════════════════════════════════════════════════════
+is_bull = sha_close > ema_base
+is_bear = sha_close <= ema_base
 
 // Lag mode : combien de bougies consécutives avant signal
 lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
