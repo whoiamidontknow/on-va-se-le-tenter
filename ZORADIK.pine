@@ -414,6 +414,7 @@ f_bi_end(target_time, ext) =>
 if barstate.islast
     // — Set 1 (extension fixe 381) —
     if not na(s1_start_bi)
+        s1_start_bi := math.max(s1_start_bi, bar_index - 5000)
         s1_end = f_bi_end(s1_target_t2, 381)
         s1_rgt = s1_end
 
