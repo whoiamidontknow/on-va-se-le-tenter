@@ -2,10 +2,6 @@
 // ════════════════════════════════════════════════════════════
 // EPHORE TRENDLINES V1 — Pivot-based Trendlines
 // ════════════════════════════════════════════════════════════
-// Dessine des trendlines descendantes basées sur les pivot highs.
-// Détecte les breakouts (cassure au-dessus de la trendline).
-// Paramètres : nombre de touches min, buffer prix, extension.
-// ════════════════════════════════════════════════════════════
 indicator("Ephore Trendlines V1", overlay=true,
      max_lines_count=500, max_labels_count=200)
 
@@ -14,47 +10,37 @@ indicator("Ephore Trendlines V1", overlay=true,
 // ══════════════════════════════════════════════════════════════
 grp_tl = "=== EPHORE TRENDLINES V1 ==="
 
-tl_enable      = input.bool(true,     "Activer Trendlines",                    group=grp_tl)
-tl_custom_col  = input.bool(true,     "Personnaliser Couleurs",                group=grp_tl)
-tl_piv_len     = input.int(10,        "Pivot High Bars Required for Anchor",   group=grp_tl, minval=2, maxval=50)
-tl_buffer      = input.float(0.1,     "Price Buffer %",                        group=grp_tl, minval=0.0, maxval=5.0, step=0.05)
-tl_min_touches = input.int(3,         "Minimum Number of Touches",             group=grp_tl, minval=2, maxval=10)
-tl_color       = input.color(color.gray, "Trendline Color",                    group=grp_tl, inline="tlcol")
-tl_width       = input.int(2,         "Width",                                 group=grp_tl, minval=1, maxval=5, inline="tlcol")
-tl_extend      = input.bool(true,     "Extend Trendlines",                     group=grp_tl)
-tl_lookback    = input.int(100,       "Look for New Pivot High after X Bars",  group=grp_tl, minval=10, maxval=500)
-tl_show_break  = input.bool(true,     "Show Trendline Breakouts",              group=grp_tl, inline="brk")
-tl_break_col   = input.color(color.lime, "Breakout Color",                     group=grp_tl, inline="brk")
-tl_max_lines   = input.int(1,         "Number of Trendlines to show",          group=grp_tl, minval=1, maxval=5)
+tl_enable      = input.bool(true,        "Activer Trendlines",                    group=grp_tl)
+tl_custom_col  = input.bool(true,        "Personnaliser Couleurs",                group=grp_tl)
+tl_piv_len     = input.int(10,           "Pivot High Bars Required for Anchor",   group=grp_tl, minval=2, maxval=50)
+tl_buffer      = input.float(0.1,        "Price Buffer %",                        group=grp_tl, minval=0.0, maxval=5.0, step=0.05)
+tl_min_touches = input.int(3,            "Minimum Number of Touches",             group=grp_tl, minval=2, maxval=10)
+tl_color       = input.color(color.gray, "Trendline Color",                       group=grp_tl, inline="tlcol")
+tl_width       = input.int(2,            "Width",                                 group=grp_tl, minval=1, maxval=5, inline="tlcol")
+tl_extend      = input.bool(true,        "Extend Trendlines",                     group=grp_tl)
+tl_lookback    = input.int(100,          "Look for New Pivot High after X Bars",  group=grp_tl, minval=10, maxval=500)
+tl_show_break  = input.bool(true,        "Show Trendline Breakouts",              group=grp_tl, inline="brk")
+tl_break_col   = input.color(color.lime, "Breakout Color",                        group=grp_tl, inline="brk")
+tl_max_lines   = input.int(1,            "Number of Trendlines to show",          group=grp_tl, minval=1, maxval=5)
 
 // ══════════════════════════════════════════════════════════════
 // PIVOT HIGH DETECTION
 // ══════════════════════════════════════════════════════════════
 ph = ta.pivothigh(high, tl_piv_len, tl_piv_len)
 
-// Stocker les pivot highs dans des arrays
 var float[] ph_price = array.new_float(0)
 var int[]   ph_bar   = array.new_int(0)
 
 if not na(ph)
     array.unshift(ph_price, ph)
     array.unshift(ph_bar,   bar_index - tl_piv_len)
-    // Garder seulement les N derniers pivots
     if array.size(ph_price) > 50
         array.pop(ph_price)
         array.pop(ph_bar)
 
 // ══════════════════════════════════════════════════════════════
-// TRENDLINE CALCULATION
+// FONCTIONS
 // ══════════════════════════════════════════════════════════════
-// Cherche des paires de pivot highs descendantes qui forment
-// une trendline valide (N touches minimum avec buffer).
-
-// Structure pour stocker les trendlines trouvées
-var line[]  tl_lines    = array.new_line(0)
-var label[] tl_labels   = array.new_label(0)
-var int     last_calc   = 0
-
 f_tl_value(x1, y1, slope, x) =>
     y1 + slope * (x - x1)
 
@@ -70,86 +56,116 @@ f_count_touches(x1, y1, slope, ph_p, ph_b, buffer_pct) =>
             count += 1
     count
 
-// Recalcul toutes les N barres ou sur dernière barre
+// ══════════════════════════════════════════════════════════════
+// STOCKAGE CANDIDATS (arrays parallèles)
+// ══════════════════════════════════════════════════════════════
+var float[] cd_x1     = array.new_float(0)
+var float[] cd_y1     = array.new_float(0)
+var float[] cd_x2     = array.new_float(0)
+var float[] cd_y2     = array.new_float(0)
+var float[] cd_slope  = array.new_float(0)
+var int[]   cd_touch  = array.new_int(0)
+
+var line[]  tl_lines  = array.new_line(0)
+var label[] tl_labels = array.new_label(0)
+
+// ══════════════════════════════════════════════════════════════
+// CALCUL & DESSIN (sur dernière barre)
+// ══════════════════════════════════════════════════════════════
 if tl_enable and barstate.islast and array.size(ph_price) >= 2
-    // Nettoyer les anciennes lignes
+    // Nettoyer
     while array.size(tl_lines) > 0
         line.delete(array.pop(tl_lines))
     while array.size(tl_labels) > 0
         label.delete(array.pop(tl_labels))
 
-    // Chercher les meilleures trendlines
-    type TrendCandidate
-        int   x1
-        float y1
-        int   x2
-        float y2
-        float slope
-        int   touches
-
-    var TrendCandidate[] candidates = array.new<TrendCandidate>(0)
-
-    // Réinitialiser
-    while array.size(candidates) > 0
-        array.pop(candidates)
+    // Vider candidats
+    array.clear(cd_x1)
+    array.clear(cd_y1)
+    array.clear(cd_x2)
+    array.clear(cd_y2)
+    array.clear(cd_slope)
+    array.clear(cd_touch)
 
     sz = array.size(ph_price)
     for i = 0 to math.min(sz - 1, 19)
         for j = i + 1 to math.min(sz - 1, 29)
-            x1_val = array.get(ph_bar, j)    // plus ancien
+            x1_val = array.get(ph_bar, j)
             y1_val = array.get(ph_price, j)
-            x2_val = array.get(ph_bar, i)    // plus récent
+            x2_val = array.get(ph_bar, i)
             y2_val = array.get(ph_price, i)
 
             if x2_val > x1_val
                 slope = (y2_val - y1_val) / (x2_val - x1_val)
-
-                // On veut des trendlines descendantes (slope < 0) OU montantes
                 touches = f_count_touches(x1_val, y1_val, slope, ph_price, ph_bar, tl_buffer)
 
                 if touches >= tl_min_touches
-                    tc = TrendCandidate.new(x1_val, y1_val, x2_val, y2_val, slope, touches)
-                    array.push(candidates, tc)
+                    array.push(cd_x1,    float(x1_val))
+                    array.push(cd_y1,    y1_val)
+                    array.push(cd_x2,    float(x2_val))
+                    array.push(cd_y2,    y2_val)
+                    array.push(cd_slope, slope)
+                    array.push(cd_touch, touches)
 
-    // Trier par nombre de touches (descending) — prendre les N meilleures
-    // Tri simple par sélection
-    for i = 0 to math.min(array.size(candidates) - 2, 20)
+    // Tri par touches (descending) — selection sort
+    for i = 0 to math.max(array.size(cd_touch) - 2, 0)
+        if i >= array.size(cd_touch) - 1
+            break
         max_idx = i
-        max_t   = array.get(candidates, i).touches
-        for j = i + 1 to math.min(array.size(candidates) - 1, 30)
-            if array.get(candidates, j).touches > max_t
+        max_t   = array.get(cd_touch, i)
+        for j = i + 1 to array.size(cd_touch) - 1
+            if array.get(cd_touch, j) > max_t
                 max_idx := j
-                max_t   := array.get(candidates, j).touches
+                max_t   := array.get(cd_touch, j)
         if max_idx != i
-            tmp = array.get(candidates, i)
-            array.set(candidates, i, array.get(candidates, max_idx))
-            array.set(candidates, max_idx, tmp)
+            // Swap dans tous les arrays
+            t0 = array.get(cd_x1, i)
+            array.set(cd_x1, i, array.get(cd_x1, max_idx))
+            array.set(cd_x1, max_idx, t0)
+
+            t1 = array.get(cd_y1, i)
+            array.set(cd_y1, i, array.get(cd_y1, max_idx))
+            array.set(cd_y1, max_idx, t1)
+
+            t2 = array.get(cd_x2, i)
+            array.set(cd_x2, i, array.get(cd_x2, max_idx))
+            array.set(cd_x2, max_idx, t2)
+
+            t3 = array.get(cd_y2, i)
+            array.set(cd_y2, i, array.get(cd_y2, max_idx))
+            array.set(cd_y2, max_idx, t3)
+
+            t4 = array.get(cd_slope, i)
+            array.set(cd_slope, i, array.get(cd_slope, max_idx))
+            array.set(cd_slope, max_idx, t4)
+
+            t5 = array.get(cd_touch, i)
+            array.set(cd_touch, i, array.get(cd_touch, max_idx))
+            array.set(cd_touch, max_idx, t5)
 
     // Dessiner les N meilleures
-    drawn = 0
-    for i = 0 to math.min(array.size(candidates) - 1, tl_max_lines - 1)
-        if drawn >= tl_max_lines
-            break
-        tc = array.get(candidates, i)
+    for i = 0 to math.min(array.size(cd_touch) - 1, tl_max_lines - 1)
+        cx1 = int(array.get(cd_x1, i))
+        cy1 = array.get(cd_y1, i)
+        sl  = array.get(cd_slope, i)
+        cx2 = int(array.get(cd_x2, i))
+        cy2 = array.get(cd_y2, i)
 
-        // Extension : prolonger la ligne jusqu'à bar_index + 50
-        end_x = tl_extend ? bar_index + 50 : tc.x2
-        end_y = tl_extend ? f_tl_value(tc.x1, tc.y1, tc.slope, end_x) : tc.y2
+        end_x = tl_extend ? bar_index + 50 : cx2
+        end_y = tl_extend ? f_tl_value(cx1, cy1, sl, end_x) : cy2
 
         col = tl_custom_col ? tl_color : color.gray
-        ln = line.new(tc.x1, tc.y1, end_x, end_y,
+        ln = line.new(cx1, cy1, end_x, end_y,
              xloc=xloc.bar_index, color=col, width=tl_width,
              style=line.style_solid)
         array.push(tl_lines, ln)
-        drawn += 1
 
-        // Breakout detection : prix ferme au-dessus de la trendline
+        // Breakout detection
         if tl_show_break
-            tl_now = f_tl_value(tc.x1, tc.y1, tc.slope, bar_index)
-            tl_prev = f_tl_value(tc.x1, tc.y1, tc.slope, bar_index - 1)
+            tl_now  = f_tl_value(cx1, cy1, sl, bar_index)
+            tl_prev = f_tl_value(cx1, cy1, sl, bar_index - 1)
             if close > tl_now and close[1] <= tl_prev
-                lbl = label.new(bar_index, low,
-                     "Breakout",
+                lbl = label.new(bar_index, low, "Breakout",
                      xloc=xloc.bar_index,
                      textcolor=tl_break_col,
                      color=color.new(tl_break_col, 80),
@@ -160,7 +176,5 @@ if tl_enable and barstate.islast and array.size(ph_price) >= 2
 // ══════════════════════════════════════════════════════════════
 // ALERTES
 // ══════════════════════════════════════════════════════════════
-// Note: alertcondition needs to run on every bar, not just islast
-// So we compute a simplified breakout check here
 simple_ph1 = ta.pivothigh(high, tl_piv_len, tl_piv_len)
 alertcondition(not na(simple_ph1), "New Pivot High", "Nouveau pivot high détecté")
