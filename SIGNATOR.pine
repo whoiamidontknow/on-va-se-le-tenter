@@ -99,7 +99,8 @@ bull_flip = is_bull and not is_bull[1]   // passage bear → bull
 bear_flip = is_bear and not is_bear[1]   // passage bull → bear
 
 // Lag mode : combien de bougies APRÈS le flip avant signal
-lag = sig_lag_mode == "Rapide" ? 2 : sig_lag_mode == "Lent" ? 5 : 3
+// Normal = 2 (flip = 1ère bougie, signal sur la 2ème)
+lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
 
 // Compteur de bougies depuis le dernier flip
 var int bull_count = 0
