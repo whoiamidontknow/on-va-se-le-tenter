@@ -1,0 +1,252 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// TL DIAGNOSTIC V2 — Reverse Engineering Trendline Selection
+// ════════════════════════════════════════════════════════════
+// 1 seule trendline affichée. Switch entre méthodes A-H.
+// ════════════════════════════════════════════════════════════
+indicator("TL Diag V2 — Méthodes", overlay=true,
+     max_lines_count=100, max_labels_count=200)
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS
+// ══════════════════════════════════════════════════════════════
+grp = "=== PIVOT ==="
+piv_len    = input.int(10,    "Pivot High Bars",  group=grp, minval=2, maxval=50)
+buffer_pct = input.float(0.1, "Price Buffer %",   group=grp, minval=0.0, maxval=5.0, step=0.05)
+lookback   = input.int(100,   "Lookback Bars",    group=grp, minval=10, maxval=500)
+
+grp_m = "=== METHODE DE SELECTION ==="
+method = input.string("A", "Méthode", options=["A","B","C","D","E","F","G","H"], group=grp_m)
+tl_col = input.color(#C8C8A9, "TL Color", group=grp_m)
+tl_w   = input.int(2, "Width", group=grp_m, minval=1, maxval=5)
+
+// A = Max touches (min 3) — notre méthode actuelle
+// B = Max touches (min 2) — seuil plus bas
+// C = Trendline la plus récente (2 derniers pivots)
+// D = Pente la plus forte (slope le plus négatif)
+// E = Pente la plus douce (slope le plus proche de 0)
+// F = Plus longue trendline (plus grand écart x2-x1)
+// G = Plus proche du prix actuel
+// H = Score combiné: touches * proximité * longueur
+
+grp_v = "=== VISUALS ==="
+show_pivots = input.bool(true,         "Show Pivot Highs",    group=grp_v)
+piv_col     = input.color(color.orange, "Pivot Color",        group=grp_v)
+show_touch  = input.bool(true,         "Show Touches",        group=grp_v)
+touch_col   = input.color(color.yellow, "Touch Color",        group=grp_v)
+show_brk    = input.bool(true,         "Show Breakout (hlc3)", group=grp_v)
+brk_col     = input.color(color.lime,  "Breakout Color",      group=grp_v)
+
+// ══════════════════════════════════════════════════════════════
+// PIVOT DETECTION
+// ══════════════════════════════════════════════════════════════
+ph = ta.pivothigh(high, piv_len, piv_len)
+
+var float[] ph_p = array.new_float(0)
+var int[]   ph_b = array.new_int(0)
+
+if not na(ph)
+    array.unshift(ph_p, ph)
+    array.unshift(ph_b, bar_index - piv_len)
+    if array.size(ph_p) > 50
+        array.pop(ph_p)
+        array.pop(ph_b)
+
+plotshape(show_pivots and not na(ph), "PH", style=shape.triangledown,
+     location=location.abovebar, color=piv_col, size=size.tiny, offset=-piv_len)
+
+// ══════════════════════════════════════════════════════════════
+// FONCTIONS
+// ══════════════════════════════════════════════════════════════
+f_tl(x1, y1, slope, x) =>
+    y1 + slope * (x - x1)
+
+f_tc(x1, y1, slope) =>
+    c = 0
+    sz = array.size(ph_p)
+    for i = 0 to math.min(sz - 1, 49)
+        px = array.get(ph_b, i)
+        py = array.get(ph_p, i)
+        if bar_index - px <= lookback and px >= x1
+            tly = f_tl(x1, y1, slope, px)
+            buf = tly * buffer_pct / 100.0
+            if py >= tly - buf and py <= tly + buf
+                c += 1
+    c
+
+// ══════════════════════════════════════════════════════════════
+// BEST TL — recalculated every bar, method-dependent
+// ══════════════════════════════════════════════════════════════
+var float bx1 = na
+var float by1 = na
+var float bsl = na
+var int   btc = 0
+var float bscore = na
+
+if array.size(ph_p) >= 2
+    sz = array.size(ph_p)
+    _x1 = 0.0
+    _y1 = 0.0
+    _sl = 0.0
+    _tc = 0
+    _sc = -999999.0  // score for comparison
+    found = false
+
+    mi = math.min(sz - 1, 19)
+    mj = math.min(sz - 1, 29)
+
+    for i = 0 to mi
+        for j = i + 1 to mj
+            if j < sz
+                x1v = array.get(ph_b, j)
+                y1v = array.get(ph_p, j)
+                x2v = array.get(ph_b, i)
+                y2v = array.get(ph_p, i)
+
+                if x2v > x1v and bar_index - x1v <= lookback
+                    sl = (y2v - y1v) / (x2v - x1v)
+                    if sl <= 0
+                        tc = f_tc(x1v, y1v, sl)
+                        tl_now = f_tl(x1v, y1v, sl, bar_index)
+                        dist = math.abs(close - tl_now) / close * 100
+                        span = x2v - x1v
+
+                        // Score selon méthode
+                        float score = na
+                        bool valid = false
+
+                        if method == "A"
+                            // Max touches, min 3
+                            valid := tc >= 3
+                            score := float(tc)
+
+                        else if method == "B"
+                            // Max touches, min 2
+                            valid := tc >= 2
+                            score := float(tc)
+
+                        else if method == "C"
+                            // Plus récente (i le plus petit = pivot le plus récent)
+                            valid := tc >= 2
+                            score := -float(i * 100 + j)  // prefer small i,j
+
+                        else if method == "D"
+                            // Pente la plus forte
+                            valid := tc >= 2
+                            score := -sl  // most negative slope = highest score
+
+                        else if method == "E"
+                            // Pente la plus douce
+                            valid := tc >= 2
+                            score := sl  // closest to 0 = highest
+
+                        else if method == "F"
+                            // Plus longue
+                            valid := tc >= 2
+                            score := float(span)
+
+                        else if method == "G"
+                            // Plus proche du prix
+                            valid := tc >= 2 and tl_now > close  // TL still above
+                            score := -dist  // smallest distance = highest score
+
+                        else if method == "H"
+                            // Score combiné
+                            valid := tc >= 2
+                            prox = dist < 0.01 ? 100.0 : 1.0 / dist
+                            score := float(tc) * 10.0 + prox + float(span) / 100.0
+
+                        if valid and not na(score) and score > _sc
+                            _sc := score
+                            _x1 := float(x1v)
+                            _y1 := y1v
+                            _sl := sl
+                            _tc := tc
+                            found := true
+
+    if found
+        bx1 := _x1
+        by1 := _y1
+        bsl := _sl
+        btc := _tc
+        bscore := _sc
+
+// ══════════════════════════════════════════════════════════════
+// TL VALUE — continuous
+// ══════════════════════════════════════════════════════════════
+float tl_v = not na(bx1) ? f_tl(bx1, by1, bsl, bar_index) : na
+
+// ══════════════════════════════════════════════════════════════
+// BREAKOUT (hlc3 crossover — confirmé par le diag précédent)
+// ══════════════════════════════════════════════════════════════
+brk_sig = show_brk and not na(tl_v) and ta.crossover(hlc3, tl_v)
+plotshape(brk_sig, "Breakout", style=shape.circle,
+     location=location.belowbar, color=brk_col, size=size.small)
+
+// ══════════════════════════════════════════════════════════════
+// DRAW TL + TOUCHES (barstate.islast)
+// ══════════════════════════════════════════════════════════════
+var line[]  tls  = array.new_line(0)
+var label[] lbls = array.new_label(0)
+
+if barstate.islast
+    while array.size(tls) > 0
+        line.delete(array.pop(tls))
+    while array.size(lbls) > 0
+        label.delete(array.pop(lbls))
+
+    if not na(bx1)
+        lx = int(bx1)
+        ex = bar_index + 50
+        ey = f_tl(bx1, by1, bsl, ex)
+        array.push(tls, line.new(lx, by1, ex, ey,
+             xloc=xloc.bar_index, color=tl_col, width=tl_w))
+
+        // Touches
+        if show_touch
+            for k = 0 to math.min(array.size(ph_p) - 1, 49)
+                kx = array.get(ph_b, k)
+                ky = array.get(ph_p, k)
+                if bar_index - kx <= lookback and kx >= lx
+                    tly = f_tl(bx1, by1, bsl, kx)
+                    buf = tly * buffer_pct / 100.0
+                    if ky >= tly - buf and ky <= tly + buf
+                        array.push(lbls, label.new(kx, ky, "✦",
+                             xloc=xloc.bar_index, textcolor=touch_col,
+                             color=color.new(touch_col, 100),
+                             style=label.style_label_down, size=size.small))
+
+// ══════════════════════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════════════════════
+if barstate.islast
+    var table t = table.new(position.bottom_right, 2, 12,
+         bgcolor=color.new(#1A1A1A, 10), border_width=1,
+         border_color=color.rgb(60, 60, 60))
+
+    table.cell(t, 0, 0, "TL Diag V2", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "Active: " + method, text_color=color.lime, text_size=size.small, bgcolor=color.new(color.navy, 20))
+
+    descs = array.from(
+         "A: Max touches (≥3)",
+         "B: Max touches (≥2)",
+         "C: Plus récente",
+         "D: Pente plus forte",
+         "E: Pente plus douce",
+         "F: Plus longue",
+         "G: Plus proche du prix",
+         "H: Score combiné")
+
+    for i = 0 to 7
+        d = array.get(descs, i)
+        letter = str.substring(d, 0, 1)
+        act = letter == method
+        table.cell(t, 0, i + 1, d, text_color=act ? color.lime : color.gray, text_size=size.small)
+        table.cell(t, 1, i + 1, act ? "◄" : "", text_color=color.lime, text_size=size.small)
+
+    table.cell(t, 0, 9, "Touches",  text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 9, str.tostring(btc), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 10, "Slope",   text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 10, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 11, "TL Value", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 11, not na(tl_v) ? str.tostring(tl_v, format.mintick) : "—", text_color=color.white, text_size=size.small)
