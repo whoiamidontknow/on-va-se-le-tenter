@@ -1,0 +1,248 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// TL DIAGNOSTIC V3 — Proper Resistance Trendline
+// ════════════════════════════════════════════════════════════
+// Une vraie trendline baissière = ligne de résistance où
+// AUCUN high ne dépasse la ligne. Sinon c'est pas une TL.
+// ════════════════════════════════════════════════════════════
+indicator("TL Diag V3", overlay=true,
+     max_lines_count=100, max_labels_count=200)
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS
+// ══════════════════════════════════════════════════════════════
+grp = "=== CONFIG ==="
+piv_len    = input.int(10,    "Pivot Bars",      group=grp, minval=2, maxval=50)
+buffer_pct = input.float(0.1, "Touch Buffer %",  group=grp, minval=0.0, maxval=5.0, step=0.05)
+lookback   = input.int(100,   "Lookback Bars",   group=grp, minval=10, maxval=500)
+min_tc     = input.int(2,     "Min Touches",     group=grp, minval=2, maxval=10)
+tl_col     = input.color(#C8C8A9, "TL Color",    group=grp)
+tl_w       = input.int(2,     "Width",           group=grp, minval=1, maxval=5)
+
+grp_m = "=== METHODE ==="
+method = input.string("A", "Méthode", options=["A","B","C","D","E","F","G","H"], group=grp_m)
+// A = Résistance stricte (aucun high au-dessus) + max touches
+// B = Résistance stricte + plus proche du prix
+// C = Résistance souple (tolérance buffer au-dessus) + max touches
+// D = Résistance souple + plus proche du prix
+// E = Sans vérification (ancien algo) + max touches
+// F = Sans vérification + plus proche du prix
+// G = Résistance stricte + pente la plus douce
+// H = Résistance stricte + le plus de pivots entre x1 et x2
+
+grp_v = "=== VISUALS ==="
+show_piv   = input.bool(true, "Pivots",        group=grp_v)
+show_touch = input.bool(true, "Touches ✦",     group=grp_v)
+show_brk   = input.bool(true, "Breakout",      group=grp_v)
+brk_col    = input.color(color.lime, "Brk Col", group=grp_v)
+
+// ══════════════════════════════════════════════════════════════
+// PIVOTS
+// ══════════════════════════════════════════════════════════════
+ph = ta.pivothigh(high, piv_len, piv_len)
+
+var float[] pp = array.new_float(0)
+var int[]   pb = array.new_int(0)
+
+if not na(ph)
+    array.unshift(pp, ph)
+    array.unshift(pb, bar_index - piv_len)
+    if array.size(pp) > 50
+        array.pop(pp)
+        array.pop(pb)
+
+plotshape(show_piv and not na(ph), "PH", style=shape.triangledown,
+     location=location.abovebar, color=color.orange, size=size.tiny, offset=-piv_len)
+
+// ══════════════════════════════════════════════════════════════
+// FONCTIONS
+// ══════════════════════════════════════════════════════════════
+f_tl(x1, y1, slope, x) =>
+    y1 + slope * (x - x1)
+
+// Count touches (pivots near the line)
+f_tc(x1, y1, slope, buf_pct) =>
+    c = 0
+    sz = array.size(pp)
+    for i = 0 to math.min(sz - 1, 49)
+        px = array.get(pb, i)
+        py = array.get(pp, i)
+        if px >= x1 and bar_index - px <= lookback
+            tly = f_tl(x1, y1, slope, px)
+            buf = tly * buf_pct / 100.0
+            if py >= tly - buf and py <= tly + buf
+                c += 1
+    c
+
+// Check if any HIGH goes above the trendline between x1 and now
+// Returns true if the line is a valid resistance (no violations)
+f_valid_resistance(x1, y1, slope, strict) =>
+    valid = true
+    // Check from x1 to current bar — does any high exceed the TL?
+    bars_to_check = math.min(bar_index - int(x1), lookback)
+    for k = 0 to bars_to_check
+        bx = int(x1) + k
+        offset = bar_index - bx
+        if offset >= 0 and offset < 5000
+            h = high[offset]
+            tly = f_tl(x1, y1, slope, bx)
+            if strict
+                if h > tly
+                    valid := false
+                    break
+            else
+                buf = tly * buffer_pct / 100.0
+                if h > tly + buf
+                    valid := false
+                    break
+    valid
+
+// ══════════════════════════════════════════════════════════════
+// BEST TL — per method, every bar
+// ══════════════════════════════════════════════════════════════
+var float bx1 = na
+var float by1 = na
+var float bsl = na
+var int   btc = 0
+
+if array.size(pp) >= 2
+    sz = array.size(pp)
+    _x1 = 0.0
+    _y1 = 0.0
+    _sl = 0.0
+    _tc = 0
+    _sc = -999999.0
+    found = false
+
+    mi = math.min(sz - 1, 14)
+    mj = math.min(sz - 1, 24)
+
+    for i = 0 to mi
+        for j = i + 1 to mj
+            if j < sz
+                x1v = array.get(pb, j)
+                y1v = array.get(pp, j)
+                x2v = array.get(pb, i)
+                y2v = array.get(pp, i)
+
+                if x2v > x1v and bar_index - x1v <= lookback
+                    sl = (y2v - y1v) / (x2v - x1v)
+                    if sl <= 0
+                        tc = f_tc(x1v, y1v, sl, buffer_pct)
+                        if tc >= min_tc
+                            tl_now = f_tl(x1v, y1v, sl, bar_index)
+                            dist = math.abs(close - tl_now) / close * 100
+                            span = x2v - x1v
+
+                            // Check resistance validity per method
+                            bool use_strict = method == "A" or method == "B" or method == "G" or method == "H"
+                            bool use_soft   = method == "C" or method == "D"
+                            bool no_check   = method == "E" or method == "F"
+
+                            bool valid = no_check ? true : f_valid_resistance(x1v, y1v, sl, use_strict)
+
+                            if valid
+                                float score = na
+
+                                if method == "A" or method == "C" or method == "E"
+                                    // Max touches
+                                    score := float(tc)
+                                else if method == "B" or method == "D" or method == "F"
+                                    // Closest to price
+                                    score := -dist
+                                else if method == "G"
+                                    // Gentlest slope
+                                    score := sl  // closest to 0
+                                else if method == "H"
+                                    // Most pivots in span
+                                    score := float(span)
+
+                                if not na(score) and score > _sc
+                                    _sc := score
+                                    _x1 := float(x1v)
+                                    _y1 := y1v
+                                    _sl := sl
+                                    _tc := tc
+                                    found := true
+
+    if found
+        bx1 := _x1
+        by1 := _y1
+        bsl := _sl
+        btc := _tc
+
+// ══════════════════════════════════════════════════════════════
+// TL VALUE + BREAKOUT
+// ══════════════════════════════════════════════════════════════
+float tl_v = not na(bx1) ? f_tl(bx1, by1, bsl, bar_index) : na
+
+brk_sig = show_brk and not na(tl_v) and ta.crossover(hlc3, tl_v)
+plotshape(brk_sig, "Breakout", style=shape.circle,
+     location=location.belowbar, color=brk_col, size=size.small)
+
+// ══════════════════════════════════════════════════════════════
+// DRAW
+// ══════════════════════════════════════════════════════════════
+var line[]  tls  = array.new_line(0)
+var label[] lbls = array.new_label(0)
+
+if barstate.islast
+    while array.size(tls) > 0
+        line.delete(array.pop(tls))
+    while array.size(lbls) > 0
+        label.delete(array.pop(lbls))
+
+    if not na(bx1)
+        lx = int(bx1)
+        ex = bar_index + 50
+        ey = f_tl(bx1, by1, bsl, ex)
+        array.push(tls, line.new(lx, by1, ex, ey,
+             xloc=xloc.bar_index, color=tl_col, width=tl_w))
+
+        if show_touch
+            for k = 0 to math.min(array.size(pp) - 1, 49)
+                kx = array.get(pb, k)
+                ky = array.get(pp, k)
+                if kx >= lx and bar_index - kx <= lookback
+                    tly = f_tl(bx1, by1, bsl, kx)
+                    buf = tly * buffer_pct / 100.0
+                    if ky >= tly - buf and ky <= tly + buf
+                        array.push(lbls, label.new(kx, ky, "✦",
+                             xloc=xloc.bar_index, textcolor=color.yellow,
+                             color=color.new(color.yellow, 100),
+                             style=label.style_label_down, size=size.small))
+
+// ══════════════════════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════════════════════
+if barstate.islast
+    var table t = table.new(position.bottom_right, 2, 12,
+         bgcolor=color.new(#1A1A1A, 10), border_width=1,
+         border_color=color.rgb(60, 60, 60))
+
+    table.cell(t, 0, 0, "TL Diag V3", text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, method, text_color=color.lime, text_size=size.small, bgcolor=color.new(color.navy, 20))
+
+    descs = array.from(
+         "A: Strict resist + max touch",
+         "B: Strict resist + closest",
+         "C: Soft resist + max touch",
+         "D: Soft resist + closest",
+         "E: No check + max touch",
+         "F: No check + closest",
+         "G: Strict + gentlest slope",
+         "H: Strict + longest span")
+
+    for i = 0 to 7
+        d = array.get(descs, i)
+        letter = str.substring(d, 0, 1)
+        act = letter == method
+        table.cell(t, 0, i + 1, d, text_color=act ? color.lime : color.gray, text_size=size.small)
+        table.cell(t, 1, i + 1, act ? "◄" : "", text_color=color.lime, text_size=size.small)
+
+    table.cell(t, 0, 9, "Touches", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 9, str.tostring(btc), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 10, "Slope", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 10, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 11, "TL Value", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 11, not na(tl_v) ? str.tostring(tl_v, format.mintick) : "—", text_color=color.white, text_size=size.small)
