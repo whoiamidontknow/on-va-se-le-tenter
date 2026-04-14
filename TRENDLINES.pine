@@ -58,20 +58,22 @@ f_count_touches(x1, y1, slope, pp, pb, buffer_pct, lb) =>
     count
 
 // ══════════════════════════════════════════════════════════════
-// BEST TRENDLINE SEARCH — runs on every bar for breakout detection
+// BEST TRENDLINE — closest to price (above), min 2 touches
 // ══════════════════════════════════════════════════════════════
 var float best_x1    = na
 var float best_y1    = na
 var float best_slope = na
 var int   best_tc    = 0
 
-// Recalculate best trendline on every bar
+// Recalculate on every bar: pick TL closest to price among valid candidates
 if tl_enable and array.size(ph_price) >= 2
     sz = array.size(ph_price)
-    top_tc = 0
+    top_dist = 999999.0
     top_x1 = 0.0
     top_y1 = 0.0
     top_sl = 0.0
+    top_tc = 0
+    found = false
 
     max_i = math.min(sz - 1, 19)
     max_j = math.min(sz - 1, 29)
@@ -87,23 +89,53 @@ if tl_enable and array.size(ph_price) >= 2
                     slope = (y2_v - y1_v) / (x2_v - x1_v)
                     if slope <= 0
                         touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
-                        if touches >= tl_min_touches and touches > top_tc
-                            top_tc := touches
-                            top_x1 := float(x1_v)
-                            top_y1 := y1_v
-                            top_sl := slope
+                        if touches >= 2
+                            tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                            dist = math.abs(close - tl_now) / close * 100
+                            if tl_now > close and dist < top_dist
+                                top_dist := dist
+                                top_x1 := float(x1_v)
+                                top_y1 := y1_v
+                                top_sl := slope
+                                top_tc := touches
+                                found := true
 
-    if top_tc >= tl_min_touches
+    // Fallback: if no TL above price, pick closest overall
+    if not found
+        for i = 0 to max_i
+            for j = i + 1 to max_j
+                if j < sz
+                    x1_v = array.get(ph_bar, j)
+                    y1_v = array.get(ph_price, j)
+                    x2_v = array.get(ph_bar, i)
+                    y2_v = array.get(ph_price, i)
+
+                    if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                        slope = (y2_v - y1_v) / (x2_v - x1_v)
+                        if slope <= 0
+                            touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
+                            if touches >= 2
+                                tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                                dist = math.abs(close - tl_now) / close * 100
+                                if dist < top_dist
+                                    top_dist := dist
+                                    top_x1 := float(x1_v)
+                                    top_y1 := y1_v
+                                    top_sl := slope
+                                    top_tc := touches
+                                    found := true
+
+    if found
         best_x1    := top_x1
         best_y1    := top_y1
         best_slope := top_sl
         best_tc    := top_tc
 
 // ══════════════════════════════════════════════════════════════
-// BREAKOUT DETECTION (ta.crossover — runs on every bar)
+// BREAKOUT DETECTION (hlc3 crossover — runs on every bar)
 // ══════════════════════════════════════════════════════════════
-float tl_val = not na(best_x1) and best_tc >= tl_min_touches ? f_tl_value(best_x1, best_y1, best_slope, bar_index) : na
-breakout_signal = tl_enable and tl_show_break and ta.crossover(close, tl_val)
+float tl_val = not na(best_x1) and best_tc >= 2 ? f_tl_value(best_x1, best_y1, best_slope, bar_index) : na
+breakout_signal = tl_enable and tl_show_break and ta.crossover(hlc3, tl_val)
 
 plotshape(breakout_signal, title="Breakout", style=shape.circle,
      location=location.belowbar, color=tl_break_col, size=size.tiny)
@@ -119,72 +151,16 @@ if barstate.islast
 
 col_desc = tl_custom_col ? tl_color : #C8C8A9
 
-if tl_enable and barstate.islast and array.size(ph_price) >= 2
-    sz = array.size(ph_price)
+// Draw the best trendline (already computed above)
+if tl_enable and barstate.islast and not na(best_x1)
+    lx1 = int(best_x1)
+    end_x = tl_extend ? bar_index + 50 : bar_index
+    end_y = f_tl_value(best_x1, best_y1, best_slope, end_x)
 
-    var float[] cx1 = array.new_float(0)
-    var float[] cy1 = array.new_float(0)
-    var float[] csl = array.new_float(0)
-    var int[]   ctc = array.new_int(0)
-    array.clear(cx1)
-    array.clear(cy1)
-    array.clear(csl)
-    array.clear(ctc)
-
-    for i = 0 to math.min(sz - 1, 19)
-        for j = i + 1 to math.min(sz - 1, 29)
-            x1_v = array.get(ph_bar, j)
-            y1_v = array.get(ph_price, j)
-            x2_v = array.get(ph_bar, i)
-            y2_v = array.get(ph_price, i)
-
-            if x2_v > x1_v and bar_index - x1_v <= tl_lookback
-                slope = (y2_v - y1_v) / (x2_v - x1_v)
-                if slope <= 0
-                    touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
-                    if touches >= tl_min_touches
-                        array.push(cx1, float(x1_v))
-                        array.push(cy1, y1_v)
-                        array.push(csl, slope)
-                        array.push(ctc, touches)
-
-    // Tri par touches
-    if array.size(ctc) >= 2
-        for i = 0 to array.size(ctc) - 2
-            max_idx = i
-            max_t   = array.get(ctc, i)
-            for j = i + 1 to array.size(ctc) - 1
-                if array.get(ctc, j) > max_t
-                    max_idx := j
-                    max_t   := array.get(ctc, j)
-            if max_idx != i
-                t0 = array.get(cx1, i)
-                array.set(cx1, i, array.get(cx1, max_idx))
-                array.set(cx1, max_idx, t0)
-                t1 = array.get(cy1, i)
-                array.set(cy1, i, array.get(cy1, max_idx))
-                array.set(cy1, max_idx, t1)
-                t2 = array.get(csl, i)
-                array.set(csl, i, array.get(csl, max_idx))
-                array.set(csl, max_idx, t2)
-                t3 = array.get(ctc, i)
-                array.set(ctc, i, array.get(ctc, max_idx))
-                array.set(ctc, max_idx, t3)
-
-    // Dessiner
-    if array.size(ctc) > 0
-        for i = 0 to math.min(array.size(ctc) - 1, tl_max_lines - 1)
-            lx1 = int(array.get(cx1, i))
-            ly1 = array.get(cy1, i)
-            sl  = array.get(csl, i)
-
-            end_x = tl_extend ? bar_index + 50 : bar_index
-            end_y = f_tl_value(lx1, ly1, sl, end_x)
-
-            ln = line.new(lx1, ly1, end_x, end_y,
-                 xloc=xloc.bar_index, color=col_desc, width=tl_width,
-                 style=line.style_solid)
-            array.push(desc_lines, ln)
+    ln = line.new(lx1, best_y1, end_x, end_y,
+         xloc=xloc.bar_index, color=col_desc, width=tl_width,
+         style=line.style_solid)
+    array.push(desc_lines, ln)
 
 // ══════════════════════════════════════════════════════════════
 // ALERTES
