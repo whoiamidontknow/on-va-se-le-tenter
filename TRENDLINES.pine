@@ -65,8 +65,8 @@ var float best_y1    = na
 var float best_slope = na
 var int   best_tc    = 0
 
-// Recalculate best trendline when a new pivot is detected
-if tl_enable and not na(ph) and array.size(ph_price) >= 2
+// Recalculate best trendline on every bar
+if tl_enable and array.size(ph_price) >= 2
     sz = array.size(ph_price)
     top_tc = 0
     top_x1 = 0.0
@@ -100,16 +100,10 @@ if tl_enable and not na(ph) and array.size(ph_price) >= 2
         best_tc    := top_tc
 
 // ══════════════════════════════════════════════════════════════
-// BREAKOUT DETECTION (runs on every bar)
+// BREAKOUT DETECTION (ta.crossover — runs on every bar)
 // ══════════════════════════════════════════════════════════════
-breakout_signal = false
-if tl_enable and tl_show_break and not na(best_x1) and best_tc >= tl_min_touches
-    tl_now  = f_tl_value(best_x1, best_y1, best_slope, bar_index)
-    tl_prev = f_tl_value(best_x1, best_y1, best_slope, bar_index - 1)
-    if close > tl_now and close[1] <= tl_prev
-        breakout_signal := true
-        // Invalidate trendline after breakout
-        best_tc := 0
+float tl_val = not na(best_x1) and best_tc >= tl_min_touches ? f_tl_value(best_x1, best_y1, best_slope, bar_index) : na
+breakout_signal = tl_enable and tl_show_break and ta.crossover(close, tl_val)
 
 plotshape(breakout_signal, title="Breakout", style=shape.circle,
      location=location.belowbar, color=tl_break_col, size=size.tiny)
