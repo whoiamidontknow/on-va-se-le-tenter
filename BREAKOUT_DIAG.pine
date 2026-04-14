@@ -1,15 +1,12 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// BREAKOUT DIAGNOSTIC — Reverse Engineering Breakout Detection
+// BREAKOUT DIAGNOSTIC V2 — Reverse Engineering Breakout
 // ════════════════════════════════════════════════════════════
-// Teste 6 méthodes de breakout en parallèle pour trouver
-// celle qui match l'indicateur original (point vert lime).
-// ════════════════════════════════════════════════════════════
-indicator("Breakout Diagnostic V1", overlay=true,
+indicator("Breakout Diagnostic V2", overlay=true,
      max_lines_count=500, max_labels_count=500)
 
 // ══════════════════════════════════════════════════════════════
-// INPUTS — Mêmes paramètres que TRENDLINES
+// INPUTS
 // ══════════════════════════════════════════════════════════════
 grp = "=== TRENDLINE PARAMS ==="
 piv_len     = input.int(10,    "Pivot High Bars",    group=grp, minval=2, maxval=50)
@@ -18,24 +15,25 @@ min_touches = input.int(3,     "Min Touches",        group=grp, minval=2, maxval
 lookback    = input.int(100,   "Lookback Bars",      group=grp, minval=10, maxval=500)
 
 grp_brk = "=== BREAKOUT METHODS ==="
-m1_on = input.bool(true,  "M1: Close cross TL (close>tl, close[1]<=tl[1])",  group=grp_brk, inline="m1")
-m1_col = input.color(color.lime, "",                                           group=grp_brk, inline="m1")
-m2_on = input.bool(true,  "M2: High cross TL (high>tl, high[1]<=tl[1])",     group=grp_brk, inline="m2")
-m2_col = input.color(color.aqua, "",                                           group=grp_brk, inline="m2")
-m3_on = input.bool(true,  "M3: Close above TL (1st bar close>tl)",           group=grp_brk, inline="m3")
-m3_col = input.color(color.yellow, "",                                         group=grp_brk, inline="m3")
-m4_on = input.bool(true,  "M4: Candle body above TL (open&close > tl)",      group=grp_brk, inline="m4")
-m4_col = input.color(color.orange, "",                                         group=grp_brk, inline="m4")
-m5_on = input.bool(true,  "M5: Close cross + volume > avg",                  group=grp_brk, inline="m5")
-m5_col = input.color(color.fuchsia, "",                                        group=grp_brk, inline="m5")
-m6_on = input.bool(true,  "M6: ta.crossover(close, tl_series)",              group=grp_brk, inline="m6")
-m6_col = input.color(color.white, "",                                          group=grp_brk, inline="m6")
+m1_on = input.bool(true,  "M1: close > TL (crossover close[1]<=tl[1])", group=grp_brk, inline="m1")
+m1_col = input.color(color.lime, "", group=grp_brk, inline="m1")
+m2_on = input.bool(true,  "M2: high > TL (crossover high[1]<=tl[1])",   group=grp_brk, inline="m2")
+m2_col = input.color(color.aqua, "", group=grp_brk, inline="m2")
+m3_on = input.bool(true,  "M3: close crosses (ta.crossover)",           group=grp_brk, inline="m3")
+m3_col = input.color(color.yellow, "", group=grp_brk, inline="m3")
+m4_on = input.bool(true,  "M4: close > TL after 2 bars below",         group=grp_brk, inline="m4")
+m4_col = input.color(color.orange, "", group=grp_brk, inline="m4")
+m5_on = input.bool(true,  "M5: high > TL (1st time, state)",           group=grp_brk, inline="m5")
+m5_col = input.color(color.fuchsia, "", group=grp_brk, inline="m5")
+m6_on = input.bool(true,  "M6: close > TL AND close > open (bull bar)", group=grp_brk, inline="m6")
+m6_col = input.color(color.white, "", group=grp_brk, inline="m6")
 
 grp_vis = "=== VISUALS ==="
-show_tl    = input.bool(true,       "Show Trendline",    group=grp_vis)
-tl_col     = input.color(#C8C8A9,   "Trendline Color",   group=grp_vis)
-show_table = input.bool(true,       "Show Debug Table",  group=grp_vis)
-show_tlval = input.bool(false,      "Plot TL Value",     group=grp_vis)
+show_tl      = input.bool(true,     "Show Trendline (line)",   group=grp_vis)
+show_tl_plot = input.bool(true,     "Show TL Value (plot)",    group=grp_vis)
+tl_col       = input.color(#C8C8A9, "Trendline Color",         group=grp_vis)
+show_debug   = input.bool(true,     "Debug labels near cross", group=grp_vis)
+show_table   = input.bool(true,     "Show Table",              group=grp_vis)
 
 // ══════════════════════════════════════════════════════════════
 // PIVOT DETECTION
@@ -72,15 +70,15 @@ f_touches(x1, y1, slope, pp, pb, buf_pct, lb) =>
     count
 
 // ══════════════════════════════════════════════════════════════
-// BEST TRENDLINE — updated each time a new pivot is found
+// BEST TRENDLINE — recalculated on EVERY bar (not just pivots)
 // ══════════════════════════════════════════════════════════════
 var float best_x1    = na
 var float best_y1    = na
 var float best_slope = na
 var int   best_tc    = 0
-var bool  tl_active  = false
 
-if not na(ph) and array.size(ph_price) >= 2
+// Recalculate on every bar where we have enough pivots
+if array.size(ph_price) >= 2
     sz = array.size(ph_price)
     top_tc = 0
     top_x1 = 0.0
@@ -112,73 +110,70 @@ if not na(ph) and array.size(ph_price) >= 2
         best_y1    := top_y1
         best_slope := top_sl
         best_tc    := top_tc
-        tl_active  := true
 
 // ══════════════════════════════════════════════════════════════
-// TRENDLINE VALUE on each bar (for breakout detection)
+// TRENDLINE VALUE — continuous on every bar
 // ══════════════════════════════════════════════════════════════
-float tl_now  = tl_active and not na(best_x1) ? f_tl_val(best_x1, best_y1, best_slope, bar_index) : na
-float tl_prev = tl_active and not na(best_x1) ? f_tl_val(best_x1, best_y1, best_slope, bar_index - 1) : na
+float tl_now  = not na(best_x1) ? f_tl_val(best_x1, best_y1, best_slope, bar_index) : na
+float tl_prev = not na(best_x1) ? f_tl_val(best_x1, best_y1, best_slope, bar_index - 1) : na
 
-// Plot trendline value as a line for visual reference
-plot(show_tlval and not na(tl_now) ? tl_now : na, "TL Value", color=color.new(tl_col, 50), linewidth=1, style=plot.style_stepline)
+// Continuous TL plot — shows exactly where our TL is on each bar
+plot(show_tl_plot ? tl_now : na, "TL Value", color=color.new(color.red, 30), linewidth=2)
 
 // ══════════════════════════════════════════════════════════════
-// 6 BREAKOUT METHODS — tested on every bar
+// 6 BREAKOUT METHODS
 // ══════════════════════════════════════════════════════════════
-vol_avg = ta.sma(volume, 20)
 
-// M1: Close crosses above TL (close > tl NOW, close[1] <= tl PREV)
+// M1: Classic crossover — close crosses above TL
 bool b_m1 = not na(tl_now) and close > tl_now and close[1] <= tl_prev
 
-// M2: High crosses above TL (high > tl NOW, high[1] <= tl PREV)
+// M2: High crossover — high crosses above TL
 bool b_m2 = not na(tl_now) and high > tl_now and high[1] <= tl_prev
 
-// M3: First bar where close > tl (was below before)
-var bool was_below_m3 = true
-bool b_m3 = false
+// M3: ta.crossover native
+bool b_m3 = not na(tl_now) and ta.crossover(close, tl_now)
+
+// M4: Close > TL after being below for at least 2 bars
+bool b_m4 = not na(tl_now) and close > tl_now and close[1] <= nz(tl_prev) and close[2] <= (not na(best_x1) ? f_tl_val(best_x1, best_y1, best_slope, bar_index - 2) : na)
+
+// M5: High > TL — first time (state tracking)
+var bool was_below_h = true
+bool b_m5 = false
 if not na(tl_now)
-    if close > tl_now and was_below_m3
-        b_m3 := true
-        was_below_m3 := false
-    if close <= tl_now
-        was_below_m3 := true
+    if high > tl_now and was_below_h
+        b_m5 := true
+        was_below_h := false
+    if high < tl_now
+        was_below_h := true
 
-// M4: Candle body fully above TL (both open and close > tl)
-var bool was_below_m4 = true
-bool b_m4 = false
-if not na(tl_now)
-    body_above = math.min(open, close) > tl_now
-    if body_above and was_below_m4
-        b_m4 := true
-        was_below_m4 := false
-    if not body_above
-        was_below_m4 := true
-
-// M5: Close cross + volume confirmation
-bool b_m5 = b_m1 and volume > vol_avg
-
-// M6: ta.crossover on close vs tl_now series
-bool b_m6 = not na(tl_now) and ta.crossover(close, tl_now)
-
-// Invalidate trendline after any breakout (to avoid repeated signals)
-if (b_m1 or b_m3) and tl_active
-    tl_active := false
+// M6: Close > TL AND bullish candle (close > open)
+bool b_m6 = not na(tl_now) and close > tl_now and close[1] <= tl_prev and close > open
 
 // ══════════════════════════════════════════════════════════════
-// PLOT BREAKOUT SIGNALS — each method different shape/position
+// PLOT SIGNALS
 // ══════════════════════════════════════════════════════════════
-// Stagger vertically so they don't overlap
-
-plotshape(m1_on and b_m1, "M1 Close×TL",    style=shape.circle,       location=location.belowbar, color=m1_col, size=size.tiny)
-plotshape(m2_on and b_m2, "M2 High×TL",     style=shape.diamond,      location=location.belowbar, color=m2_col, size=size.tiny)
-plotshape(m3_on and b_m3, "M3 1st Close>TL", style=shape.triangleup,  location=location.belowbar, color=m3_col, size=size.tiny)
-plotshape(m4_on and b_m4, "M4 Body>TL",     style=shape.square,       location=location.belowbar, color=m4_col, size=size.tiny)
-plotshape(m5_on and b_m5, "M5 Close×+Vol",  style=shape.cross,        location=location.belowbar, color=m5_col, size=size.tiny)
-plotshape(m6_on and b_m6, "M6 crossover()",  style=shape.xcross,      location=location.belowbar, color=m6_col, size=size.tiny)
+plotshape(m1_on and b_m1, "M1", style=shape.circle,      location=location.belowbar, color=m1_col, size=size.tiny)
+plotshape(m2_on and b_m2, "M2", style=shape.diamond,     location=location.belowbar, color=m2_col, size=size.tiny)
+plotshape(m3_on and b_m3, "M3", style=shape.triangleup,  location=location.belowbar, color=m3_col, size=size.tiny)
+plotshape(m4_on and b_m4, "M4", style=shape.square,      location=location.belowbar, color=m4_col, size=size.tiny)
+plotshape(m5_on and b_m5, "M5", style=shape.cross,       location=location.belowbar, color=m5_col, size=size.tiny)
+plotshape(m6_on and b_m6, "M6", style=shape.xcross,      location=location.belowbar, color=m6_col, size=size.tiny)
 
 // ══════════════════════════════════════════════════════════════
-// DRAW TRENDLINE (barstate.islast — visual only)
+// DEBUG LABELS — near crossing zone (close within 1% of TL)
+// ══════════════════════════════════════════════════════════════
+if show_debug and not na(tl_now)
+    diff_pct = math.abs(close - tl_now) / tl_now * 100
+    if diff_pct < 0.5
+        lbl_txt = "C:" + str.tostring(close, format.mintick) + "\nTL:" + str.tostring(tl_now, format.mintick) + "\nH:" + str.tostring(high, format.mintick)
+        lbl_col = close > tl_now ? color.lime : color.red
+        label.new(bar_index, low, lbl_txt,
+             xloc=xloc.bar_index, textcolor=lbl_col,
+             color=color.new(lbl_col, 85),
+             style=label.style_label_up, size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════
+// DRAW TRENDLINE (barstate.islast)
 // ══════════════════════════════════════════════════════════════
 var line[] tl_lines = array.new_line(0)
 
@@ -195,7 +190,7 @@ if show_tl and barstate.islast and not na(best_x1)
     array.push(tl_lines, ln)
 
 // ══════════════════════════════════════════════════════════════
-// COUNT SIGNALS for table
+// COUNTS
 // ══════════════════════════════════════════════════════════════
 var int cnt_m1 = 0
 var int cnt_m2 = 0
@@ -218,56 +213,55 @@ if b_m6
     cnt_m6 += 1
 
 // ══════════════════════════════════════════════════════════════
-// DEBUG TABLE
+// TABLE
 // ══════════════════════════════════════════════════════════════
 if show_table and barstate.islast
     var table t = table.new(position.top_right, 3, 10,
          bgcolor=color.new(#1A1A1A, 10), border_width=1,
          border_color=color.rgb(60, 60, 60))
 
-    table.cell(t, 0, 0, "Method",    text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, "Shape",     text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 2, 0, "Count",     text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 0, "Method",  text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, "Signal",  text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 2, 0, "Count",   text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 20))
 
-    table.cell(t, 0, 1, "M1: close×TL",         text_color=m1_col, text_size=size.small)
-    table.cell(t, 1, 1, "●",                     text_color=m1_col, text_size=size.small)
-    table.cell(t, 2, 1, str.tostring(cnt_m1),    text_color=m1_col, text_size=size.small)
+    table.cell(t, 0, 1, "M1 close×TL",      text_color=m1_col, text_size=size.small)
+    table.cell(t, 1, 1, "●",                 text_color=m1_col, text_size=size.small)
+    table.cell(t, 2, 1, str.tostring(cnt_m1), text_color=m1_col, text_size=size.small)
 
-    table.cell(t, 0, 2, "M2: high×TL",           text_color=m2_col, text_size=size.small)
-    table.cell(t, 1, 2, "◆",                     text_color=m2_col, text_size=size.small)
-    table.cell(t, 2, 2, str.tostring(cnt_m2),    text_color=m2_col, text_size=size.small)
+    table.cell(t, 0, 2, "M2 high×TL",        text_color=m2_col, text_size=size.small)
+    table.cell(t, 1, 2, "◆",                 text_color=m2_col, text_size=size.small)
+    table.cell(t, 2, 2, str.tostring(cnt_m2), text_color=m2_col, text_size=size.small)
 
-    table.cell(t, 0, 3, "M3: 1st close>TL",      text_color=m3_col, text_size=size.small)
-    table.cell(t, 1, 3, "▲",                     text_color=m3_col, text_size=size.small)
-    table.cell(t, 2, 3, str.tostring(cnt_m3),    text_color=m3_col, text_size=size.small)
+    table.cell(t, 0, 3, "M3 crossover()",     text_color=m3_col, text_size=size.small)
+    table.cell(t, 1, 3, "▲",                 text_color=m3_col, text_size=size.small)
+    table.cell(t, 2, 3, str.tostring(cnt_m3), text_color=m3_col, text_size=size.small)
 
-    table.cell(t, 0, 4, "M4: body>TL",            text_color=m4_col, text_size=size.small)
-    table.cell(t, 1, 4, "■",                     text_color=m4_col, text_size=size.small)
-    table.cell(t, 2, 4, str.tostring(cnt_m4),    text_color=m4_col, text_size=size.small)
+    table.cell(t, 0, 4, "M4 2bars+cross",     text_color=m4_col, text_size=size.small)
+    table.cell(t, 1, 4, "■",                 text_color=m4_col, text_size=size.small)
+    table.cell(t, 2, 4, str.tostring(cnt_m4), text_color=m4_col, text_size=size.small)
 
-    table.cell(t, 0, 5, "M5: close×+vol",         text_color=m5_col, text_size=size.small)
-    table.cell(t, 1, 5, "+",                     text_color=m5_col, text_size=size.small)
-    table.cell(t, 2, 5, str.tostring(cnt_m5),    text_color=m5_col, text_size=size.small)
+    table.cell(t, 0, 5, "M5 high>TL 1st",     text_color=m5_col, text_size=size.small)
+    table.cell(t, 1, 5, "+",                 text_color=m5_col, text_size=size.small)
+    table.cell(t, 2, 5, str.tostring(cnt_m5), text_color=m5_col, text_size=size.small)
 
-    table.cell(t, 0, 6, "M6: crossover()",        text_color=m6_col, text_size=size.small)
-    table.cell(t, 1, 6, "✕",                     text_color=m6_col, text_size=size.small)
-    table.cell(t, 2, 6, str.tostring(cnt_m6),    text_color=m6_col, text_size=size.small)
+    table.cell(t, 0, 6, "M6 close×+bull",     text_color=m6_col, text_size=size.small)
+    table.cell(t, 1, 6, "✕",                 text_color=m6_col, text_size=size.small)
+    table.cell(t, 2, 6, str.tostring(cnt_m6), text_color=m6_col, text_size=size.small)
 
-    // TL info
-    table.cell(t, 0, 7, "Best TL",    text_color=color.gray, text_size=size.small)
-    table.cell(t, 1, 7, str.tostring(best_tc) + " touches", text_color=color.yellow, text_size=size.small)
-    table.cell(t, 2, 7, tl_active ? "ACTIVE" : "BROKEN", text_color=tl_active ? color.lime : color.red, text_size=size.small)
+    table.cell(t, 0, 7, "Touches",    text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 7, str.tostring(best_tc), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 2, 7, "", text_size=size.small)
 
-    table.cell(t, 0, 8, "TL Value",   text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 8, "TL now",     text_color=color.gray, text_size=size.small)
     table.cell(t, 1, 8, not na(tl_now) ? str.tostring(tl_now, format.mintick) : "—", text_color=color.white, text_size=size.small)
     table.cell(t, 2, 8, "Close: " + str.tostring(close, format.mintick), text_color=close > nz(tl_now) ? color.lime : color.red, text_size=size.small)
 
     table.cell(t, 0, 9, "Slope",      text_color=color.gray, text_size=size.small)
     table.cell(t, 1, 9, not na(best_slope) ? str.tostring(best_slope, "#.######") : "—", text_color=color.white, text_size=size.small)
-    table.cell(t, 2, 9, "", text_color=color.white, text_size=size.small)
+    table.cell(t, 2, 9, "", text_size=size.small)
 
 // ══════════════════════════════════════════════════════════════
 // ALERTES
 // ══════════════════════════════════════════════════════════════
 alertcondition(b_m1, "M1 Breakout", "Close crossed above trendline")
-alertcondition(b_m6, "M6 Breakout", "ta.crossover breakout detected")
+alertcondition(b_m3, "M3 Breakout", "ta.crossover breakout")
