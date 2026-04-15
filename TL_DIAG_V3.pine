@@ -1,6 +1,6 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// TL DIAGNOSTIC V3 — Multi-method Trendline Search
+// TL DIAGNOSTIC V3 — No Lookback Limit on TL Search
 // ════════════════════════════════════════════════════════════
 indicator("TL Diag V3", overlay=true,
      max_lines_count=100, max_labels_count=200)
@@ -9,30 +9,21 @@ indicator("TL Diag V3", overlay=true,
 // INPUTS
 // ══════════════════════════════════════════════════════════════
 grp = "=== CONFIG ==="
-piv_len    = input.int(10,    "Pivot Bars",      group=grp, minval=2, maxval=50)
-buffer_pct = input.float(0.1, "Touch Buffer %",  group=grp, minval=0.0, maxval=5.0, step=0.05)
-lookback   = input.int(100,   "Lookback Bars",   group=grp, minval=10, maxval=500)
-min_tc     = input.int(2,     "Min Touches",     group=grp, minval=2, maxval=10)
-tl_col     = input.color(#C8C8A9, "TL Color",    group=grp)
-tl_w       = input.int(2,     "Width",           group=grp, minval=1, maxval=5)
+piv_len      = input.int(10,    "Pivot Bars",                          group=grp, minval=2, maxval=50)
+buffer_pct   = input.float(0.1, "Touch Buffer %",                     group=grp, minval=0.0, maxval=5.0, step=0.05)
+new_piv_bars = input.int(100,   "Look for New Pivot High after X Bars", group=grp, minval=10, maxval=500)
+min_tc       = input.int(2,     "Min Touches",                        group=grp, minval=2, maxval=10)
+tl_col       = input.color(#C8C8A9, "TL Color",                       group=grp)
+tl_w         = input.int(2,     "Width",                               group=grp, minval=1, maxval=5)
 
 grp_m = "=== METHODE ==="
-method = input.string("A", "Méthode", options=["A","B","C","D","E","F","G","H","I","J","K","L"], group=grp_m)
-
-// RESISTANCE MODES:
-// A = Strict resist (no high above) + max touches
-// B = Strict resist + closest to price
-// C = Soft resist (buffer tolerance) + max touches
-// D = Soft resist + closest to price
-// E = No check + max touches (ancien algo)
-// F = No check + closest to price
-// NEW:
-// G = Allow N violations (max 3 highs above) + max touches
-// H = Allow N violations + closest to price
-// I = Check only closes (not highs) for resistance + max touches
-// J = ATR-based buffer for resistance + max touches
-// K = Resistance check only on last 50 bars + max touches
-// L = Score: touches×3 + proximity×2 + slope_penalty (combined)
+method = input.string("E", "Méthode", options=["A","B","C","D","E","F"], group=grp_m)
+// A = Max touches (all history, no resistance check)
+// B = Closest to price (all history)
+// C = Max touches + min spacing between anchors = new_piv_bars
+// D = Closest + min spacing
+// E = Max touches + no price above TL between anchors (resistance)
+// F = Closest + no price above between anchors
 
 grp_v = "=== VISUALS ==="
 show_piv   = input.bool(true, "Pivots",        group=grp_v)
@@ -41,7 +32,7 @@ show_brk   = input.bool(true, "Breakout",      group=grp_v)
 brk_col    = input.color(color.lime, "Brk Col", group=grp_v)
 
 // ══════════════════════════════════════════════════════════════
-// PIVOTS
+// PIVOTS — stored over full history (no lookback limit)
 // ══════════════════════════════════════════════════════════════
 ph = ta.pivothigh(high, piv_len, piv_len)
 
@@ -51,17 +42,12 @@ var int[]   ppb = array.new_int(0)
 if not na(ph)
     array.unshift(ppp, ph)
     array.unshift(ppb, bar_index - piv_len)
-    if array.size(ppp) > 50
+    if array.size(ppp) > 100
         array.pop(ppp)
         array.pop(ppb)
 
 plotshape(show_piv and not na(ph), "PH", style=shape.triangledown,
      location=location.abovebar, color=color.orange, size=size.tiny, offset=-piv_len)
-
-// ══════════════════════════════════════════════════════════════
-// ATR for adaptive buffer
-// ══════════════════════════════════════════════════════════════
-atr_val = ta.atr(14)
 
 // ══════════════════════════════════════════════════════════════
 // FONCTIONS
@@ -72,33 +58,33 @@ f_tl(x1, y1, slope, x) =>
 f_tc(x1, y1, slope, buf_pct) =>
     c = 0
     sz = array.size(ppp)
-    for i = 0 to math.min(sz - 1, 49)
+    for i = 0 to math.min(sz - 1, 99)
         px = array.get(ppb, i)
         py = array.get(ppp, i)
-        if px >= x1 and bar_index - px <= lookback
+        if px >= x1
             tly = f_tl(x1, y1, slope, px)
             buf = tly * buf_pct / 100.0
             if py >= tly - buf and py <= tly + buf
                 c += 1
     c
 
-// Resistance check — returns number of violations
-f_violations(x1, y1, slope, use_close, check_last_n, atr_buf) =>
-    v = 0
-    start_offset = check_last_n > 0 ? math.min(check_last_n, bar_index - int(x1)) : bar_index - int(x1)
-    start_offset := math.min(start_offset, lookback)
-    for k = 0 to math.min(start_offset, 499)
-        bx = bar_index - k
-        if bx >= int(x1)
+// Check if any high goes above TL between x1 and x2 only
+f_resist_between(x1, y1, slope, x2) =>
+    valid = true
+    span = int(x2 - x1)
+    for k = 0 to math.min(span, 499)
+        bx = int(x1) + k
+        offset = bar_index - bx
+        if offset >= 0 and offset < 5000
+            h = high[offset]
             tly = f_tl(x1, y1, slope, bx)
-            price_check = use_close ? close[k] : high[k]
-            threshold = atr_buf > 0 ? tly + atr_buf : tly
-            if price_check > threshold
-                v += 1
-    v
+            if h > tly * 1.001  // tiny tolerance
+                valid := false
+                break
+    valid
 
 // ══════════════════════════════════════════════════════════════
-// BEST TL — per method
+// BEST TL — no lookback limit on search
 // ══════════════════════════════════════════════════════════════
 var float bx1 = na
 var float by1 = na
@@ -114,8 +100,8 @@ if array.size(ppp) >= 2
     _sc = -999999.0
     found = false
 
-    mi = math.min(sz - 1, 14)
-    mj = math.min(sz - 1, 24)
+    mi = math.min(sz - 1, 29)
+    mj = math.min(sz - 1, 49)
 
     for i = 0 to mi
         for j = i + 1 to mj
@@ -125,74 +111,41 @@ if array.size(ppp) >= 2
                 x2v = array.get(ppb, i)
                 y2v = array.get(ppp, i)
 
-                if x2v > x1v and bar_index - x1v <= lookback
+                if x2v > x1v
                     sl = (y2v - y1v) / (x2v - x1v)
                     if sl <= 0
-                        tc = f_tc(x1v, y1v, sl, buffer_pct)
-                        if tc >= min_tc
-                            tl_now = f_tl(x1v, y1v, sl, bar_index)
-                            dist = math.abs(close - tl_now) / close * 100
+                        spacing = x2v - x1v
 
-                            // Validation per method
-                            int viol = 0
-                            bool valid = false
+                        // Methods C/D require minimum spacing
+                        bool spacing_ok = true
+                        if method == "C" or method == "D"
+                            spacing_ok := spacing >= new_piv_bars
 
-                            if method == "A" or method == "B"
-                                // Strict: 0 violations on highs
-                                viol := f_violations(x1v, y1v, sl, false, 0, 0.0)
-                                valid := viol == 0
+                        if spacing_ok
+                            tc = f_tc(x1v, y1v, sl, buffer_pct)
+                            if tc >= min_tc
+                                // Methods E/F require resistance between anchors
+                                bool resist_ok = true
+                                if method == "E" or method == "F"
+                                    resist_ok := f_resist_between(x1v, y1v, sl, x2v)
 
-                            else if method == "C" or method == "D"
-                                // Soft: 0 violations with buffer
-                                viol := f_violations(x1v, y1v, sl, false, 0, tl_now * buffer_pct / 100.0)
-                                valid := viol == 0
+                                if resist_ok
+                                    tl_now = f_tl(x1v, y1v, sl, bar_index)
+                                    dist = math.abs(close - tl_now) / close * 100
 
-                            else if method == "E" or method == "F"
-                                // No check
-                                valid := true
+                                    float score = na
+                                    if method == "A" or method == "C" or method == "E"
+                                        score := float(tc)
+                                    else if method == "B" or method == "D" or method == "F"
+                                        score := -dist
 
-                            else if method == "G" or method == "H"
-                                // Allow up to 3 violations
-                                viol := f_violations(x1v, y1v, sl, false, 0, 0.0)
-                                valid := viol <= 3
-
-                            else if method == "I"
-                                // Check closes only
-                                viol := f_violations(x1v, y1v, sl, true, 0, 0.0)
-                                valid := viol == 0
-
-                            else if method == "J"
-                                // ATR buffer for resistance
-                                viol := f_violations(x1v, y1v, sl, false, 0, atr_val * 0.5)
-                                valid := viol == 0
-
-                            else if method == "K"
-                                // Check only last 50 bars
-                                viol := f_violations(x1v, y1v, sl, false, 50, 0.0)
-                                valid := viol == 0
-
-                            else if method == "L"
-                                // Combined score, no strict check
-                                valid := true
-
-                            if valid
-                                float score = na
-
-                                if method == "A" or method == "C" or method == "E" or method == "G" or method == "I" or method == "J" or method == "K"
-                                    score := float(tc)
-                                else if method == "B" or method == "D" or method == "F" or method == "H"
-                                    score := -dist
-                                else if method == "L"
-                                    prox = dist < 0.01 ? 100.0 : 1.0 / dist
-                                    score := float(tc) * 3.0 + prox * 2.0 - math.abs(sl) * 1000.0
-
-                                if not na(score) and score > _sc
-                                    _sc := score
-                                    _x1 := float(x1v)
-                                    _y1 := y1v
-                                    _sl := sl
-                                    _tc := tc
-                                    found := true
+                                    if not na(score) and score > _sc
+                                        _sc := score
+                                        _x1 := float(x1v)
+                                        _y1 := y1v
+                                        _sl := sl
+                                        _tc := tc
+                                        found := true
 
     if found
         bx1 := _x1
@@ -228,10 +181,10 @@ if barstate.islast
              xloc=xloc.bar_index, color=tl_col, width=tl_w))
 
         if show_touch
-            for k = 0 to math.min(array.size(ppp) - 1, 49)
+            for k = 0 to math.min(array.size(ppp) - 1, 99)
                 kx = array.get(ppb, k)
                 ky = array.get(ppp, k)
-                if kx >= lx and bar_index - kx <= lookback
+                if kx >= lx
                     tly = f_tl(bx1, by1, bsl, kx)
                     buf = tly * buffer_pct / 100.0
                     if ky >= tly - buf and ky <= tly + buf
@@ -244,7 +197,7 @@ if barstate.islast
 // TABLE
 // ══════════════════════════════════════════════════════════════
 if barstate.islast
-    var table t = table.new(position.bottom_right, 2, 16,
+    var table t = table.new(position.bottom_right, 2, 10,
          bgcolor=color.new(#1A1A1A, 10), border_width=1,
          border_color=color.rgb(60, 60, 60))
 
@@ -252,29 +205,23 @@ if barstate.islast
     table.cell(t, 1, 0, method, text_color=color.lime, text_size=size.small, bgcolor=color.new(color.navy, 20))
 
     descs = array.from(
-         "A: Strict + max touch",
-         "B: Strict + closest",
-         "C: Soft + max touch",
-         "D: Soft + closest",
-         "E: No check + max touch",
-         "F: No check + closest",
-         "G: Allow 3 viol + max touch",
-         "H: Allow 3 viol + closest",
-         "I: Close only resist + max tc",
-         "J: ATR buffer resist + max tc",
-         "K: Last 50 bars resist + max tc",
-         "L: Combined score (adaptive)")
+         "A: Max touches (all history)",
+         "B: Closest to price (all hist)",
+         "C: Max touches + min spacing",
+         "D: Closest + min spacing",
+         "E: Max tc + resist between pts",
+         "F: Closest + resist between pts")
 
-    for i = 0 to 11
+    for i = 0 to 5
         d = array.get(descs, i)
         letter = str.substring(d, 0, 1)
         act = letter == method
         table.cell(t, 0, i + 1, d, text_color=act ? color.lime : color.gray, text_size=size.small)
         table.cell(t, 1, i + 1, act ? "◄" : "", text_color=color.lime, text_size=size.small)
 
-    table.cell(t, 0, 13, "Touches", text_color=color.gray, text_size=size.small)
-    table.cell(t, 1, 13, str.tostring(btc), text_color=color.yellow, text_size=size.small)
-    table.cell(t, 0, 14, "Slope", text_color=color.gray, text_size=size.small)
-    table.cell(t, 1, 14, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white, text_size=size.small)
-    table.cell(t, 0, 15, "ATR(14)", text_color=color.gray, text_size=size.small)
-    table.cell(t, 1, 15, str.tostring(atr_val, format.mintick), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 7, "Touches", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 7, str.tostring(btc), text_color=color.yellow, text_size=size.small)
+    table.cell(t, 0, 8, "Slope", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 8, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 9, "Pivots stockés", text_color=color.gray, text_size=size.small)
+    table.cell(t, 1, 9, str.tostring(array.size(ppp)), text_color=color.white, text_size=size.small)
