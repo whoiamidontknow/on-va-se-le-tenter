@@ -1,26 +1,44 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// TL DIAGNOSTIC V3 — with breakout
+// TL DIAGNOSTIC V3 — TL method + Breakout method, 1 breakout only
 // ════════════════════════════════════════════════════════════
 indicator("TL Diag V3", overlay=true,
-     max_lines_count=10, max_labels_count=500)
+     max_lines_count=10, max_labels_count=10)
 
 // ══════════════════════════════════════════════════════════════
 // INPUTS
 // ══════════════════════════════════════════════════════════════
 grp = "=== CONFIG ==="
-piv_len      = input.int(10,    "Pivot Bars",              group=grp, minval=2, maxval=50)
-buffer_pct   = input.float(0.1, "Touch Buffer %",          group=grp, minval=0.0, maxval=5.0, step=0.05)
-new_piv_bars = input.int(100,   "Min Spacing (C/D only)",  group=grp, minval=0, maxval=500)
-min_tc       = input.int(2,     "Min Touches",             group=grp, minval=2, maxval=10)
-tl_col       = input.color(#C8C8A9, "TL Color",            group=grp)
+piv_len      = input.int(10,    "Pivot Bars",             group=grp, minval=2, maxval=50)
+buffer_pct   = input.float(0.1, "Touch Buffer %",         group=grp, minval=0.0, maxval=5.0, step=0.05)
+new_piv_bars = input.int(100,   "Min Spacing (C/D only)", group=grp, minval=0, maxval=500)
+min_tc       = input.int(2,     "Min Touches",            group=grp, minval=2, maxval=10)
+tl_col       = input.color(#C8C8A9, "TL Color",           group=grp)
 
-grp_m = "=== METHODE ==="
-method = input.string("G", "Méthode", options=["A","B","C","D","G","H","I"], group=grp_m)
-brk_col = input.color(color.lime, "Breakout Color", group=grp_m)
+grp_tl = "=== TL METHOD ==="
+tl_method = input.string("G", "TL Méthode", options=["A","B","C","D","G","H","I"], group=grp_tl)
+// A = Max touches
+// B = Closest to price
+// C = Max touches + min spacing
+// D = Closest + min spacing
+// G = Closest + spacing bonus
+// H = Closest, TL>price
+// I = Combined score
+
+grp_bk = "=== BREAKOUT METHOD ==="
+bk_method = input.string("D", "BRK Méthode", options=["A","B","C","D","E","F","G","H"], group=grp_bk)
+brk_col = input.color(color.lime, "BRK Color", group=grp_bk)
+// A = crossover(close, tl)
+// B = crossover(high, tl)
+// C = crossover(hl2, tl)
+// D = crossover(hlc3, tl)
+// E = low > tl (candle above)
+// F = close > tl 1st time (state)
+// G = confirmation bar (+1)
+// H = close > tl + 0.1%
 
 // ══════════════════════════════════════════════════════════════
-// PIVOTS (storage = 20)
+// PIVOTS
 // ══════════════════════════════════════════════════════════════
 ph = ta.pivothigh(high, piv_len, piv_len)
 
@@ -35,8 +53,7 @@ if not na(ph)
         array.pop(ppb)
 
 // ══════════════════════════════════════════════════════════════
-// BEST TL — computed every bar (tight loop for speed)
-// 8×15 = 120 pairs × 20 touches = 2400 ops/bar
+// BEST TL — every bar (tight)
 // ══════════════════════════════════════════════════════════════
 var float bx1 = na
 var float by1 = na
@@ -69,7 +86,7 @@ if array.size(ppp) >= 2
                         spacing = x2v - x1v
 
                         keep = true
-                        if method == "C" or method == "D"
+                        if tl_method == "C" or tl_method == "D"
                             keep := spacing >= new_piv_bars
 
                         if keep
@@ -88,16 +105,16 @@ if array.size(ppp) >= 2
                                 dist = math.abs(close - tl_now) / close * 100
 
                                 sc = -1e18
-                                if method == "A" or method == "C"
+                                if tl_method == "A" or tl_method == "C"
                                     sc := float(tc)
-                                else if method == "B" or method == "D"
+                                else if tl_method == "B" or tl_method == "D"
                                     sc := -dist
-                                else if method == "G"
+                                else if tl_method == "G"
                                     sc := -dist + math.min(float(spacing) / 100.0, 2.0)
-                                else if method == "H"
+                                else if tl_method == "H"
                                     if tl_now > close
                                         sc := -dist
-                                else if method == "I"
+                                else if tl_method == "I"
                                     sc := -dist + math.min(float(spacing) / 100.0, 3.0) + float(tc) * 0.5
 
                                 if sc > _sc
@@ -115,22 +132,57 @@ if array.size(ppp) >= 2
         btc := _tc
 
 // ══════════════════════════════════════════════════════════════
-// TL VALUE + BREAKOUT
+// TL VALUE + BREAKOUT METHOD SWITCH
 // ══════════════════════════════════════════════════════════════
 float tl_v = not na(bx1) ? by1 + bsl * (bar_index - bx1) : na
-brk_sig = not na(tl_v) and ta.crossover(hlc3, tl_v)
-plotshape(brk_sig, "Breakout", style=shape.circle,
-     location=location.belowbar, color=brk_col, size=size.small)
+
+// Method F state
+var bool f_below = true
+bool f_sig = false
+if not na(tl_v)
+    if close > tl_v and f_below
+        f_sig := true
+        f_below := false
+    if close <= tl_v
+        f_below := true
+
+// Method G (confirmation bar)
+bool g_sig = not na(tl_v) and nz(close[1]) > nz(tl_v[1]) and nz(close[2]) <= nz(tl_v[2])
+
+bool brk = switch bk_method
+    "A" => not na(tl_v) and ta.crossover(close, tl_v)
+    "B" => not na(tl_v) and ta.crossover(high,  tl_v)
+    "C" => not na(tl_v) and ta.crossover(hl2,   tl_v)
+    "D" => not na(tl_v) and ta.crossover(hlc3,  tl_v)
+    "E" => not na(tl_v) and low > tl_v and low[1] <= nz(tl_v[1])
+    "F" => f_sig
+    "G" => g_sig
+    "H" => not na(tl_v) and close > tl_v * 1.001 and close[1] <= nz(tl_v[1]) * 1.001
+    => false
 
 // ══════════════════════════════════════════════════════════════
-// DRAW TL (barstate.islast)
+// TRACK LAST BREAKOUT ONLY (1 seul affiché)
 // ══════════════════════════════════════════════════════════════
-var line[] tls = array.new_line(0)
+var int   last_bk_bar = na
+var float last_bk_low = na
+
+if brk
+    last_bk_bar := bar_index
+    last_bk_low := low
+
+// ══════════════════════════════════════════════════════════════
+// DRAW TL + 1 BREAKOUT (barstate.islast)
+// ══════════════════════════════════════════════════════════════
+var line[]  tls  = array.new_line(0)
+var label[] lbls = array.new_label(0)
 
 if barstate.islast
     while array.size(tls) > 0
         line.delete(array.pop(tls))
+    while array.size(lbls) > 0
+        label.delete(array.pop(lbls))
 
+    // Draw TL
     if not na(bx1)
         lx = int(bx1)
         ex = bar_index + 50
@@ -138,16 +190,27 @@ if barstate.islast
         array.push(tls, line.new(lx, by1, ex, ey,
              xloc=xloc.bar_index, color=tl_col, width=2))
 
+    // Draw last breakout
+    if not na(last_bk_bar)
+        array.push(lbls, label.new(last_bk_bar, last_bk_low, "▲",
+             xloc=xloc.bar_index, textcolor=brk_col,
+             color=color.new(brk_col, 70),
+             style=label.style_label_up, size=size.small))
+
     // TABLE
-    var table t = table.new(position.bottom_right, 2, 6,
+    var table t = table.new(position.bottom_right, 2, 8,
          bgcolor=color.new(#1A1A1A, 10), border_width=1)
-    table.cell(t, 0, 0, "TL Diag V3", text_color=color.white, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 1, 0, method, text_color=color.lime, bgcolor=color.new(color.navy, 20))
-    table.cell(t, 0, 1, "Touches", text_color=color.gray)
-    table.cell(t, 1, 1, str.tostring(btc), text_color=color.yellow)
-    table.cell(t, 0, 2, "Slope", text_color=color.gray)
-    table.cell(t, 1, 2, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white)
-    table.cell(t, 0, 3, "Pivots", text_color=color.gray)
-    table.cell(t, 1, 3, str.tostring(array.size(ppp)), text_color=color.white)
-    table.cell(t, 0, 4, "TL now", text_color=color.gray)
-    table.cell(t, 1, 4, not na(tl_v) ? str.tostring(tl_v, format.mintick) : "—", text_color=color.white)
+    table.cell(t, 0, 0, "TL",  text_color=color.white, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 0, tl_method, text_color=color.lime, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 1, "BRK", text_color=color.white, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 1, 1, bk_method, text_color=brk_col, bgcolor=color.new(color.navy, 20))
+    table.cell(t, 0, 2, "Touches", text_color=color.gray)
+    table.cell(t, 1, 2, str.tostring(btc), text_color=color.yellow)
+    table.cell(t, 0, 3, "Slope", text_color=color.gray)
+    table.cell(t, 1, 3, not na(bsl) ? str.tostring(bsl, "#.######") : "—", text_color=color.white)
+    table.cell(t, 0, 4, "Pivots", text_color=color.gray)
+    table.cell(t, 1, 4, str.tostring(array.size(ppp)), text_color=color.white)
+    table.cell(t, 0, 5, "TL now", text_color=color.gray)
+    table.cell(t, 1, 5, not na(tl_v) ? str.tostring(tl_v, format.mintick) : "—", text_color=color.white)
+    table.cell(t, 0, 6, "BRK bar", text_color=color.gray)
+    table.cell(t, 1, 6, not na(last_bk_bar) ? str.tostring(bar_index - last_bk_bar) + " ago" : "—", text_color=color.white)
