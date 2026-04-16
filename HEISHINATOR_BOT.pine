@@ -1,0 +1,112 @@
+//@version=6
+// ═══════════════════════════════════════════════════════════════════
+// HEISHINATOR BOT — Strategy
+// Tendance : Heishinator 4h + 1h (doivent être d'accord, sinon no-trade)
+// Déclenchement : Heishinator 15min + 2min (règles à définir)
+// ═══════════════════════════════════════════════════════════════════
+strategy("Heishinator Bot", overlay=true,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     pyramiding=0, calc_on_every_tick=false, process_orders_on_close=true,
+     initial_capital=10000, commission_type=strategy.commission.percent, commission_value=0.02)
+
+// ── PARAMÈTRES ────────────────────────────────────────────────────
+grp_tf  = "=== TIMEFRAMES ==="
+tf_big  = input.timeframe("240", "TF Tendance haute (défaut 4h)",  group=grp_tf)
+tf_mid  = input.timeframe("60",  "TF Tendance basse (défaut 1h)",  group=grp_tf)
+tf_sig  = input.timeframe("15",  "TF Signal principal (défaut 15m)", group=grp_tf)
+tf_trg  = input.timeframe("2",   "TF Déclencheur (défaut 2m)",      group=grp_tf)
+
+grp_vis = "=== VISUEL ==="
+show_flags = input.bool(true, "Afficher drapeaux tendance MTF", group=grp_vis)
+show_bg    = input.bool(true, "Colorer fond selon biais",       group=grp_vis)
+
+// ══════════════════════════════════════════════════════════════════
+// HEISHINATOR V4 — fonction réutilisable (EMA récursif α adaptatif)
+// ══════════════════════════════════════════════════════════════════
+f_heishi_bull() =>
+    tf_s  = timeframe.in_seconds(timeframe.period)
+    a     = tf_s < 30 * 60 ? 0.42 : 0.44
+    src   = (open + high + low + close) / 4
+    var float sha = na
+    sha := na(sha[1]) ? src : a * src + (1.0 - a) * sha[1]
+    ema33 = ta.ema(close, 33)
+    sha > ema33
+
+// Chart HA forcé pour chaque TF (Heishinator travaille sur HA natif)
+ha_tkr = ticker.heikinashi(syminfo.tickerid)
+
+bull_big = request.security(ha_tkr, tf_big, f_heishi_bull(), lookahead=barmerge.lookahead_off)
+bull_mid = request.security(ha_tkr, tf_mid, f_heishi_bull(), lookahead=barmerge.lookahead_off)
+bull_sig = request.security(ha_tkr, tf_sig, f_heishi_bull(), lookahead=barmerge.lookahead_off)
+bull_trg = request.security(ha_tkr, tf_trg, f_heishi_bull(), lookahead=barmerge.lookahead_off)
+
+// ══════════════════════════════════════════════════════════════════
+// BIAIS DE TENDANCE (4h + 1h)
+// ══════════════════════════════════════════════════════════════════
+// - big bull AND mid bull  → biais LONG
+// - big bear AND mid bear  → biais SHORT
+// - incohérence            → NONE (aucun trade)
+bias_long  = bull_big and bull_mid
+bias_short = not bull_big and not bull_mid
+bias_none  = not bias_long and not bias_short
+
+// ══════════════════════════════════════════════════════════════════
+// DÉCLENCHEMENT — 15min + 2min
+// ══════════════════════════════════════════════════════════════════
+// TODO (Q1) : règle exacte du déclenchement — à définir avec Jeremy
+// Hypothèses possibles :
+//   A) 15m aligné au biais ET flip 2m dans le sens du biais
+//   B) flip 15m dans le sens du biais (et 2m ignoré / filtre supp.)
+//   C) 15m ET 2m tous deux alignés au biais (état, pas flip)
+//
+// Placeholder neutre : aucun trade tant que la règle n'est pas choisie
+enter_long  = false
+enter_short = false
+
+// ══════════════════════════════════════════════════════════════════
+// SORTIES
+// ══════════════════════════════════════════════════════════════════
+// TODO (Q3+) : SL / TP / trailing / sortie sur flip tendance / etc.
+
+// ══════════════════════════════════════════════════════════════════
+// ORDRES
+// ══════════════════════════════════════════════════════════════════
+if enter_long
+    strategy.entry("L", strategy.long)
+if enter_short
+    strategy.entry("S", strategy.short)
+
+// ══════════════════════════════════════════════════════════════════
+// VISUEL
+// ══════════════════════════════════════════════════════════════════
+bg_col = not show_bg ? na :
+     bias_long  ? color.new(#2196F3, 92) :
+     bias_short ? color.new(#F44336, 92) :
+     color.new(color.gray, 95)
+bgcolor(bg_col, title="Biais MTF")
+
+// Drapeaux : état Heishinator par TF sur la dernière barre
+var table tbl = na
+if barstate.isfirst and show_flags
+    tbl := table.new(position.bottom_right, 2, 5, bgcolor=color.new(color.black, 70),
+         border_color=color.gray, border_width=1)
+
+f_col(b) => b ? color.new(#2196F3, 0) : color.new(#F44336, 0)
+
+if barstate.islast and show_flags
+    table.cell(tbl, 0, 0, "Biais", text_color=color.silver, text_size=size.small)
+    bias_txt = bias_long ? "LONG" : bias_short ? "SHORT" : "NONE"
+    bias_col = bias_long ? color.new(#2196F3, 0) : bias_short ? color.new(#F44336, 0) : color.new(color.gray, 0)
+    table.cell(tbl, 1, 0, bias_txt, text_color=color.white, text_size=size.small, bgcolor=bias_col)
+
+    table.cell(tbl, 0, 1, tf_big + " (haute)", text_color=color.silver, text_size=size.small)
+    table.cell(tbl, 1, 1, bull_big ? "BULL" : "BEAR", text_color=color.white, text_size=size.small, bgcolor=f_col(bull_big))
+
+    table.cell(tbl, 0, 2, tf_mid + " (basse)", text_color=color.silver, text_size=size.small)
+    table.cell(tbl, 1, 2, bull_mid ? "BULL" : "BEAR", text_color=color.white, text_size=size.small, bgcolor=f_col(bull_mid))
+
+    table.cell(tbl, 0, 3, tf_sig + " (signal)", text_color=color.silver, text_size=size.small)
+    table.cell(tbl, 1, 3, bull_sig ? "BULL" : "BEAR", text_color=color.white, text_size=size.small, bgcolor=f_col(bull_sig))
+
+    table.cell(tbl, 0, 4, tf_trg + " (trigger)", text_color=color.silver, text_size=size.small)
+    table.cell(tbl, 1, 4, bull_trg ? "BULL" : "BEAR", text_color=color.white, text_size=size.small, bgcolor=f_col(bull_trg))
