@@ -1,0 +1,139 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// EPHORE PIVATOR WEEKLY — Pivots Traditionnels (Hebdo par défaut)
+// P / R1-R5 / S1-S5 calculés sur la période précédente.
+// Réplique du module "Ephore Pivator Dual V2" (Set Hebdo) du v30.
+// ════════════════════════════════════════════════════════════
+indicator("Ephore Pivator Weekly", overlay=true,
+     max_lines_count=500, max_labels_count=500)
+
+// ══════════════════════════════════════════════════════════════
+// INPUTS
+// ══════════════════════════════════════════════════════════════
+grp = "=== EPHORE PIVATOR ==="
+piv_tf      = input.timeframe("W",   "Période Pivot (W=Hebdo, M=Mensuel, 12M=Annuel)", group=grp)
+piv_back    = input.int(3,           "Nombre de périodes affichées", group=grp, minval=1, maxval=12)
+show_labels = input.bool(true,       "Afficher les étiquettes",      group=grp)
+show_price  = input.bool(false,      "Afficher les prix",            group=grp)
+lbl_size_s  = input.string("small",  "Taille des labels", options=["tiny","small","normal","large"], group=grp)
+ln_width    = input.int(1,           "Largeur de la ligne",          group=grp, minval=1, maxval=5)
+ln_style_s  = input.string("Solide", "Style de ligne", options=["Solide","Pointillé","Tirets"], group=grp)
+extend_r    = input.bool(false,      "Étendre les lignes à droite",  group=grp)
+
+grpC = "=== PIVATOR · COULEUR & NIVEAUX ==="
+col_piv = input.color(#5B5BD6, "Couleur (Hebdo)", group=grpC)
+show_P  = input.bool(true, "P  (Pivot central)", group=grpC)
+show_R1 = input.bool(true, "R1", group=grpC, inline="l1")
+show_S1 = input.bool(true, "S1", group=grpC, inline="l1")
+show_R2 = input.bool(true, "R2", group=grpC, inline="l2")
+show_S2 = input.bool(true, "S2", group=grpC, inline="l2")
+show_R3 = input.bool(true, "R3", group=grpC, inline="l3")
+show_S3 = input.bool(true, "S3", group=grpC, inline="l3")
+show_R4 = input.bool(true, "R4", group=grpC, inline="l4")
+show_S4 = input.bool(true, "S4", group=grpC, inline="l4")
+show_R5 = input.bool(true, "R5", group=grpC, inline="l5")
+show_S5 = input.bool(true, "S5", group=grpC, inline="l5")
+
+// ══════════════════════════════════════════════════════════════
+// STYLE MAPPING
+// ══════════════════════════════════════════════════════════════
+lbl_size = switch lbl_size_s
+    "tiny"   => size.tiny
+    "normal" => size.normal
+    "large"  => size.large
+    => size.small
+
+ln_style = switch ln_style_s
+    "Pointillé" => line.style_dotted
+    "Tirets"    => line.style_dashed
+    => line.style_solid
+
+// ══════════════════════════════════════════════════════════════
+// VALEURS DE LA PÉRIODE PRÉCÉDENTE (pas de repaint : src[1] + lookahead)
+// ══════════════════════════════════════════════════════════════
+f_prev(src) =>
+    request.security(syminfo.tickerid, piv_tf, src[1],
+         lookahead=barmerge.lookahead_on, gaps=barmerge.gaps_off)
+
+pHi = f_prev(high)
+pLo = f_prev(low)
+pCl = f_prev(close)
+
+// ══════════════════════════════════════════════════════════════
+// PIVOTS TRADITIONNELS (formule TradingView "Traditionnel")
+// ══════════════════════════════════════════════════════════════
+PP = (pHi + pLo + pCl) / 3
+R1 = PP * 2 - pLo
+S1 = PP * 2 - pHi
+R2 = PP + (pHi - pLo)
+S2 = PP - (pHi - pLo)
+R3 = PP * 2 + (pHi - 2 * pLo)
+S3 = PP * 2 - (2 * pHi - pLo)
+R4 = PP * 3 + (pHi - 3 * pLo)
+S4 = PP * 3 - (3 * pHi - pLo)
+R5 = PP * 4 + (pHi - 4 * pLo)
+S5 = PP * 4 - (4 * pHi - pLo)
+
+names = array.from("P","R1","R2","R3","R4","R5","S1","S2","S3","S4","S5")
+vals  = array.from(PP, R1, R2, R3, R4, R5, S1, S2, S3, S4, S5)
+ons   = array.from(show_P, show_R1, show_R2, show_R3, show_R4, show_R5,
+                   show_S1, show_S2, show_S3, show_S4, show_S5)
+
+// ══════════════════════════════════════════════════════════════
+// DÉTECTION NOUVELLE PÉRIODE
+// ══════════════════════════════════════════════════════════════
+is_new = timeframe.change(piv_tf) and not na(pHi)
+
+// ══════════════════════════════════════════════════════════════
+// DESSIN — lignes + labels, période courante étendue chaque barre
+// ══════════════════════════════════════════════════════════════
+var line[]  curLn  = array.new_line()
+var label[] curLb  = array.new_label()
+var line[]  histLn = array.new_line()
+var label[] histLb = array.new_label()
+
+if is_new
+    // 1) archiver la période courante (snap à la frontière) -> historique
+    if array.size(curLn) > 0
+        for i = 0 to array.size(curLn) - 1
+            l = array.get(curLn, i)
+            line.set_x2(l, bar_index - 1)
+            array.push(histLn, l)
+        array.clear(curLn)
+    if array.size(curLb) > 0
+        for i = 0 to array.size(curLb) - 1
+            array.push(histLb, array.get(curLb, i))
+        array.clear(curLb)
+
+    // 2) limiter l'historique à (piv_back - 1) périodes
+    maxHist = (piv_back - 1) * 11
+    while array.size(histLn) > maxHist
+        line.delete(array.shift(histLn))
+    while array.size(histLb) > maxHist
+        label.delete(array.shift(histLb))
+
+    // 3) créer le nouveau set
+    for i = 0 to 10
+        if array.get(ons, i)
+            v = array.get(vals, i)
+            array.push(curLn, line.new(bar_index, v, bar_index, v,
+                 xloc=xloc.bar_index, color=col_piv, width=ln_width, style=ln_style))
+            if show_labels
+                txt = array.get(names, i) + (show_price ? "  " + str.tostring(v, format.mintick) : "")
+                array.push(curLb, label.new(bar_index, v, txt,
+                     xloc=xloc.bar_index, style=label.style_none,
+                     textcolor=col_piv, size=lbl_size))
+
+// étendre la période courante jusqu'à la barre actuelle (ou +20 si extend)
+if array.size(curLn) > 0
+    rx = extend_r ? bar_index + 20 : bar_index
+    for i = 0 to array.size(curLn) - 1
+        line.set_x2(array.get(curLn, i), rx)
+    if array.size(curLb) > 0
+        for i = 0 to array.size(curLb) - 1
+            label.set_x(array.get(curLb, i), rx)
+
+// ══════════════════════════════════════════════════════════════
+// ALERTES
+// ══════════════════════════════════════════════════════════════
+alertcondition(is_new, "Nouveaux pivots", "Nouveaux pivots hebdomadaires calculés")

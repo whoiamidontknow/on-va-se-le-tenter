@@ -1,6 +1,7 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// EPHORE TRENDLINES V1 — Pivot-based Trendlines (Baissière)
+// EPHORE TRENDLINES V1 — Résistance descendante (breakout haussier)
+//                        + Support ascendant / trend haussière (cassure baissière)
 // ════════════════════════════════════════════════════════════
 indicator("Ephore Trendlines V1", overlay=true,
      max_lines_count=500, max_labels_count=200)
@@ -23,6 +24,13 @@ tl_show_break  = input.bool(true,        "Show Trendline Breakouts",            
 tl_break_col   = input.color(color.lime, "Breakout Color",                        group=grp_tl, inline="brk")
 tl_max_lines   = input.int(1,            "Number of Trendlines to show",          group=grp_tl, minval=1, maxval=5)
 
+grp_bull = "=== TREND HAUSSIÈRE (Support Ascendant) ==="
+bl_enable     = input.bool(true,      "Activer Trend Haussière",            group=grp_bull)
+bl_color      = input.color(#26C6DA,  "Couleur Support Ascendant",          group=grp_bull, inline="blcol")
+bl_width      = input.int(2,          "Width",                              group=grp_bull, minval=1, maxval=5, inline="blcol")
+bl_show_break = input.bool(true,      "Show Breakdown (cassure baissière)", group=grp_bull, inline="blbrk")
+bl_break_col  = input.color(#EF5350,  "Breakdown Color",                    group=grp_bull, inline="blbrk")
+
 // ══════════════════════════════════════════════════════════════
 // PIVOT DETECTION
 // ══════════════════════════════════════════════════════════════
@@ -37,6 +45,19 @@ if not na(ph)
     if array.size(ph_price) > 50
         array.pop(ph_price)
         array.pop(ph_bar)
+
+// Pivot LOWS pour le support ascendant (trend haussière)
+pl = ta.pivotlow(low, tl_piv_len, tl_piv_len)
+
+var float[] pl_price = array.new_float(0)
+var int[]   pl_bar   = array.new_int(0)
+
+if not na(pl)
+    array.unshift(pl_price, pl)
+    array.unshift(pl_bar,   bar_index - tl_piv_len)
+    if array.size(pl_price) > 50
+        array.pop(pl_price)
+        array.pop(pl_bar)
 
 // ══════════════════════════════════════════════════════════════
 // FONCTIONS
@@ -132,6 +153,80 @@ if tl_enable and array.size(ph_price) >= 2
         best_tc    := top_tc
 
 // ══════════════════════════════════════════════════════════════
+// BEST SUPPORT — ascendant, le plus proche SOUS le prix, min 2 touches
+// (mirror exact de la logique résistance validée)
+// ══════════════════════════════════════════════════════════════
+var float bs_x1    = na
+var float bs_y1    = na
+var float bs_slope = na
+var int   bs_tc    = 0
+
+if bl_enable and array.size(pl_price) >= 2
+    sz2 = array.size(pl_price)
+    bot_dist = 999999.0
+    bot_x1 = 0.0
+    bot_y1 = 0.0
+    bot_sl = 0.0
+    bot_tc = 0
+    found2 = false
+
+    max_i2 = math.min(sz2 - 1, 19)
+    max_j2 = math.min(sz2 - 1, 29)
+    for i = 0 to max_i2
+        for j = i + 1 to max_j2
+            if j < sz2
+                x1_v = array.get(pl_bar, j)
+                y1_v = array.get(pl_price, j)
+                x2_v = array.get(pl_bar, i)
+                y2_v = array.get(pl_price, i)
+
+                if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                    slope = (y2_v - y1_v) / (x2_v - x1_v)
+                    if slope >= 0
+                        touches = f_count_touches(x1_v, y1_v, slope, pl_price, pl_bar, tl_buffer, tl_lookback)
+                        if touches >= 2
+                            tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                            dist = math.abs(close - tl_now) / close * 100
+                            if tl_now < close and dist < bot_dist
+                                bot_dist := dist
+                                bot_x1 := float(x1_v)
+                                bot_y1 := y1_v
+                                bot_sl := slope
+                                bot_tc := touches
+                                found2 := true
+
+    // Fallback : si aucun support sous le prix, prendre le plus proche
+    if not found2
+        for i = 0 to max_i2
+            for j = i + 1 to max_j2
+                if j < sz2
+                    x1_v = array.get(pl_bar, j)
+                    y1_v = array.get(pl_price, j)
+                    x2_v = array.get(pl_bar, i)
+                    y2_v = array.get(pl_price, i)
+
+                    if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                        slope = (y2_v - y1_v) / (x2_v - x1_v)
+                        if slope >= 0
+                            touches = f_count_touches(x1_v, y1_v, slope, pl_price, pl_bar, tl_buffer, tl_lookback)
+                            if touches >= 2
+                                tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                                dist = math.abs(close - tl_now) / close * 100
+                                if dist < bot_dist
+                                    bot_dist := dist
+                                    bot_x1 := float(x1_v)
+                                    bot_y1 := y1_v
+                                    bot_sl := slope
+                                    bot_tc := touches
+                                    found2 := true
+
+    if found2
+        bs_x1    := bot_x1
+        bs_y1    := bot_y1
+        bs_slope := bot_sl
+        bs_tc    := bot_tc
+
+// ══════════════════════════════════════════════════════════════
 // BREAKOUT DETECTION (hlc3 crossover — runs on every bar)
 // ══════════════════════════════════════════════════════════════
 float tl_val = not na(best_x1) and best_tc >= 2 ? f_tl_value(best_x1, best_y1, best_slope, bar_index) : na
@@ -139,6 +234,13 @@ breakout_signal = tl_enable and tl_show_break and ta.crossover(hlc3, tl_val)
 
 plotshape(breakout_signal, title="Breakout", style=shape.circle,
      location=location.belowbar, color=tl_break_col, size=size.tiny)
+
+// Cassure baissière du support ascendant (crossunder hlc3)
+float bs_val = not na(bs_x1) and bs_tc >= 2 ? f_tl_value(bs_x1, bs_y1, bs_slope, bar_index) : na
+breakdown_signal = bl_enable and bl_show_break and ta.crossunder(hlc3, bs_val)
+
+plotshape(breakdown_signal, title="Breakdown", style=shape.circle,
+     location=location.abovebar, color=bl_break_col, size=size.tiny)
 
 // ══════════════════════════════════════════════════════════════
 // DRAW TRENDLINES (barstate.islast only — visual)
@@ -162,8 +264,25 @@ if tl_enable and barstate.islast and not na(best_x1)
          style=line.style_solid)
     array.push(desc_lines, ln)
 
+// Draw the ascending support (trend haussière)
+var line[] asc_lines = array.new_line(0)
+
+if barstate.islast
+    while array.size(asc_lines) > 0
+        line.delete(array.pop(asc_lines))
+
+if bl_enable and barstate.islast and not na(bs_x1)
+    blx1 = int(bs_x1)
+    bend_x = tl_extend ? bar_index + 50 : bar_index
+    bend_y = f_tl_value(bs_x1, bs_y1, bs_slope, bend_x)
+    bln = line.new(blx1, bs_y1, bend_x, bend_y,
+         xloc=xloc.bar_index, color=bl_color, width=bl_width,
+         style=line.style_solid)
+    array.push(asc_lines, bln)
+
 // ══════════════════════════════════════════════════════════════
 // ALERTES
 // ══════════════════════════════════════════════════════════════
 alertcondition(not na(ph), "New Pivot High", "Nouveau pivot high détecté")
 alertcondition(breakout_signal, "Trendline Breakout", "Breakout de trendline baissière détecté")
+alertcondition(breakdown_signal, "Support Breakdown", "Cassure baissière du support ascendant détectée")
