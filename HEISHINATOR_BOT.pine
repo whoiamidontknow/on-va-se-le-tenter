@@ -2,7 +2,9 @@
 // ═══════════════════════════════════════════════════════════════════
 // HEISHINATOR BOT — Strategy
 // Tendance : Heishinator 4h + 1h (doivent être d'accord, sinon no-trade)
-// Déclenchement : Heishinator 15min + 2min (règles à définir)
+// Déclenchement v1 : PROXY de "comment le marché réagit" (l'instinct de Jeremy)
+//   = flip 15m dans le sens du biais + 2m aligné + bougie de réaction + momentum
+//   → À CALIBRER sur ses vrais trades (chaque filtre est togglable pour ablation)
 // ═══════════════════════════════════════════════════════════════════
 strategy("Heishinator Bot", overlay=true,
      default_qty_type=strategy.percent_of_equity, default_qty_value=100,
@@ -19,6 +21,20 @@ tf_trg  = input.timeframe("2",   "TF Déclencheur (défaut 2m)",      group=grp_
 grp_vis = "=== VISUEL ==="
 show_flags = input.bool(true, "Afficher drapeaux tendance MTF", group=grp_vis)
 show_bg    = input.bool(true, "Colorer fond selon biais",       group=grp_vis)
+
+grp_ent = "=== ENTRÉE (proxy réaction marché) ==="
+use_sig_flip = input.bool(true,  "Exiger flip 15m dans le sens du biais", group=grp_ent)
+use_trg      = input.bool(true,  "Exiger 2m aligné (momentum court)",     group=grp_ent)
+use_reaction = input.bool(true,  "Exiger bougie de réaction (clôture forte/rejet)", group=grp_ent)
+react_thr    = input.float(0.6,  "Seuil clôture dans le range (0.5-1)",   group=grp_ent, minval=0.5, maxval=1.0, step=0.05)
+use_mom      = input.bool(true,  "Exiger momentum (close vs EMA rapide)", group=grp_ent)
+ema_fast_len = input.int(9,      "EMA rapide (momentum)",                 group=grp_ent, minval=2, maxval=50)
+
+grp_exit = "=== SORTIES / RISQUE ==="
+atr_len   = input.int(14,    "ATR longueur",                  group=grp_exit, minval=2)
+sl_mult   = input.float(1.5, "Stop = ATR ×",                  group=grp_exit, minval=0.2, step=0.1)
+tp_mult   = input.float(3.0, "Target = ATR ×",                group=grp_exit, minval=0.2, step=0.1)
+exit_flip = input.bool(true, "Sortir si la tendance 4h s'inverse", group=grp_exit)
 
 // ══════════════════════════════════════════════════════════════════
 // HEISHINATOR V4 — fonction réutilisable (EMA récursif α adaptatif)
@@ -53,28 +69,55 @@ bias_none  = not bias_long and not bias_short
 // ══════════════════════════════════════════════════════════════════
 // DÉCLENCHEMENT — 15min + 2min
 // ══════════════════════════════════════════════════════════════════
-// TODO (Q1) : règle exacte du déclenchement — à définir avec Jeremy
-// Hypothèses possibles :
-//   A) 15m aligné au biais ET flip 2m dans le sens du biais
-//   B) flip 15m dans le sens du biais (et 2m ignoré / filtre supp.)
-//   C) 15m ET 2m tous deux alignés au biais (état, pas flip)
-//
-// Placeholder neutre : aucun trade tant que la règle n'est pas choisie
-enter_long  = false
-enter_short = false
+// PROXY de l'instinct : on entre quand le marché "réagit" dans le sens du biais.
+// Décomposition mesurable de la réaction (chaque brique togglable) :
+//   1) flip 15m dans le sens du biais (le marché bascule)
+//   2) 2m déjà aligné (momentum court confirme)
+//   3) bougie de réaction : clôture forte dans le range (rejet de la mèche opposée)
+//   4) momentum : close du bon côté de l'EMA rapide
+// NB: réaction/momentum calculés sur l'OHLC RÉEL du chart (pas HA) → fills honnêtes.
+emaFast   = ta.ema(close, ema_fast_len)
+rng       = high - low
+close_pos = rng > 0 ? (close - low) / rng : 0.5
+
+bull_react = not use_reaction or (close_pos >= react_thr and close > open)
+bear_react = not use_reaction or (close_pos <= (1.0 - react_thr) and close < open)
+mom_long   = not use_mom or close > emaFast
+mom_short  = not use_mom or close < emaFast
+flip_long  = not use_sig_flip or (bull_sig and not bull_sig[1])
+flip_short = not use_sig_flip or (not bull_sig and bull_sig[1])
+trg_long   = not use_trg or bull_trg
+trg_short  = not use_trg or not bull_trg
+
+enter_long  = bias_long  and flip_long  and trg_long  and bull_react and mom_long  and strategy.position_size <= 0
+enter_short = bias_short and flip_short and trg_short and bear_react and mom_short and strategy.position_size >= 0
 
 // ══════════════════════════════════════════════════════════════════
-// SORTIES
+// ORDRES + SORTIES (SL/TP ATR + sortie sur inversion 4h)
 // ══════════════════════════════════════════════════════════════════
-// TODO (Q3+) : SL / TP / trailing / sortie sur flip tendance / etc.
+atr = ta.atr(atr_len)
 
-// ══════════════════════════════════════════════════════════════════
-// ORDRES
-// ══════════════════════════════════════════════════════════════════
 if enter_long
     strategy.entry("L", strategy.long)
 if enter_short
     strategy.entry("S", strategy.short)
+
+// Stop / Target basés sur le prix d'entrée moyen (en multiples d'ATR réel)
+if strategy.position_size > 0
+    strategy.exit("xL", from_entry="L",
+         stop=strategy.position_avg_price - atr * sl_mult,
+         limit=strategy.position_avg_price + atr * tp_mult)
+if strategy.position_size < 0
+    strategy.exit("xS", from_entry="S",
+         stop=strategy.position_avg_price + atr * sl_mult,
+         limit=strategy.position_avg_price - atr * tp_mult)
+
+// Sortie discrétionnaire répliquée : on coupe si la tendance 4h s'inverse
+if exit_flip
+    if strategy.position_size > 0 and not bull_big
+        strategy.close("L", comment="flip 4h")
+    if strategy.position_size < 0 and bull_big
+        strategy.close("S", comment="flip 4h")
 
 // ══════════════════════════════════════════════════════════════════
 // VISUEL
