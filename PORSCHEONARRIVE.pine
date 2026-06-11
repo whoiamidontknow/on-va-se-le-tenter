@@ -1,0 +1,1841 @@
+//@version=6
+indicator("PorscheOnArrive", overlay=true, max_lines_count=500,
+     max_labels_count=500, max_boxes_count=200)
+
+// ══════════════════════════════════════════════════════════════
+// HEISHINATOR V4 — Replica (Ephore Market Ultimate)
+// ══════════════════════════════════════════════════════════════
+// Reverse-engineered via HA_DIAGNOSTIC v13→v16 :
+//   col_bull = SHA_close > EMA(close, 33)
+//   SHA_close = EMA récursif de ohlc4 avec alpha adaptatif :
+//     - TF < 30min  → α = 0.42  (validé 2m, 15m)
+//     - TF ≥ 30min  → α = 0.44  (validé 1h, 4h)
+// SHA_close_t = α * ohlc4_t + (1 − α) * SHA_close_{t-1}
+// Utiliser sur chart Heiken Ashi (open/close = HA natifs).
+
+// ── COULEURS ──────────────────────────────────────────────────
+grp_hei_col = "=== HEISHINATOR COULEURS ==="
+hei_use_custom = input.bool(false,          "Personnaliser couleurs", group=grp_hei_col)
+hei_bull_col   = input.color(#2196F3,       "Couleur haussière",      group=grp_hei_col)
+hei_bear_col   = input.color(#F44336,       "Couleur baissière",      group=grp_hei_col)
+hei_bull_final = hei_use_custom ? hei_bull_col : color.new(#2196F3, 0)
+hei_bear_final = hei_use_custom ? hei_bear_col : color.new(#F44336, 0)
+
+// ── ALPHA SELON TF (fixe, non modifiable) ─────────────────────
+hei_tf_seconds = timeframe.in_seconds(timeframe.period)
+hei_is_low_tf  = hei_tf_seconds < 30 * 60
+hei_alpha      = hei_is_low_tf ? 0.42 : 0.44
+
+// ── SHA CLOSE (EMA récursif sur ohlc4 avec alpha dynamique) ───
+hei_ohlc4_src = (open + high + low + close) / 4
+var float hei_sha_close = na
+hei_sha_close := na(hei_sha_close[1])
+     ? hei_ohlc4_src
+     : hei_alpha * hei_ohlc4_src + (1.0 - hei_alpha) * hei_sha_close[1]
+
+// ── EMA SUR CLOSE ─────────────────────────────────────────────
+hei_ema_base = ta.ema(close, 33)
+
+// ── RÈGLE DE COLORATION ───────────────────────────────────────
+hei_col_bull = hei_sha_close > hei_ema_base
+col_bull     = hei_col_bull
+
+// ── APPLICATION ───────────────────────────────────────────────
+barcolor(col_bull ? hei_bull_final : hei_bear_final)
+
+// ── PLOTS DIAGNOSTIC (masqués par défaut) ─────────────────────
+plot(hei_sha_close, "SHA close", color=color.new(color.orange, 0), linewidth=1, display=display.none)
+plot(hei_ema_base,  "EMA33",     color=color.new(color.black,  0), linewidth=2, display=display.none)
+
+// ── TRANSITIONS (masqués par défaut) ──────────────────────────
+hei_bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+hei_bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+plotshape(hei_bull_flip, "Flip ▲", style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.tiny, display=display.none)
+plotshape(hei_bear_flip, "Flip ▼", style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.tiny, display=display.none)
+
+// ══════════════════════════════════════════════════════════════
+// MOYENATOR V5
+// ══════════════════════════════════════════════════════════════
+grp_moy       = "=== EPHORE MOYENATOR V5 ==="
+moy_custom    = input.bool(false,  "Personnaliser Couleurs",                              group=grp_moy)
+moy_show1     = input.bool(true,   "Afficher Moyenator 1",                                group=grp_moy)
+moy_col1      = input.color(color.black, "Couleur ligne Moyenator 1",                     group=grp_moy)
+moy_w1        = input.int(2,       "Epaisseur Moyenator 1",                               group=grp_moy, minval=1, maxval=5)
+moy_show2     = input.bool(true,   "Afficher Moyenator 2",                                group=grp_moy)
+moy_col2      = input.color(color.black, "Couleur ligne Moyenator 2",                     group=grp_moy)
+moy_w2        = input.int(1,       "Epaisseur Moyenator 2",                               group=grp_moy, minval=1, maxval=5)
+moy_fill_on   = input.bool(true,   "Afficher le remplissage",                             group=grp_moy)
+moy_fill_bull = input.color(#00BCD4,"Couleur haussiere (Moyenator 1 > Moyenator 2)",      group=grp_moy)
+moy_fill_bear = input.color(#F44336,"Couleur baissiere (Moyenator 1 < Moyenator 2)",      group=grp_moy)
+moy_fill_opa  = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)",   group=grp_moy, minval=0, maxval=100)
+moy_no_fill_eq= input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",         group=grp_moy)
+
+ema_m1 = ta.ema(close, 50)
+ema_m2 = ta.ema(close, 60)
+
+// Détection changement de tendance
+var bool moy_was_bull = false
+moy_is_bull_now = hei_col_bull and low  > ema_m1
+moy_is_bear_now = not hei_col_bull and high < ema_m1
+moy_change_bull = moy_is_bull_now and not moy_was_bull
+moy_change_bear = moy_is_bear_now and     moy_was_bull
+if moy_is_bull_now
+    moy_was_bull := true
+else if moy_is_bear_now
+    moy_was_bull := false
+
+// Tracé EMA
+p_moy1 = plot(moy_show1 ? ema_m1 : na, "Moyenator 1", color=moy_col1, linewidth=moy_w1)
+p_moy2 = plot(moy_show2 ? ema_m2 : na, "Moyenator 2", color=moy_col2, linewidth=moy_w2)
+
+// Remplissage avec gestion opacité et égalité
+moy_are_equal  = math.abs(ema_m1 - ema_m2) < syminfo.mintick
+moy_fill_color = not moy_fill_on ? na :
+     (moy_no_fill_eq and moy_are_equal) ? na :
+     ema_m1 > ema_m2 ? color.new(moy_fill_bull, moy_fill_opa) :
+     ema_m1 < ema_m2 ? color.new(moy_fill_bear, moy_fill_opa) : na
+fill(p_moy1, p_moy2, color=moy_fill_color, title="Fill Moyenator")
+
+
+
+// ══════════════════════════════════════════════════════════════
+// PIVATOR DUAL V2 — INPUTS
+// ══════════════════════════════════════════════════════════════
+grp_piv      = "=== EPHORE PIVATOR DUAL V2 ==="
+piv_type     = input.string("Traditionnel","Type", group=grp_piv,
+     options=["Traditionnel","Fibonacci","Woodie","Camarilla","DeMark"])
+piv_lookback = input.int(1, "Nombre de pivots en arriere", group=grp_piv, minval=1, maxval=5)
+piv_daily    = input.bool(true, "Utiliser des valeurs a base journaliere", group=grp_piv)
+piv_show_lbl = input.bool(true, "Afficher les etiquettes",     group=grp_piv)
+piv_show_px  = input.bool(true, "Afficher les prix",           group=grp_piv)
+piv_line_w   = input.int(2,     "Largeur de la ligne",         group=grp_piv, minval=1, maxval=5)
+piv_lbl_sz   = input.string("Normal", "Taille labels", group=grp_piv,
+     options=["Tiny", "Small", "Normal", "Large", "Huge"])
+piv_s1_lbl_col = input.color(color.red,   "Couleur labels Set 1", group=grp_piv)
+piv_s2_lbl_col = input.color(#000000, "Couleur labels Set 2", group=grp_piv)
+piv_lbl_bold   = input.bool(false, "Labels en gras", group=grp_piv)
+
+// --- SET 1 (Annuel) ---
+piv_s1_custom = input.bool(false,"Personnaliser Couleurs Set 1", group=grp_piv)
+piv_s1_tf     = input.string("Annuel","Set 1 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s1_p_col  = input.color(color.red, "P",  group=grp_piv, inline="s1p")
+piv_s1_p_on   = input.bool(true, "",          group=grp_piv, inline="s1p")
+
+piv_s1_s1_col = input.color(color.red, "S1", group=grp_piv, inline="s1s1")
+piv_s1_s1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
+piv_s1_r1_col = input.color(color.red, "R1", group=grp_piv, inline="s1s1")
+piv_s1_r1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
+
+piv_s1_s2_col = input.color(color.red, "S2", group=grp_piv, inline="s1s2")
+piv_s1_s2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
+piv_s1_r2_col = input.color(color.red, "R2", group=grp_piv, inline="s1s2")
+piv_s1_r2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
+
+piv_s1_s3_col = input.color(color.red, "S3", group=grp_piv, inline="s1s3")
+piv_s1_s3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
+piv_s1_r3_col = input.color(color.red, "R3", group=grp_piv, inline="s1s3")
+piv_s1_r3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
+
+piv_s1_s4_col = input.color(color.red, "S4", group=grp_piv, inline="s1s4")
+piv_s1_s4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
+piv_s1_r4_col = input.color(color.red, "R4", group=grp_piv, inline="s1s4")
+piv_s1_r4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
+
+piv_s1_s5_col = input.color(color.red, "S5", group=grp_piv, inline="s1s5")
+piv_s1_s5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
+piv_s1_r5_col = input.color(color.red, "R5", group=grp_piv, inline="s1s5")
+piv_s1_r5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
+
+// --- SET 2 (Mensuel) ---
+piv_s2_enable = input.bool(true, "Enable Set 2",                  group=grp_piv)
+piv_s2_custom = input.bool(false,"Personnaliser Couleurs Set 2",  group=grp_piv)
+piv_s2_tf     = input.string("Mensuel","Set 2 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s2_p_col  = input.color(#000000, "P",  group=grp_piv, inline="s2p")
+piv_s2_p_on   = input.bool(true, "",            group=grp_piv, inline="s2p")
+
+piv_s2_s1_col = input.color(#000000, "S1", group=grp_piv, inline="s2s1")
+piv_s2_s1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
+piv_s2_r1_col = input.color(#000000, "R1", group=grp_piv, inline="s2s1")
+piv_s2_r1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
+
+piv_s2_s2_col = input.color(#000000, "S2", group=grp_piv, inline="s2s2")
+piv_s2_s2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
+piv_s2_r2_col = input.color(#000000, "R2", group=grp_piv, inline="s2s2")
+piv_s2_r2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
+
+piv_s2_s3_col = input.color(#000000, "S3", group=grp_piv, inline="s2s3")
+piv_s2_s3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
+piv_s2_r3_col = input.color(#000000, "R3", group=grp_piv, inline="s2s3")
+piv_s2_r3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
+
+piv_s2_s4_col = input.color(#000000, "S4", group=grp_piv, inline="s2s4")
+piv_s2_s4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
+piv_s2_r4_col = input.color(#000000, "R4", group=grp_piv, inline="s2s4")
+piv_s2_r4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
+
+piv_s2_s5_col = input.color(#000000, "S5", group=grp_piv, inline="s2s5")
+piv_s2_s5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
+piv_s2_r5_col = input.color(#000000, "R5", group=grp_piv, inline="s2s5")
+piv_s2_r5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
+
+// ══════════════════════════════════════════════════════════════
+// FONCTIONS PIVOTS
+// ══════════════════════════════════════════════════════════════
+f_tf_string(s) =>
+    s == "Journalier"   ? "D"   :
+     s == "Hebdomadaire" ? "W"   :
+     s == "Mensuel"      ? "M"   :
+     s == "Trimestriel"  ? "3M"  :
+     s == "Semestriel"   ? "6M"  : "12M"
+
+f_calc_pivots(h, l, c, o, typ) =>
+    float p  = na, float r1 = na, float s1 = na
+    float r2 = na, float s2 = na, float r3 = na, float s3 = na
+    float r4 = na, float s4 = na, float r5 = na, float s5 = na
+
+    if typ == "Fibonacci"
+        p  := (h + l + c) / 3
+        rng = h - l
+        r1 := p + 0.382 * rng
+        s1 := p - 0.382 * rng
+        r2 := p + 0.618 * rng
+        s2 := p - 0.618 * rng
+        r3 := p + 1.000 * rng
+        s3 := p - 1.000 * rng
+        r4 := p + 1.382 * rng
+        s4 := p - 1.382 * rng
+        r5 := p + 1.618 * rng
+        s5 := p - 1.618 * rng
+    else if typ == "Woodie"
+        p  := (h + l + 2 * c) / 4
+        r1 := 2 * p - l
+        s1 := 2 * p - h
+        r2 := p + (h - l)
+        s2 := p - (h - l)
+        r3 := h + 2 * (p - l)
+        s3 := l - 2 * (h - p)
+        r4 := r3 + (h - l)
+        s4 := s3 - (h - l)
+        r5 := r4 + (h - l)
+        s5 := s4 - (h - l)
+    else if typ == "Camarilla"
+        p   := (h + l + c) / 3
+        rng  = h - l
+        r1  := c + rng * 1.1 / 12
+        s1  := c - rng * 1.1 / 12
+        r2  := c + rng * 1.1 / 6
+        s2  := c - rng * 1.1 / 6
+        r3  := c + rng * 1.1 / 4
+        s3  := c - rng * 1.1 / 4
+        r4  := c + rng * 1.1 / 2
+        s4  := c - rng * 1.1 / 2
+        r5  := c + rng * 1.1 * 5 / 6
+        s5  := c - rng * 1.1 * 5 / 6
+    else if typ == "DeMark"
+        x    = c < o ? h + 2 * l + c : c > o ? 2 * h + l + c : h + l + 2 * c
+        p   := x / 4
+        r1  := x / 2 - l
+        s1  := x / 2 - h
+        r2  := r1
+        s2  := s1
+        r3  := r1
+        s3  := s1
+        r4  := r1
+        s4  := s1
+        r5  := r1
+        s5  := s1
+    else // Traditionnel
+        p  := (h + l + c) / 3
+        r1 := 2 * p - l
+        s1 := 2 * p - h
+        r2 := p + (h - l)
+        s2 := p - (h - l)
+        r3 := h + 2 * (p - l)
+        s3 := l - 2 * (h - p)
+        r4 := r3 + (p - l)
+        s4 := s3 - (h - p)
+        r5 := r4 + (p - l)
+        s5 := s4 - (h - p)
+    [p, r1, s1, r2, s2, r3, s3, r4, s4, r5, s5]
+
+f_lbl_text(v, n) => piv_show_px ? n + " (" + str.tostring(v, format.mintick) + ")" : n
+
+piv_sz = piv_lbl_sz == "Tiny" ? size.tiny : piv_lbl_sz == "Small" ? size.small : piv_lbl_sz == "Normal" ? size.normal : piv_lbl_sz == "Large" ? size.large : size.huge
+piv_font = piv_lbl_bold ? font.family_monospace : font.family_default
+
+// ══════════════════════════════════════════════════════════════
+// TIMESTAMP FIN DE PERIODE (1er du mois/année à 10h)
+// ══════════════════════════════════════════════════════════════
+f_end_time(tf_name) =>
+    int result = na
+    if tf_name == "Mensuel"
+        y = year
+        m = month + 1
+        if m > 12
+            m := 1
+            y += 1
+        result := timestamp(y, m, 1, 10, 0, 0)
+    else if tf_name == "Annuel"
+        result := timestamp(year + 1, 1, 1, 10, 0, 0)
+    else if tf_name == "Semestriel"
+        nm = month + 6
+        ny = year
+        if nm > 12
+            nm -= 12
+            ny += 1
+        result := timestamp(ny, nm, 1, 10, 0, 0)
+    else if tf_name == "Trimestriel"
+        nm = month + 3
+        ny = year
+        if nm > 12
+            nm -= 12
+            ny += 1
+        result := timestamp(ny, nm, 1, 10, 0, 0)
+    else if tf_name == "Hebdomadaire"
+        result := time + 8 * 86400 * 1000
+    else // Journalier
+        result := time + 2 * 86400 * 1000
+    result
+
+// ══════════════════════════════════════════════════════════════
+// SET 1 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf1_str = f_tf_string(piv_s1_tf)
+
+[tf1_h, tf1_l, tf1_c, tf1_o] = request.security(syminfo.tickerid, tf1_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf1 = ta.change(time(tf1_str)) != 0
+
+[s1_p, s1_r1, s1_s1, s1_r2, s1_s2, s1_r3, s1_s3, s1_r4, s1_s4, s1_r5, s1_s5] =
+     f_calc_pivots(tf1_h, tf1_l, tf1_c, tf1_o, piv_type)
+
+var line ln_s1_p  = na, var line ln_s1_r1 = na, var line ln_s1_s1 = na
+var line ln_s1_r2 = na, var line ln_s1_s2 = na, var line ln_s1_r3 = na
+var line ln_s1_s3 = na, var line ln_s1_r4 = na, var line ln_s1_s4 = na
+var line ln_s1_r5 = na, var line ln_s1_s5 = na
+var label lb_s1_p  = na, var label lb_s1_r1 = na, var label lb_s1_s1 = na
+var label lb_s1_r2 = na, var label lb_s1_s2 = na, var label lb_s1_r3 = na
+var label lb_s1_s3 = na, var label lb_s1_r4 = na, var label lb_s1_s4 = na
+var label lb_s1_r5 = na, var label lb_s1_s5 = na
+var float rv_s1_p  = na, var float rv_s1_r1 = na, var float rv_s1_s1 = na
+var float rv_s1_r2 = na, var float rv_s1_s2 = na, var float rv_s1_r3 = na
+var float rv_s1_s3 = na, var float rv_s1_r4 = na, var float rv_s1_s4 = na
+var float rv_s1_r5 = na, var float rv_s1_s5 = na
+var int s1_target_t2 = na
+var int s1_start_bi  = na
+
+if new_tf1
+    line.delete(ln_s1_p),  line.delete(ln_s1_r1), line.delete(ln_s1_s1)
+    line.delete(ln_s1_r2), line.delete(ln_s1_s2), line.delete(ln_s1_r3)
+    line.delete(ln_s1_s3), line.delete(ln_s1_r4), line.delete(ln_s1_s4)
+    line.delete(ln_s1_r5), line.delete(ln_s1_s5)
+    label.delete(lb_s1_p),  label.delete(lb_s1_r1), label.delete(lb_s1_s1)
+    label.delete(lb_s1_r2), label.delete(lb_s1_s2), label.delete(lb_s1_r3)
+    label.delete(lb_s1_s3), label.delete(lb_s1_r4), label.delete(lb_s1_s4)
+    label.delete(lb_s1_r5), label.delete(lb_s1_s5)
+
+    s1_start_bi  := bar_index
+    s1_target_t2 := f_end_time(piv_s1_tf)
+
+    rv_s1_p  := s1_p
+    rv_s1_r1 := s1_r1,  rv_s1_s1 := s1_s1
+    rv_s1_r2 := s1_r2,  rv_s1_s2 := s1_s2
+    rv_s1_r3 := s1_r3,  rv_s1_s3 := s1_s3
+    rv_s1_r4 := s1_r4,  rv_s1_s4 := s1_s4
+    rv_s1_r5 := s1_r5,  rv_s1_s5 := s1_s5
+
+// ══════════════════════════════════════════════════════════════
+// SET 2 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf2_str = f_tf_string(piv_s2_tf)
+
+[tf2_h, tf2_l, tf2_c, tf2_o] = request.security(syminfo.tickerid, tf2_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf2 = ta.change(time(tf2_str)) != 0
+
+[s2_p, s2_r1, s2_s1, s2_r2, s2_s2, s2_r3, s2_s3, s2_r4, s2_s4, s2_r5, s2_s5] =
+     f_calc_pivots(tf2_h, tf2_l, tf2_c, tf2_o, piv_type)
+
+var line ln_s2_p  = na, var line ln_s2_r1 = na, var line ln_s2_s1 = na
+var line ln_s2_r2 = na, var line ln_s2_s2 = na, var line ln_s2_r3 = na
+var line ln_s2_s3 = na, var line ln_s2_r4 = na, var line ln_s2_s4 = na
+var line ln_s2_r5 = na, var line ln_s2_s5 = na
+var label lb_s2_p  = na, var label lb_s2_r1 = na, var label lb_s2_s1 = na
+var label lb_s2_r2 = na, var label lb_s2_s2 = na, var label lb_s2_r3 = na
+var label lb_s2_s3 = na, var label lb_s2_r4 = na, var label lb_s2_s4 = na
+var label lb_s2_r5 = na, var label lb_s2_s5 = na
+var float rv_s2_p  = na, var float rv_s2_r1 = na, var float rv_s2_s1 = na
+var float rv_s2_r2 = na, var float rv_s2_s2 = na, var float rv_s2_r3 = na
+var float rv_s2_s3 = na, var float rv_s2_r4 = na, var float rv_s2_s4 = na
+var float rv_s2_r5 = na, var float rv_s2_s5 = na
+var int s2_target_t2 = na
+var int s2_start_bi  = na
+
+if piv_s2_enable and new_tf2
+    line.delete(ln_s2_p),  line.delete(ln_s2_r1), line.delete(ln_s2_s1)
+    line.delete(ln_s2_r2), line.delete(ln_s2_s2), line.delete(ln_s2_r3)
+    line.delete(ln_s2_s3), line.delete(ln_s2_r4), line.delete(ln_s2_s4)
+    line.delete(ln_s2_r5), line.delete(ln_s2_s5)
+    label.delete(lb_s2_p),  label.delete(lb_s2_r1), label.delete(lb_s2_s1)
+    label.delete(lb_s2_r2), label.delete(lb_s2_s2), label.delete(lb_s2_r3)
+    label.delete(lb_s2_s3), label.delete(lb_s2_r4), label.delete(lb_s2_s4)
+    label.delete(lb_s2_r5), label.delete(lb_s2_s5)
+
+    s2_start_bi  := bar_index
+    s2_target_t2 := f_end_time(piv_s2_tf)
+
+    rv_s2_p  := s2_p
+    rv_s2_r1 := s2_r1,  rv_s2_s1 := s2_s1
+    rv_s2_r2 := s2_r2,  rv_s2_s2 := s2_s2
+    rv_s2_r3 := s2_r3,  rv_s2_s3 := s2_s3
+    rv_s2_r4 := s2_r4,  rv_s2_s4 := s2_s4
+    rv_s2_r5 := s2_r5,  rv_s2_s5 := s2_s5
+
+// ══════════════════════════════════════════════════════════════
+// DESSIN SEGMENTS + LABELS — xloc.bar_index (rendu garanti)
+// ══════════════════════════════════════════════════════════════
+// xloc.bar_time ne rend pas les lignes dont l'endpoint est trop
+// loin dans le futur. On utilise bar_index à la place.
+// Les lignes sont recréées sur chaque barstate.islast.
+
+f_bi_end(target_time, ext) =>
+    tf_ms = timeframe.in_seconds(timeframe.period) * 1000
+    remaining = math.round((target_time - timenow) / tf_ms)
+    bar_index + math.max(math.min(math.min(remaining, ext), 490), 10)
+
+if barstate.islast
+    // — Set 1 (extension fixe 381) —
+    if not na(s1_start_bi)
+        s1_start_bi := math.max(s1_start_bi, bar_index - 5000)
+        s1_end = f_bi_end(s1_target_t2, 381)
+        s1_rgt = s1_end
+
+        line.delete(ln_s1_p)
+        line.delete(ln_s1_r1)
+        line.delete(ln_s1_s1)
+        line.delete(ln_s1_r2)
+        line.delete(ln_s1_s2)
+        line.delete(ln_s1_r3)
+        line.delete(ln_s1_s3)
+        line.delete(ln_s1_r4)
+        line.delete(ln_s1_s4)
+        line.delete(ln_s1_r5)
+        line.delete(ln_s1_s5)
+        ln_s1_p  := piv_s1_p_on  and not na(rv_s1_p)  ? line.new(s1_start_bi, rv_s1_p,  s1_end, rv_s1_p,  xloc=xloc.bar_index, color=piv_s1_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r1 := piv_s1_r1_on and not na(rv_s1_r1) ? line.new(s1_start_bi, rv_s1_r1, s1_end, rv_s1_r1, xloc=xloc.bar_index, color=piv_s1_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s1 := piv_s1_s1_on and not na(rv_s1_s1) ? line.new(s1_start_bi, rv_s1_s1, s1_end, rv_s1_s1, xloc=xloc.bar_index, color=piv_s1_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r2 := piv_s1_r2_on and not na(rv_s1_r2) ? line.new(s1_start_bi, rv_s1_r2, s1_end, rv_s1_r2, xloc=xloc.bar_index, color=piv_s1_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s2 := piv_s1_s2_on and not na(rv_s1_s2) ? line.new(s1_start_bi, rv_s1_s2, s1_end, rv_s1_s2, xloc=xloc.bar_index, color=piv_s1_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r3 := piv_s1_r3_on and not na(rv_s1_r3) ? line.new(s1_start_bi, rv_s1_r3, s1_end, rv_s1_r3, xloc=xloc.bar_index, color=piv_s1_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s3 := piv_s1_s3_on and not na(rv_s1_s3) ? line.new(s1_start_bi, rv_s1_s3, s1_end, rv_s1_s3, xloc=xloc.bar_index, color=piv_s1_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r4 := piv_s1_r4_on and not na(rv_s1_r4) ? line.new(s1_start_bi, rv_s1_r4, s1_end, rv_s1_r4, xloc=xloc.bar_index, color=piv_s1_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s4 := piv_s1_s4_on and not na(rv_s1_s4) ? line.new(s1_start_bi, rv_s1_s4, s1_end, rv_s1_s4, xloc=xloc.bar_index, color=piv_s1_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r5 := piv_s1_r5_on and not na(rv_s1_r5) ? line.new(s1_start_bi, rv_s1_r5, s1_end, rv_s1_r5, xloc=xloc.bar_index, color=piv_s1_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s5 := piv_s1_s5_on and not na(rv_s1_s5) ? line.new(s1_start_bi, rv_s1_s5, s1_end, rv_s1_s5, xloc=xloc.bar_index, color=piv_s1_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s1_p)
+        label.delete(lb_s1_r1)
+        label.delete(lb_s1_s1)
+        label.delete(lb_s1_r2)
+        label.delete(lb_s1_s2)
+        label.delete(lb_s1_r3)
+        label.delete(lb_s1_s3)
+        label.delete(lb_s1_r4)
+        label.delete(lb_s1_s4)
+        label.delete(lb_s1_r5)
+        label.delete(lb_s1_s5)
+        lb_s1_p  := piv_s1_p_on  and piv_show_lbl and not na(rv_s1_p)  ? label.new(s1_rgt, rv_s1_p,  f_lbl_text(rv_s1_p,  "P"),  xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r1 := piv_s1_r1_on and piv_show_lbl and not na(rv_s1_r1) ? label.new(s1_rgt, rv_s1_r1, f_lbl_text(rv_s1_r1, "R1"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s1 := piv_s1_s1_on and piv_show_lbl and not na(rv_s1_s1) ? label.new(s1_rgt, rv_s1_s1, f_lbl_text(rv_s1_s1, "S1"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r2 := piv_s1_r2_on and piv_show_lbl and not na(rv_s1_r2) ? label.new(s1_rgt, rv_s1_r2, f_lbl_text(rv_s1_r2, "R2"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s2 := piv_s1_s2_on and piv_show_lbl and not na(rv_s1_s2) ? label.new(s1_rgt, rv_s1_s2, f_lbl_text(rv_s1_s2, "S2"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r3 := piv_s1_r3_on and piv_show_lbl and not na(rv_s1_r3) ? label.new(s1_rgt, rv_s1_r3, f_lbl_text(rv_s1_r3, "R3"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s3 := piv_s1_s3_on and piv_show_lbl and not na(rv_s1_s3) ? label.new(s1_rgt, rv_s1_s3, f_lbl_text(rv_s1_s3, "S3"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r4 := piv_s1_r4_on and piv_show_lbl and not na(rv_s1_r4) ? label.new(s1_rgt, rv_s1_r4, f_lbl_text(rv_s1_r4, "R4"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s4 := piv_s1_s4_on and piv_show_lbl and not na(rv_s1_s4) ? label.new(s1_rgt, rv_s1_s4, f_lbl_text(rv_s1_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r5 := piv_s1_r5_on and piv_show_lbl and not na(rv_s1_r5) ? label.new(s1_rgt, rv_s1_r5, f_lbl_text(rv_s1_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s5 := piv_s1_s5_on and piv_show_lbl and not na(rv_s1_s5) ? label.new(s1_rgt, rv_s1_s5, f_lbl_text(rv_s1_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+    // — Set 2 (extension réglable) —
+    if piv_s2_enable and not na(s2_start_bi)
+        s2_end = math.min(bar_index + 30, bar_index + 490)
+        s2_rgt = s2_end
+
+        line.delete(ln_s2_p)
+        line.delete(ln_s2_r1)
+        line.delete(ln_s2_s1)
+        line.delete(ln_s2_r2)
+        line.delete(ln_s2_s2)
+        line.delete(ln_s2_r3)
+        line.delete(ln_s2_s3)
+        line.delete(ln_s2_r4)
+        line.delete(ln_s2_s4)
+        line.delete(ln_s2_r5)
+        line.delete(ln_s2_s5)
+        ln_s2_p  := piv_s2_p_on  and not na(rv_s2_p)  ? line.new(s2_start_bi, rv_s2_p,  s2_end, rv_s2_p,  xloc=xloc.bar_index, color=piv_s2_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r1 := piv_s2_r1_on and not na(rv_s2_r1) ? line.new(s2_start_bi, rv_s2_r1, s2_end, rv_s2_r1, xloc=xloc.bar_index, color=piv_s2_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s1 := piv_s2_s1_on and not na(rv_s2_s1) ? line.new(s2_start_bi, rv_s2_s1, s2_end, rv_s2_s1, xloc=xloc.bar_index, color=piv_s2_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r2 := piv_s2_r2_on and not na(rv_s2_r2) ? line.new(s2_start_bi, rv_s2_r2, s2_end, rv_s2_r2, xloc=xloc.bar_index, color=piv_s2_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s2 := piv_s2_s2_on and not na(rv_s2_s2) ? line.new(s2_start_bi, rv_s2_s2, s2_end, rv_s2_s2, xloc=xloc.bar_index, color=piv_s2_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r3 := piv_s2_r3_on and not na(rv_s2_r3) ? line.new(s2_start_bi, rv_s2_r3, s2_end, rv_s2_r3, xloc=xloc.bar_index, color=piv_s2_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s3 := piv_s2_s3_on and not na(rv_s2_s3) ? line.new(s2_start_bi, rv_s2_s3, s2_end, rv_s2_s3, xloc=xloc.bar_index, color=piv_s2_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r4 := piv_s2_r4_on and not na(rv_s2_r4) ? line.new(s2_start_bi, rv_s2_r4, s2_end, rv_s2_r4, xloc=xloc.bar_index, color=piv_s2_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s4 := piv_s2_s4_on and not na(rv_s2_s4) ? line.new(s2_start_bi, rv_s2_s4, s2_end, rv_s2_s4, xloc=xloc.bar_index, color=piv_s2_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r5 := piv_s2_r5_on and not na(rv_s2_r5) ? line.new(s2_start_bi, rv_s2_r5, s2_end, rv_s2_r5, xloc=xloc.bar_index, color=piv_s2_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s5 := piv_s2_s5_on and not na(rv_s2_s5) ? line.new(s2_start_bi, rv_s2_s5, s2_end, rv_s2_s5, xloc=xloc.bar_index, color=piv_s2_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s2_p)
+        label.delete(lb_s2_r1)
+        label.delete(lb_s2_s1)
+        label.delete(lb_s2_r2)
+        label.delete(lb_s2_s2)
+        label.delete(lb_s2_r3)
+        label.delete(lb_s2_s3)
+        label.delete(lb_s2_r4)
+        label.delete(lb_s2_s4)
+        label.delete(lb_s2_r5)
+        label.delete(lb_s2_s5)
+        lb_s2_p  := piv_s2_p_on  and piv_show_lbl and not na(rv_s2_p)  ? label.new(s2_rgt, rv_s2_p,  f_lbl_text(rv_s2_p,  "P"),  xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r1 := piv_s2_r1_on and piv_show_lbl and not na(rv_s2_r1) ? label.new(s2_rgt, rv_s2_r1, f_lbl_text(rv_s2_r1, "R1"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s1 := piv_s2_s1_on and piv_show_lbl and not na(rv_s2_s1) ? label.new(s2_rgt, rv_s2_s1, f_lbl_text(rv_s2_s1, "S1"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r2 := piv_s2_r2_on and piv_show_lbl and not na(rv_s2_r2) ? label.new(s2_rgt, rv_s2_r2, f_lbl_text(rv_s2_r2, "R2"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s2 := piv_s2_s2_on and piv_show_lbl and not na(rv_s2_s2) ? label.new(s2_rgt, rv_s2_s2, f_lbl_text(rv_s2_s2, "S2"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r3 := piv_s2_r3_on and piv_show_lbl and not na(rv_s2_r3) ? label.new(s2_rgt, rv_s2_r3, f_lbl_text(rv_s2_r3, "R3"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s3 := piv_s2_s3_on and piv_show_lbl and not na(rv_s2_s3) ? label.new(s2_rgt, rv_s2_s3, f_lbl_text(rv_s2_s3, "S3"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r4 := piv_s2_r4_on and piv_show_lbl and not na(rv_s2_r4) ? label.new(s2_rgt, rv_s2_r4, f_lbl_text(rv_s2_r4, "R4"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s4 := piv_s2_s4_on and piv_show_lbl and not na(rv_s2_s4) ? label.new(s2_rgt, rv_s2_s4, f_lbl_text(rv_s2_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r5 := piv_s2_r5_on and piv_show_lbl and not na(rv_s2_r5) ? label.new(s2_rgt, rv_s2_r5, f_lbl_text(rv_s2_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s5 := piv_s2_s5_on and piv_show_lbl and not na(rv_s2_s5) ? label.new(s2_rgt, rv_s2_s5, f_lbl_text(rv_s2_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU PRINCIPAL V6
+// ══════════════════════════════════════════════════════════════
+grp_main     = "=== EPHORE TABLEAU PRINCIPAL ==="
+main_show    = input.bool(true, "Afficher Tableau Principal", group=grp_main)
+main_pos     = input.string("Top Right", "Position", group=grp_main, options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+main_sz      = input.string("Normal", "Taille Texte", group=grp_main, options=["Tiny", "Small", "Normal", "Large", "Huge"])
+main_tf1     = input.timeframe("5", "TF1 Price Action", group=grp_main)
+main_tf2     = input.timeframe("15", "TF2 Price Action", group=grp_main)
+main_tf3     = input.timeframe("60", "TF3 Price Action", group=grp_main)
+main_ticker2 = input.symbol("", "Ticker 2 (volume)", group=grp_main)
+main_vix_sym = input.symbol("CBOE:VIX", "Symbole VIX", group=grp_main)
+
+
+// ─── PALETTE STYLE TABLEAU ───
+c_bg         = color.rgb(21, 22, 45)     // fond général
+c_border     = color.rgb(95, 97, 125)    // bordures
+c_label      = color.rgb(190, 190, 205)  // texte gris clair
+
+c_bull       = color.rgb(56, 149, 255)   // bleu
+c_bear       = color.rgb(255, 82, 99)    // rouge
+c_neut       = color.rgb(130, 130, 150)  // neutre gris
+
+c_cell_blue  = color.rgb(24, 38, 92)     // fond bleu foncé
+c_cell_red   = color.rgb(74, 26, 49)     // fond rouge/bordeaux
+c_cell_neut  = color.rgb(45, 46, 70)     // fond neutre
+c_cell_gold  = color.rgb(98, 63, 16)     // fond orange/marron
+
+// ─── CALCULS INDICATEURS ───
+
+// Trend : SuperTrend
+[st_val, st_dir] = ta.supertrend(3, 10)
+main_trend_bull = st_dir < 0
+main_trend_lbl  = main_trend_bull ? "Bullish" : "Bearish"
+main_trend_col  = main_trend_bull ? c_bull : c_bear
+
+// Cross Signal : croisement EMA1 x EMA2
+ema_cross_up = ta.crossover(ema_m1, ema_m2)
+ema_cross_dn = ta.crossunder(ema_m1, ema_m2)
+var string cross_lbl = "—"
+var color cross_col = color.new(color.gray, 60)
+if ema_cross_up
+    cross_lbl := "Bullish"
+    cross_col := c_bull
+else if ema_cross_dn
+    cross_lbl := "Bearish"
+    cross_col := c_bear
+else
+    cross_lbl := "—"
+    cross_col := color.new(color.gray, 60)
+
+// Bull Score / Bear Score (sur 3 : SuperTrend + EMA + VWAP)
+vwap_val     = ta.vwap(hlc3)
+main_bs_st   = main_trend_bull ? 1 : 0
+main_bs_ema  = close > ema_m1 ? 1 : 0
+main_bs_vwap = close > vwap_val ? 1 : 0
+main_bull_sc = main_bs_st + main_bs_ema + main_bs_vwap
+main_bear_sc = 3 - main_bull_sc
+bull_sc_str  = str.tostring(main_bull_sc) + " / 3"
+bear_sc_str  = str.tostring(main_bear_sc) + " / 3"
+bull_sc_col  = main_bull_sc >= 2 ? c_bull : main_bull_sc == 1 ? c_neut : c_bear
+bear_sc_col  = main_bear_sc >= 2 ? c_bear : main_bear_sc == 1 ? c_neut : c_bull
+
+// YoYo : variation % depuis ouverture journalière
+day_open = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_on)
+yoyo_pct = day_open > 0 ? (close - day_open) / day_open * 100 : 0.0
+yoyo_lbl = (yoyo_pct >= 0 ? "+" : "") + str.tostring(math.round(yoyo_pct * 10) / 10) + "%"
+yoyo_col = yoyo_pct > 0.3 ? c_bull : yoyo_pct < -0.3 ? c_bear : c_neut
+
+// CCI (30)
+cci_30    = ta.cci(close, 30)
+cci_lbl_m = str.tostring(math.round(cci_30 * 100) / 100)
+cci_col_m = cci_30 > 100 ? c_bull : cci_30 < -100 ? c_bear : c_neut
+
+// RSI (14)
+rsi_14    = ta.rsi(close, 14)
+rsi_lbl_m = str.tostring(math.round(rsi_14 * 100) / 100)
+rsi_col_m = rsi_14 > 60 ? c_bull : rsi_14 < 40 ? c_bear : c_neut
+
+// MACD
+[macd_line, macd_sig, macd_hist] = ta.macd(close, 12, 26, 9)
+macd_bull = macd_line > macd_sig
+macd_lbl  = macd_bull ? "Bullish" : "Bearish"
+macd_col  = macd_bull ? c_bull : c_bear
+
+// Gap Probability
+gap_up_count = 0
+gap_dn_count = 0
+total_days   = 0
+
+d_open_series  = request.security(syminfo.tickerid, "D", open,  lookahead=barmerge.lookahead_on)
+d_close_series = request.security(syminfo.tickerid, "D", close, lookahead=barmerge.lookahead_on)
+
+
+for k = 1 to 20
+    d_open       = d_open_series[k]
+    d_prev_close = d_close_series[k + 1]
+
+    if not na(d_open) and not na(d_prev_close)
+        total_days += 1
+        if d_open > d_prev_close
+            gap_up_count += 1
+        else if d_open < d_prev_close
+            gap_dn_count += 1
+
+gap_up_pct = total_days > 0 ? math.round(gap_up_count * 100.0 / total_days) : 50
+gap_dn_pct = total_days > 0 ? math.round(gap_dn_count * 100.0 / total_days) : 50
+gap_up_lbl = str.tostring(gap_up_pct) + "%"
+gap_dn_lbl = str.tostring(gap_dn_pct) + "%"
+gap_up_col = gap_up_pct > 60 ? c_bull : gap_up_pct < 40 ? c_bear : c_neut
+gap_dn_col = gap_dn_pct > 60 ? c_bear : gap_dn_pct < 40 ? c_bull : c_neut
+
+// Divergence RSI
+rsi_div_bull = rsi_14 < 30 and close > close[1] and rsi_14 > rsi_14[1]
+rsi_div_bear = rsi_14 > 70 and close < close[1] and rsi_14 < rsi_14[1]
+div_lbl      = rsi_div_bull ? "Bull" : rsi_div_bear ? "Bear" : "None"
+div_col      = rsi_div_bull ? c_bull : rsi_div_bear ? c_bear : color.new(color.gray, 60)
+
+// VIX
+vix_close = request.security(main_vix_sym, "D", close, lookahead=barmerge.lookahead_off)
+vix_sma   = request.security(main_vix_sym, "D", ta.sma(close, 20), lookahead=barmerge.lookahead_off)
+vix_lbl   = not na(vix_close) ? str.tostring(math.round(vix_close * 100) / 100) : "N/A"
+vix_col   = not na(vix_close) ? (vix_close > 30 ? c_bear : vix_close < 15 ? c_bull : c_neut) : color.new(color.gray, 60)
+
+// VIX Volume
+vix_vol     = request.security(main_vix_sym, "D", volume, lookahead=barmerge.lookahead_off)
+vix_vol_sma = request.security(main_vix_sym, "D", ta.sma(volume, 20), lookahead=barmerge.lookahead_off)
+vix_vol_lbl = not na(vix_vol) and not na(vix_vol_sma) ? (vix_vol > vix_vol_sma * 1.5 ? "Unusual" : vix_vol > vix_vol_sma ? "High" : "Normal") : "N/A"
+vix_vol_col = vix_vol_lbl == "Unusual" ? c_bear : vix_vol_lbl == "High" ? c_neut : color.new(color.gray, 60)
+
+// TF Price Action (SuperTrend + EMA sur chaque TF)
+f_pa(tf) =>
+    [_stv, _std] = request.security(syminfo.tickerid, tf, ta.supertrend(3, 10), lookahead=barmerge.lookahead_off)
+    _ema1 = request.security(syminfo.tickerid, tf, ta.ema(close, 50), lookahead=barmerge.lookahead_off)
+    _c    = request.security(syminfo.tickerid, tf, close, lookahead=barmerge.lookahead_off)
+    st_ok  = _std < 0
+    ema_ok = _c > _ema1
+    score  = (st_ok ? 1 : 0) + (ema_ok ? 1 : 0)
+    score == 2 ? "SUPERBULL" : score == 1 ? "Bullish" : "Bearish"
+
+tf1_pa = f_pa(main_tf1)
+tf2_pa = f_pa(main_tf2)
+tf3_pa = f_pa(main_tf3)
+
+f_pa_col(s) =>
+    s == "SUPERBULL" ? color.new(#00e5ff, 0) : s == "Bullish" ? c_bull : c_bear
+
+// Ticker Volume Analysis
+vol_ratio   = ta.sma(volume, 20)
+vol_current = volume
+vol1_lbl    = vol_current > vol_ratio * 2 ? "Spike" : vol_current > vol_ratio * 1.2 ? "High" : vol_current < vol_ratio * 0.5 ? "Melt" : "Normal"
+vol1_col    = vol1_lbl == "Spike" ? c_bull : vol1_lbl == "High" ? c_neut : vol1_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
+
+// Ticker 2 Volume
+t2_vol     = main_ticker2 != "" ? request.security(main_ticker2, timeframe.period, volume, lookahead=barmerge.lookahead_off) : na
+t2_vol_sma = main_ticker2 != "" ? request.security(main_ticker2, timeframe.period, ta.sma(volume, 20), lookahead=barmerge.lookahead_off) : na
+vol2_lbl   = na(t2_vol) or na(t2_vol_sma) ? "N/A" : t2_vol > t2_vol_sma * 2 ? "Spike" : t2_vol > t2_vol_sma * 1.2 ? "High" : t2_vol < t2_vol_sma * 0.5 ? "Melt" : "Normal"
+vol2_col   = vol2_lbl == "Spike" ? c_bull : vol2_lbl == "High" ? c_neut : vol2_lbl == "Melt" ? c_bear : color.new(color.gray, 60)
+
+// ─── CONSTRUCTION TABLEAU ───
+var m_pos = position.top_right
+
+if main_pos == "Bottom Right"
+    m_pos := position.bottom_right
+else if main_pos == "Bottom Left"
+    m_pos := position.bottom_left
+else if main_pos == "Top Right"
+    m_pos := position.top_right
+else if main_pos == "Top Left"
+    m_pos := position.top_left
+else if main_pos == "Middle Right"
+    m_pos := position.middle_right
+else if main_pos == "Middle Left"
+    m_pos := position.middle_left
+
+var table tbl_main = na
+
+if barstate.isfirst
+    tbl_main := table.new(m_pos, 4, 9, bgcolor=c_bg, border_color=c_border, border_width=1)
+
+f_sz(_s) =>
+    if _s == "Tiny"
+        size.tiny
+    else if _s == "Small"
+        size.small
+    else if _s == "Normal"
+        size.normal
+    else if _s == "Large"
+        size.large
+    else
+        size.huge
+
+if barstate.islast
+    if main_show
+        sz = f_sz(main_sz)
+
+        // Row 0 : Trend | val | Cross Signal | val
+        table.cell(tbl_main, 0, 0, "Trend",         text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 0, main_trend_lbl,  text_color=color.white,  text_size=sz, bgcolor=main_trend_col)
+        table.cell(tbl_main, 2, 0, "Cross Signal",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 0, cross_lbl,       text_color=color.white,  text_size=sz, bgcolor=cross_col)
+
+        // Row 1 : Bull Score | val | CCI (30) | val
+        table.cell(tbl_main, 0, 1, "Bull Score",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 1, bull_sc_str,     text_color=color.white,  text_size=sz, bgcolor=bull_sc_col)
+        table.cell(tbl_main, 2, 1, "CCI (30)",      text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 1, cci_lbl_m,       text_color=color.white,  text_size=sz, bgcolor=cci_col_m)
+
+        // Row 2 : Bear Score | val | RSI (14) | val
+        table.cell(tbl_main, 0, 2, "Bear Score",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 2, bear_sc_str,     text_color=color.white,  text_size=sz, bgcolor=bear_sc_col)
+        table.cell(tbl_main, 2, 2, "RSI (14)",      text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 2, rsi_lbl_m,       text_color=color.white,  text_size=sz, bgcolor=rsi_col_m)
+
+        // Row 3 : YoYo | val | MACD | val
+        table.cell(tbl_main, 0, 3, "YoYo",          text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 3, yoyo_lbl,        text_color=color.white,  text_size=sz, bgcolor=yoyo_col)
+        table.cell(tbl_main, 2, 3, "MACD",          text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 3, macd_lbl,        text_color=color.white,  text_size=sz, bgcolor=macd_col)
+
+        // Row 4 : Gap ↑ Prob | val | TF1 PA | val
+        table.cell(tbl_main, 0, 4, "Gap ↑ Prob",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 4, gap_up_lbl,      text_color=color.white,  text_size=sz, bgcolor=gap_up_col)
+        table.cell(tbl_main, 2, 4, "TF1 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 4, tf1_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf1_pa))
+
+        // Row 5 : Gap ↓ Prob | val | TF2 PA | val
+        table.cell(tbl_main, 0, 5, "Gap ↓ Prob",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 5, gap_dn_lbl,      text_color=color.white,  text_size=sz, bgcolor=gap_dn_col)
+        table.cell(tbl_main, 2, 5, "TF2 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 5, tf2_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf2_pa))
+
+        // Row 6 : Divergence | val | TF3 PA | val
+        table.cell(tbl_main, 0, 6, "Divergence",    text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 6, div_lbl,         text_color=color.white,  text_size=sz, bgcolor=div_col)
+        table.cell(tbl_main, 2, 6, "TF3 PA",        text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 6, tf3_pa,          text_color=color.white,  text_size=sz, bgcolor=f_pa_col(tf3_pa))
+
+        // Row 7 : Vix | val | Vix Vol | val
+        table.cell(tbl_main, 0, 7, "Vix",           text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 7, vix_lbl,         text_color=color.white,  text_size=sz, bgcolor=vix_col)
+        table.cell(tbl_main, 2, 7, "Vix Vol",       text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 7, vix_vol_lbl,     text_color=color.white,  text_size=sz, bgcolor=vix_vol_col)
+
+        // Row 8 : Ticker 1 Vol | val | Ticker 2 Vol | val
+        table.cell(tbl_main, 0, 8, "Ticker 1 Vol",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 1, 8, vol1_lbl,        text_color=color.white,  text_size=sz, bgcolor=vol1_col)
+        table.cell(tbl_main, 2, 8, "Ticker 2 Vol",  text_color=color.silver, text_size=sz)
+        table.cell(tbl_main, 3, 8, vol2_lbl,        text_color=color.white,  text_size=sz, bgcolor=vol2_col)
+
+
+
+//------------------------------------------------------------------------------
+//DETECTOR ORDER BLCOK
+//-----------------------------------------------------------------------------{
+length = input.int(5, 'Volume Pivot Length'
+  , minval = 1)
+
+bull_ext_last = input.int(3, 'Bullish OB '
+  , minval = 1
+  , inline = 'bull')
+
+bg_bull_css = input.color(color.new(#1565C0, 80), ''
+  , inline = 'bull')
+
+bull_css = input.color(#1565C0, ''
+  , inline = 'bull')
+
+bull_avg_css = input.color(color.new(#757575, 50), ''
+  , inline = 'bull')
+
+bear_ext_last = input.int(3, 'Bearish OB'
+  , minval = 1
+  , inline = 'bear')
+
+bg_bear_css = input.color(color.new(#EF5350, 80), ''
+  , inline = 'bear')
+
+bear_css = input.color(#EF5350, ''
+  , inline = 'bear')
+
+bear_avg_css = input.color(color.new(#757575, 50), ''
+  , inline = 'bear')
+
+line_style = input.string('⎯⎯⎯', 'Average Line Style'
+  , options = ['⎯⎯⎯', '----', '····'])
+
+line_width = input.int(1, 'Average Line Width'
+  , minval = 1)
+
+mitigation = input.string('Wick', 'Mitigation Methods'
+  , options = ['Wick', 'Close'])
+
+//-----------------------------------------------------------------------------}
+//Functions
+//-----------------------------------------------------------------------------{
+//Line Style function
+get_line_style(style) =>
+    out = switch style
+        '⎯⎯⎯'  => line.style_solid
+        '----' => line.style_dashed
+        '····' => line.style_dotted
+
+//Function to get order block coordinates
+get_coordinates(condition, top, btm, ob_val)=>
+    var ob_top  = array.new_float(0)
+    var ob_btm  = array.new_float(0)
+    var ob_avg  = array.new_float(0)
+    var ob_left = array.new_int(0)
+
+    float ob = na
+
+    //Append coordinates to arrays
+    if condition
+        avg = math.avg(top, btm)
+
+        array.unshift(ob_top, top)
+        array.unshift(ob_btm, btm)
+        array.unshift(ob_avg, avg)
+        array.unshift(ob_left, time[length])
+
+        ob := ob_val
+
+    [ob_top, ob_btm, ob_avg, ob_left, ob]
+
+//Function to remove mitigated order blocks from coordinate arrays
+remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
+    mitigated = false
+    target_array = bull ? ob_btm : ob_top
+
+    for element in target_array
+        idx = array.indexof(target_array, element)
+
+        if (bull ? target < element : target > element)
+            mitigated := true
+
+            array.remove(ob_top, idx)
+            array.remove(ob_btm, idx)
+            array.remove(ob_avg, idx)
+            array.remove(ob_left, idx)
+
+    mitigated
+
+//Function to set order blocks
+set_order_blocks(ob_top, ob_btm, ob_left, ob_avg, ext_last, bg_css, border_css, lvl_css)=>
+    var ob_box = array.new_box(0)
+    var ob_lvl = array.new_line(0)
+
+    //Fill arrays with boxes/lines
+    if barstate.isfirst
+        for i = 0 to ext_last-1
+            array.unshift(ob_box, box.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend= extend.right
+              , bgcolor = bg_css
+              , border_color = color.new(border_css, 70)))
+
+            array.unshift(ob_lvl, line.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend = extend.right
+              , color = lvl_css
+              , style = get_line_style(line_style)
+              , width = line_width))
+
+    //Set order blocks
+    if barstate.islast
+        if array.size(ob_top) > 0
+            for i = 0 to math.min(ext_last-1, array.size(ob_top)-1)
+                get_box = array.get(ob_box, i)
+                get_lvl = array.get(ob_lvl, i)
+
+                box.set_lefttop(get_box, array.get(ob_left, i), array.get(ob_top, i))
+                box.set_rightbottom(get_box, array.get(ob_left, i), array.get(ob_btm, i))
+
+                line.set_xy1(get_lvl, array.get(ob_left, i), array.get(ob_avg, i))
+                line.set_xy2(get_lvl, array.get(ob_left, i)+1, array.get(ob_avg, i))
+
+
+//-----------------------------------------------------------------------------}
+//Global elements
+//-----------------------------------------------------------------------------{
+var os = 0
+var target_bull = 0.
+var target_bear = 0.
+
+n = bar_index
+upper = ta.highest(length)
+lower = ta.lowest(length)
+
+if mitigation == 'Close'
+    target_bull := ta.lowest(close, length)
+    target_bear := ta.highest(close, length)
+else
+    target_bull := lower
+    target_bear := upper
+
+os := high[length] > upper ? 0 : low[length] < lower ? 1 : os[1]
+
+phv = not na(ta.pivothigh(volume, length, length))
+
+//-----------------------------------------------------------------------------}
+//Get bullish/bearish order blocks coordinates
+//-----------------------------------------------------------------------------{
+[bull_top
+  , bull_btm
+  , bull_avg
+  , bull_left
+  , bull_ob] = get_coordinates(phv and os == 1, hl2[length], low[length], low[length])
+
+[bear_top
+  , bear_btm
+  , bear_avg
+  , bear_left
+  , bear_ob] = get_coordinates(phv and os == 0, high[length], hl2[length], high[length])
+
+//-----------------------------------------------------------------------------}
+//Remove mitigated order blocks
+//-----------------------------------------------------------------------------{
+mitigated_bull = remove_mitigated(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , target_bull
+  , true)
+
+mitigated_bear = remove_mitigated(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , target_bear
+  , false)
+
+//-----------------------------------------------------------------------------}
+//Display order blocks
+//-----------------------------------------------------------------------------{
+//Set bullish order blocks
+set_order_blocks(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , bull_ext_last
+  , bg_bull_css
+  , bull_css
+  , bull_avg_css)
+
+//Set bearish order blocks
+set_order_blocks(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , bear_ext_last
+  , bg_bear_css
+  , bear_css
+  , bear_avg_css)
+
+//Show detected order blocks
+plot(bull_ob, 'Bull OB', bull_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+plot(bear_ob, 'Bear OB', bear_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+
+//condition alerte
+bull_ob_alert = not na(bull_ob)
+bear_ob_alert = not na(bear_ob)
+
+
+
+// ══════════════════════════════════════════════════════════════
+// EPHORE SIGNATOR V6 — Flèches FORT/MOYEN + Tableau
+// ══════════════════════════════════════════════════════════════
+// Signal : flèche à la 2ème bougie consécutive après flip Heishinator
+//   - Long  (FORT)  → flèche blanche ▲ sous la bougie
+//   - Short (FORT)  → flèche noire  ▼ au-dessus
+// Classement FORT / MOYEN via le Candle Quality Filter (scoring).
+grp_sig = "=== EPHORE SIGNATOR V6 ==="
+
+sig_show_tbl   = input.bool(true,    "Afficher Tableau Signator",      group=grp_sig)
+sig_tbl_pos    = input.string("Top Right", "Position Tableau",         group=grp_sig,
+     options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+sig_custom_col = input.bool(true,    "Personnaliser Couleurs Flèches", group=grp_sig)
+
+sig_show_fort  = input.bool(true,    "Afficher flèches FORT",          group=grp_sig)
+sig_fort_long  = input.color(#FFFFFF, "Couleur flèche Long (FORT)",    group=grp_sig)
+sig_fort_short = input.color(#000000, "Couleur flèche Short (FORT)",   group=grp_sig)
+
+sig_show_moyen = input.bool(false,   "Afficher flèches MOYEN",        group=grp_sig)
+sig_moyen_long = input.color(#FFFFFF, "Couleur flèche Long (MOYEN)",  group=grp_sig)
+sig_moyen_short= input.color(#000000, "Couleur flèche Short (MOYEN)", group=grp_sig)
+
+sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
+sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
+sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
+     options=["Normal", "Rapide", "Lent"])
+
+// ══════════════════════════════════════════════════════════════
+// CANDLE QUALITY FILTER V1
+// ══════════════════════════════════════════════════════════════
+grp_cqf = "=== CANDLE QUALITY FILTER V1 ==="
+
+cqf_enable     = input.bool(true,    "Activer le Filtre Qualité Bougie", group=grp_cqf)
+
+cqf_struct_on  = input.bool(true,    "① Activer Filtre Structure",       group=grp_cqf)
+cqf_body_ratio = input.float(0.5,    "├ Ratio Corps/Range Min",          group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
+cqf_close_pos  = input.float(0.33,   "├ Position Close (tiers)",         group=grp_cqf, minval=0.0, maxval=1.0, step=0.01)
+cqf_wick_max   = input.float(0.35,   "├ Mèche Adverse Max",             group=grp_cqf, minval=0.0, maxval=1.0, step=0.05)
+
+cqf_mom_on     = input.bool(true,    "② Activer Filtre Momentum ATR",    group=grp_cqf)
+cqf_atr_len    = input.int(14,       "├ Période ATR",                    group=grp_cqf, minval=1, maxval=100)
+cqf_range_min  = input.float(0.5,    "├ Range Min (x ATR)",              group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
+
+cqf_vol_on     = input.bool(true,    "③ Activer Filtre Volume",          group=grp_cqf)
+cqf_vol_len    = input.int(20,       "├ Période SMA Volume",             group=grp_cqf, minval=1, maxval=200)
+cqf_vol_ratio  = input.float(1.0,    "├ Ratio Volume Min",               group=grp_cqf, minval=0.0, maxval=10.0, step=0.1)
+
+cqf_eng_on     = input.bool(true,    "④ Activer Filtre Engulfing",       group=grp_cqf)
+cqf_eng_full   = input.bool(true,    "├ Exiger Engulfing Complet",       group=grp_cqf)
+
+cqf_gap_on     = input.bool(true,    "⑤ Activer Filtre Gap Conviction",  group=grp_cqf)
+cqf_gap_type   = input.string("ATR", "├ Type de Mesure",                 group=grp_cqf, options=["ATR", "%"])
+cqf_gap_atr    = input.float(0.3,    "├ Gap Min (x ATR)",                group=grp_cqf, minval=0.0, maxval=5.0, step=0.1)
+cqf_gap_pct    = input.float(0.5,    "├ Gap Min (%)",                    group=grp_cqf, minval=0.0, maxval=10.0, step=0.1)
+
+cqf_score_on   = input.bool(true,    "⑥ Utiliser Mode Scoring",          group=grp_cqf)
+cqf_score_min  = input.int(50,       "├ Score Minimum (0-100)",          group=grp_cqf, minval=0, maxval=100)
+cqf_w_struct   = input.int(25,       "├ Poids Structure",                group=grp_cqf, minval=0, maxval=100)
+cqf_w_mom      = input.int(25,       "├ Poids Momentum",                 group=grp_cqf, minval=0, maxval=100)
+cqf_w_vol      = input.int(25,       "├ Poids Volume",                   group=grp_cqf, minval=0, maxval=100)
+cqf_w_gap      = input.int(25,       "├ Poids Gap",                      group=grp_cqf, minval=0, maxval=100)
+
+// ── Détection bougies consécutives (basée sur Heishinator du haut) ──
+sg_is_bull = hei_col_bull
+sg_is_bear = not hei_col_bull
+
+sg_bull_flip = sg_is_bull and not sg_is_bull[1]
+sg_bear_flip = sg_is_bear and not sg_is_bear[1]
+
+// Lag mode : combien de bougies APRÈS le flip avant signal
+sg_lag = sig_lag_mode == "Rapide" ? 1 : sig_lag_mode == "Lent" ? 3 : 2
+
+var int  sg_bull_count = 0
+var int  sg_bear_count = 0
+var bool sg_bull_fired = false
+var bool sg_bear_fired = false
+
+if sg_bull_flip
+    sg_bull_count := 1
+    sg_bull_fired := false
+    sg_bear_count := 0
+else if sg_is_bull
+    sg_bull_count += 1
+else
+    sg_bull_count := 0
+    sg_bull_fired := false
+
+if sg_bear_flip
+    sg_bear_count := 1
+    sg_bear_fired := false
+    sg_bull_count := 0
+else if sg_is_bear
+    sg_bear_count += 1
+else
+    sg_bear_count := 0
+    sg_bear_fired := false
+
+sg_raw_long  = sg_bull_count == sg_lag and not sg_bull_fired
+sg_raw_short = sg_bear_count == sg_lag and not sg_bear_fired
+
+if sg_raw_long
+    sg_bull_fired := true
+if sg_raw_short
+    sg_bear_fired := true
+
+// ── CQF : calculs bougie ──
+sg_body       = math.abs(close - open)
+sg_range      = high - low
+sg_body_ratio = sg_range > 0 ? sg_body / sg_range : 0.0
+sg_wick_adv   = sg_is_bull ? (high - close) / math.max(sg_range, syminfo.mintick) : (close - low) / math.max(sg_range, syminfo.mintick)
+sg_close_pos  = sg_range > 0 ? (close - low) / sg_range : 0.5
+
+sg_atr      = ta.atr(cqf_atr_len)
+sg_vol_sma  = ta.sma(volume, cqf_vol_len)
+sg_vol_rat  = sg_vol_sma > 0 ? volume / sg_vol_sma : 0.0
+
+sg_eng_bull      = sg_is_bull and close > open[1] and open < close[1]
+sg_eng_bear      = sg_is_bear and open > close[1] and close < open[1]
+sg_eng_bull_full = sg_eng_bull and high > high[1] and low < low[1]
+sg_eng_bear_full = sg_eng_bear and high > high[1] and low < low[1]
+
+sg_gap       = math.abs(open - close[1])
+sg_gap_atr   = sg_atr > 0 ? sg_gap / sg_atr : 0.0
+sg_gap_pct   = close[1] > 0 ? (sg_gap / close[1]) * 100 : 0.0
+
+// ── CQF : score 0-100 ──
+f_cqf_score() =>
+    if not cqf_enable
+        100.0
+    else if not cqf_score_on
+        p_struct = not cqf_struct_on or (sg_body_ratio >= cqf_body_ratio and sg_wick_adv <= cqf_wick_max and (sg_is_bull ? sg_close_pos >= (1.0 - cqf_close_pos) : sg_close_pos <= cqf_close_pos))
+        p_mom    = not cqf_mom_on    or (sg_range >= cqf_range_min * sg_atr)
+        p_vol    = not cqf_vol_on    or (sg_vol_rat >= cqf_vol_ratio)
+        p_eng    = not cqf_eng_on    or (sg_is_bull ? (cqf_eng_full ? sg_eng_bull_full : sg_eng_bull) : (cqf_eng_full ? sg_eng_bear_full : sg_eng_bear))
+        p_gap    = not cqf_gap_on    or (cqf_gap_type == "ATR" ? sg_gap_atr >= cqf_gap_atr : sg_gap_pct >= cqf_gap_pct)
+        p_struct and p_mom and p_vol and p_eng and p_gap ? 100.0 : 0.0
+    else
+        total_w = float(cqf_w_struct + cqf_w_mom + cqf_w_vol + cqf_w_gap)
+        if total_w == 0
+            100.0
+        else
+            s_struct = 100.0
+            if cqf_struct_on and cqf_w_struct > 0
+                br = math.min(sg_body_ratio / math.max(cqf_body_ratio, 0.01), 1.0)
+                wa = 1.0 - math.min(sg_wick_adv / math.max(cqf_wick_max, 0.01), 1.0)
+                cp = sg_is_bull ? math.min(sg_close_pos / math.max(1.0 - cqf_close_pos, 0.01), 1.0) : math.min((1.0 - sg_close_pos) / math.max(1.0 - cqf_close_pos, 0.01), 1.0)
+                s_struct := (br + wa + cp) / 3.0 * 100.0
+
+            s_mom = 100.0
+            if cqf_mom_on and cqf_w_mom > 0
+                s_mom := math.min(sg_range / math.max(cqf_range_min * sg_atr, syminfo.mintick), 1.0) * 100.0
+
+            s_vol = 100.0
+            if cqf_vol_on and cqf_w_vol > 0
+                s_vol := math.min(sg_vol_rat / math.max(cqf_vol_ratio, 0.01), 1.0) * 100.0
+
+            s_gap = 100.0
+            if cqf_gap_on and cqf_w_gap > 0
+                if cqf_gap_type == "ATR"
+                    s_gap := math.min(sg_gap_atr / math.max(cqf_gap_atr, 0.01), 1.0) * 100.0
+                else
+                    s_gap := math.min(sg_gap_pct / math.max(cqf_gap_pct, 0.01), 1.0) * 100.0
+
+            (s_struct * cqf_w_struct + s_mom * cqf_w_mom + s_vol * cqf_w_vol + s_gap * cqf_w_gap) / total_w
+
+sg_score = f_cqf_score()
+
+// ── Classification FORT / MOYEN ──
+sg_is_fort  = sg_score >= cqf_score_min
+sg_is_moyen = sg_score >= sig_force_min and sg_score < cqf_score_min
+
+sig_long_fort   = sg_raw_long  and (sig_filter_on ? sg_is_fort : true)
+sig_short_fort  = sg_raw_short and (sig_filter_on ? sg_is_fort : true)
+sig_long_moyen  = sg_raw_long  and sig_filter_on and sg_is_moyen
+sig_short_moyen = sg_raw_short and sig_filter_on and sg_is_moyen
+
+sg_col_fort_l  = sig_custom_col ? sig_fort_long   : #FFFFFF
+sg_col_fort_s  = sig_custom_col ? sig_fort_short  : #000000
+sg_col_moyen_l = sig_custom_col ? sig_moyen_long  : #B2B2B2
+sg_col_moyen_s = sig_custom_col ? sig_moyen_short : #333333
+
+plotshape(sig_show_fort and sig_long_fort,  "Signator Long FORT",  style=shape.arrowup,
+     location=location.belowbar, color=sg_col_fort_l, size=size.normal)
+plotshape(sig_show_fort and sig_short_fort, "Signator Short FORT", style=shape.arrowdown,
+     location=location.abovebar, color=sg_col_fort_s, size=size.normal)
+plotshape(sig_show_moyen and sig_long_moyen,  "Signator Long MOYEN",  style=shape.arrowup,
+     location=location.belowbar, color=sg_col_moyen_l, size=size.small)
+plotshape(sig_show_moyen and sig_short_moyen, "Signator Short MOYEN", style=shape.arrowdown,
+     location=location.abovebar, color=sg_col_moyen_s, size=size.small)
+
+// ── Tableau Signator ──
+sg_tf_sec = timeframe.in_seconds(timeframe.period)
+sg_tf_lbl = sg_tf_sec < 60 ? str.tostring(sg_tf_sec) + "s" :
+     sg_tf_sec < 3600 ? str.tostring(sg_tf_sec / 60, "0") + " min" :
+     sg_tf_sec < 86400 ? str.tostring(sg_tf_sec / 3600, "0") + "h" :
+     str.tostring(sg_tf_sec / 86400, "0") + "D"
+
+sg_body_pct = sg_range > 0 ? sg_body / sg_range * 100 : 0.0
+
+sg_filtre_lbl  = not cqf_enable ? "OFF" : sg_is_fort ? "OPTIMAL" : sg_is_moyen ? "MOYEN" : "RISQUE"
+sg_filtre_col  = not cqf_enable ? color.gray : sg_is_fort ? color.lime : sg_is_moyen ? color.yellow : color.red
+sg_filtre_icon = not cqf_enable ? "—" : sg_is_fort ? "✔" : sg_is_moyen ? "~" : "⛔"
+
+sg_tend_bull = ema_m1 > ema_m2
+sg_tend_lbl  = sg_tend_bull ? "Haussière" : "Baissière"
+sg_tend_col  = sg_tend_bull ? c_bull : c_bear
+sg_tend_icon = sg_tend_bull ? "⬆" : "⬇"
+
+sg_hei_lbl  = sg_is_bull ? "Haussière" : "Baissière"
+sg_hei_col  = sg_is_bull ? c_bull : c_bear
+sg_hei_icon = sg_is_bull ? "⬆" : "⬇"
+
+sg_score_lbl = sg_is_fort ? "Fort" : sg_is_moyen ? "Moyen" : "Faible"
+sg_score_col = sg_is_fort ? color.white : sg_is_moyen ? color.yellow : color.red
+
+if sig_show_tbl and barstate.islast
+    sg_pos = sig_tbl_pos == "Top Right" ? position.top_right :
+         sig_tbl_pos == "Top Left" ? position.top_left :
+         sig_tbl_pos == "Bottom Right" ? position.bottom_right :
+         sig_tbl_pos == "Bottom Left" ? position.bottom_left :
+         sig_tbl_pos == "Middle Right" ? position.middle_right :
+         position.middle_left
+
+    var table sg_tbl = table.new(sg_pos, 3, 7, bgcolor=color.new(#15162D, 0), border_width=1, border_color=color.rgb(95, 97, 125))
+
+    table.cell(sg_tbl, 0, 0, "Heishinator", text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 0, sg_hei_icon,   text_color=sg_hei_col,      text_size=size.small)
+    table.cell(sg_tbl, 2, 0, sg_hei_lbl,    text_color=sg_hei_col,      text_size=size.small)
+
+    table.cell(sg_tbl, 0, 1, "Filtres",      text_color=color.silver,   text_size=size.small)
+    table.cell(sg_tbl, 1, 1, sg_filtre_icon, text_color=sg_filtre_col,  text_size=size.small)
+    table.cell(sg_tbl, 2, 1, sg_filtre_lbl,  text_color=sg_filtre_col,  text_size=size.small)
+
+    table.cell(sg_tbl, 0, 2, "Tendance",    text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 2, sg_tend_icon,  text_color=sg_tend_col,     text_size=size.small)
+    table.cell(sg_tbl, 2, 2, sg_tend_lbl,   text_color=sg_tend_col,     text_size=size.small)
+
+    table.cell(sg_tbl, 0, 3, "Score",       text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 3, "",            text_color=color.white,     text_size=size.small)
+    table.cell(sg_tbl, 2, 3, sg_score_lbl,  text_color=sg_score_col,    text_size=size.small)
+
+    table.cell(sg_tbl, 0, 4, "TF",          text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 4, "",            text_color=color.white,     text_size=size.small)
+    table.cell(sg_tbl, 2, 4, sg_tf_lbl,     text_color=color.orange,    text_size=size.small)
+
+    table.cell(sg_tbl, 0, 5, "CQF",         text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 5, "",            text_color=color.white,     text_size=size.small)
+    table.cell(sg_tbl, 2, 5, str.tostring(sg_score, "0") + "%", text_color=sg_is_fort ? color.lime : sg_is_moyen ? color.yellow : color.red, text_size=size.small)
+
+    table.cell(sg_tbl, 0, 6, "Body%",       text_color=color.silver,    text_size=size.small)
+    table.cell(sg_tbl, 1, 6, "",            text_color=color.white,     text_size=size.small)
+    table.cell(sg_tbl, 2, 6, str.tostring(sg_body_pct, "0") + "%", text_color=sg_body_pct >= 50 ? color.lime : sg_body_pct >= 30 ? color.yellow : color.red, text_size=size.small)
+
+// ══════════════════════════════════════════════════════════════
+// EPHORE TRENDLINES V1 — Résistance descendante + Support ascendant
+// (logique validée de TRENDLINES.pine)
+// ══════════════════════════════════════════════════════════════
+grp_tl = "=== EPHORE TRENDLINES V1 ==="
+
+tl_enable      = input.bool(true,        "Activer Trendlines",                    group=grp_tl)
+tl_custom_col  = input.bool(true,        "Personnaliser Couleurs",                group=grp_tl)
+tl_piv_len     = input.int(10,           "Pivot High Bars Required for Anchor",   group=grp_tl, minval=2, maxval=50)
+tl_buffer      = input.float(0.1,        "Price Buffer %",                        group=grp_tl, minval=0.0, maxval=5.0, step=0.05)
+tl_min_touches = input.int(3,            "Minimum Number of Touches",             group=grp_tl, minval=2, maxval=10)
+tl_color       = input.color(#000000,    "Trendline Color",                       group=grp_tl, inline="tlcol")
+tl_width       = input.int(2,            "Width",                                 group=grp_tl, minval=1, maxval=5, inline="tlcol")
+tl_extend      = input.bool(true,        "Extend Trendlines",                     group=grp_tl)
+tl_lookback    = input.int(100,          "Look for New Pivot High after X Bars",  group=grp_tl, minval=10, maxval=500)
+tl_show_break  = input.bool(true,        "Show Trendline Breakouts",              group=grp_tl, inline="brk")
+tl_break_col   = input.color(#90EE90,    "Breakout Color",                        group=grp_tl, inline="brk")
+tl_max_lines   = input.int(1,            "Number of Trendlines to show",          group=grp_tl, minval=1, maxval=5)
+
+grp_bl = "=== TREND HAUSSIÈRE (Support Ascendant) ==="
+bl_enable     = input.bool(true,      "Activer Trend Haussière",            group=grp_bl)
+bl_color      = input.color(#FFFFFF,  "Couleur Support Ascendant",          group=grp_bl, inline="blcol")
+bl_width      = input.int(2,          "Width",                              group=grp_bl, minval=1, maxval=5, inline="blcol")
+bl_show_break = input.bool(true,      "Show Breakdown (cassure baissière)", group=grp_bl, inline="blbrk")
+bl_break_col  = input.color(#EF5350,  "Breakdown Color",                    group=grp_bl, inline="blbrk")
+
+// ── Pivots ──
+tl_ph = ta.pivothigh(high, tl_piv_len, tl_piv_len)
+
+var float[] ph_price = array.new_float(0)
+var int[]   ph_bar   = array.new_int(0)
+
+if not na(tl_ph)
+    array.unshift(ph_price, tl_ph)
+    array.unshift(ph_bar,   bar_index - tl_piv_len)
+    if array.size(ph_price) > 50
+        array.pop(ph_price)
+        array.pop(ph_bar)
+
+tl_pl = ta.pivotlow(low, tl_piv_len, tl_piv_len)
+
+var float[] pl_price = array.new_float(0)
+var int[]   pl_bar   = array.new_int(0)
+
+if not na(tl_pl)
+    array.unshift(pl_price, tl_pl)
+    array.unshift(pl_bar,   bar_index - tl_piv_len)
+    if array.size(pl_price) > 50
+        array.pop(pl_price)
+        array.pop(pl_bar)
+
+// ── Fonctions ──
+f_tl_value(x1, y1, slope, x) =>
+    y1 + slope * (x - x1)
+
+f_count_touches(x1, y1, slope, pp, pb, buffer_pct, lb) =>
+    count = 0
+    sz = array.size(pp)
+    for i = 0 to math.min(sz - 1, 49)
+        px = array.get(pb, i)
+        py = array.get(pp, i)
+        if bar_index - px <= lb and px >= x1
+            tl_y = f_tl_value(x1, y1, slope, px)
+            buf = tl_y * buffer_pct / 100.0
+            if py >= tl_y - buf and py <= tl_y + buf
+                count += 1
+    count
+
+// ── Meilleure résistance descendante (closest above price, min 2 touches) ──
+var float best_x1    = na
+var float best_y1    = na
+var float best_slope = na
+var int   best_tc    = 0
+
+if tl_enable and array.size(ph_price) >= 2
+    sz = array.size(ph_price)
+    top_dist = 999999.0
+    top_x1 = 0.0
+    top_y1 = 0.0
+    top_sl = 0.0
+    top_tc = 0
+    found = false
+
+    max_i = math.min(sz - 1, 19)
+    max_j = math.min(sz - 1, 29)
+    for i = 0 to max_i
+        for j = i + 1 to max_j
+            if j < sz
+                x1_v = array.get(ph_bar, j)
+                y1_v = array.get(ph_price, j)
+                x2_v = array.get(ph_bar, i)
+                y2_v = array.get(ph_price, i)
+
+                if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                    slope = (y2_v - y1_v) / (x2_v - x1_v)
+                    if slope <= 0
+                        touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
+                        if touches >= 2
+                            tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                            dist = math.abs(close - tl_now) / close * 100
+                            if tl_now > close and dist < top_dist
+                                top_dist := dist
+                                top_x1 := float(x1_v)
+                                top_y1 := y1_v
+                                top_sl := slope
+                                top_tc := touches
+                                found := true
+
+    if not found
+        for i = 0 to max_i
+            for j = i + 1 to max_j
+                if j < sz
+                    x1_v = array.get(ph_bar, j)
+                    y1_v = array.get(ph_price, j)
+                    x2_v = array.get(ph_bar, i)
+                    y2_v = array.get(ph_price, i)
+
+                    if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                        slope = (y2_v - y1_v) / (x2_v - x1_v)
+                        if slope <= 0
+                            touches = f_count_touches(x1_v, y1_v, slope, ph_price, ph_bar, tl_buffer, tl_lookback)
+                            if touches >= 2
+                                tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                                dist = math.abs(close - tl_now) / close * 100
+                                if dist < top_dist
+                                    top_dist := dist
+                                    top_x1 := float(x1_v)
+                                    top_y1 := y1_v
+                                    top_sl := slope
+                                    top_tc := touches
+                                    found := true
+
+    if found
+        best_x1    := top_x1
+        best_y1    := top_y1
+        best_slope := top_sl
+        best_tc    := top_tc
+
+// ── Meilleur support ascendant (closest below price, min 2 touches) ──
+var float bs_x1    = na
+var float bs_y1    = na
+var float bs_slope = na
+var int   bs_tc    = 0
+
+if bl_enable and array.size(pl_price) >= 2
+    sz2 = array.size(pl_price)
+    bot_dist = 999999.0
+    bot_x1 = 0.0
+    bot_y1 = 0.0
+    bot_sl = 0.0
+    bot_tc = 0
+    found2 = false
+
+    max_i2 = math.min(sz2 - 1, 19)
+    max_j2 = math.min(sz2 - 1, 29)
+    for i = 0 to max_i2
+        for j = i + 1 to max_j2
+            if j < sz2
+                x1_v = array.get(pl_bar, j)
+                y1_v = array.get(pl_price, j)
+                x2_v = array.get(pl_bar, i)
+                y2_v = array.get(pl_price, i)
+
+                if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                    slope = (y2_v - y1_v) / (x2_v - x1_v)
+                    if slope >= 0
+                        touches = f_count_touches(x1_v, y1_v, slope, pl_price, pl_bar, tl_buffer, tl_lookback)
+                        if touches >= 2
+                            tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                            dist = math.abs(close - tl_now) / close * 100
+                            if tl_now < close and dist < bot_dist
+                                bot_dist := dist
+                                bot_x1 := float(x1_v)
+                                bot_y1 := y1_v
+                                bot_sl := slope
+                                bot_tc := touches
+                                found2 := true
+
+    if not found2
+        for i = 0 to max_i2
+            for j = i + 1 to max_j2
+                if j < sz2
+                    x1_v = array.get(pl_bar, j)
+                    y1_v = array.get(pl_price, j)
+                    x2_v = array.get(pl_bar, i)
+                    y2_v = array.get(pl_price, i)
+
+                    if x2_v > x1_v and bar_index - x1_v <= tl_lookback
+                        slope = (y2_v - y1_v) / (x2_v - x1_v)
+                        if slope >= 0
+                            touches = f_count_touches(x1_v, y1_v, slope, pl_price, pl_bar, tl_buffer, tl_lookback)
+                            if touches >= 2
+                                tl_now = f_tl_value(x1_v, y1_v, slope, bar_index)
+                                dist = math.abs(close - tl_now) / close * 100
+                                if dist < bot_dist
+                                    bot_dist := dist
+                                    bot_x1 := float(x1_v)
+                                    bot_y1 := y1_v
+                                    bot_sl := slope
+                                    bot_tc := touches
+                                    found2 := true
+
+    if found2
+        bs_x1    := bot_x1
+        bs_y1    := bot_y1
+        bs_slope := bot_sl
+        bs_tc    := bot_tc
+
+// ── Breakouts (hlc3 cross — chaque barre) ──
+float tl_val = not na(best_x1) and best_tc >= 2 ? f_tl_value(best_x1, best_y1, best_slope, bar_index) : na
+breakout_signal = tl_enable and tl_show_break and ta.crossover(hlc3, tl_val)
+
+plotshape(breakout_signal, title="TL Breakout", style=shape.circle,
+     location=location.belowbar, color=tl_break_col, size=size.tiny)
+
+float bs_val = not na(bs_x1) and bs_tc >= 2 ? f_tl_value(bs_x1, bs_y1, bs_slope, bar_index) : na
+breakdown_signal = bl_enable and bl_show_break and ta.crossunder(hlc3, bs_val)
+
+plotshape(breakdown_signal, title="TL Breakdown", style=shape.circle,
+     location=location.abovebar, color=bl_break_col, size=size.tiny)
+
+// ── Dessin (barstate.islast) ──
+var line[] desc_lines = array.new_line(0)
+
+if barstate.islast
+    while array.size(desc_lines) > 0
+        line.delete(array.pop(desc_lines))
+
+tl_col_desc = tl_custom_col ? tl_color : #000000
+
+if tl_enable and barstate.islast and not na(best_x1)
+    lx1 = int(best_x1)
+    end_x = tl_extend ? bar_index + 50 : bar_index
+    end_y = f_tl_value(best_x1, best_y1, best_slope, end_x)
+
+    ln = line.new(lx1, best_y1, end_x, end_y,
+         xloc=xloc.bar_index, color=tl_col_desc, width=tl_width,
+         style=line.style_solid)
+    array.push(desc_lines, ln)
+
+var line[] asc_lines = array.new_line(0)
+
+if barstate.islast
+    while array.size(asc_lines) > 0
+        line.delete(array.pop(asc_lines))
+
+if bl_enable and barstate.islast and not na(bs_x1)
+    blx1 = int(bs_x1)
+    bend_x = tl_extend ? bar_index + 50 : bar_index
+    bend_y = f_tl_value(bs_x1, bs_y1, bs_slope, bend_x)
+    bln = line.new(blx1, bs_y1, bend_x, bend_y,
+         xloc=xloc.bar_index, color=bl_color, width=bl_width,
+         style=line.style_solid)
+    array.push(asc_lines, bln)
+
+// ══════════════════════════════════════════════════════════════
+// EPHORE ROUND LEVELS V1 — Niveaux ronds
+// ══════════════════════════════════════════════════════════════
+grp_rl = "=== EPHORE ROUND LEVELS V1 ==="
+rl_enable   = input.bool(false, "Activer Niveaux Ronds",                 group=grp_rl)
+rl_custom   = input.bool(true,  "Personnaliser Couleurs",                group=grp_rl)
+rl_interval = input.float(100,  "Intervalle entre les niveaux",          group=grp_rl, minval=0.0001)
+rl_count    = input.int(10,     "Nombre de niveaux au-dessus/en dessous",group=grp_rl, minval=1, maxval=20)
+rl_color    = input.color(color.new(#787B86, 50), "Couleur des lignes",  group=grp_rl)
+rl_width    = input.int(1,      "Épaisseur des lignes",                  group=grp_rl, minval=1, maxval=5)
+rl_style    = input.string("Solide", "Style des lignes",                 group=grp_rl, options=["Solide", "Pointillé", "Tirets"])
+rl_show_lbl = input.bool(true,  "Afficher les labels de prix",           group=grp_rl)
+rl_lbl_pos  = input.string("Gauche", "Position des labels",              group=grp_rl, options=["Gauche", "Droite"])
+rl_lbl_off  = input.int(150,    "Décalage des labels (barres)",          group=grp_rl, minval=0, maxval=490)
+rl_lbl_sz   = input.string("normal", "Taille des labels",                group=grp_rl, options=["tiny", "small", "normal", "large"])
+
+var line[]  rl_lines  = array.new_line(0)
+var label[] rl_labels = array.new_label(0)
+
+if barstate.islast
+    while array.size(rl_lines) > 0
+        line.delete(array.pop(rl_lines))
+    while array.size(rl_labels) > 0
+        label.delete(array.pop(rl_labels))
+
+    if rl_enable
+        rl_sty = rl_style == "Pointillé" ? line.style_dotted : rl_style == "Tirets" ? line.style_dashed : line.style_solid
+        rl_size = rl_lbl_sz == "tiny" ? size.tiny : rl_lbl_sz == "small" ? size.small : rl_lbl_sz == "large" ? size.large : size.normal
+        rl_center = math.round(close / rl_interval) * rl_interval
+
+        for k = -rl_count to rl_count
+            rl_lvl = rl_center + k * rl_interval
+            rl_ln = line.new(bar_index - 1, rl_lvl, bar_index, rl_lvl,
+                 xloc=xloc.bar_index, extend=extend.both,
+                 color=rl_color, width=rl_width, style=rl_sty)
+            array.push(rl_lines, rl_ln)
+
+            if rl_show_lbl
+                rl_lx = rl_lbl_pos == "Gauche" ? bar_index - rl_lbl_off : bar_index + rl_lbl_off
+                rl_lb = label.new(rl_lx, rl_lvl, str.tostring(rl_lvl, format.mintick),
+                     xloc=xloc.bar_index, textcolor=color.new(rl_color, 0),
+                     color=color.new(color.black, 100), style=label.style_label_center, size=rl_size)
+                array.push(rl_labels, rl_lb)
+
+// ══════════════════════════════════════════════════════════════
+// FONCTION MTF PARTAGÉE (Dashator + Table TIMEFRAME|TREND)
+// ══════════════════════════════════════════════════════════════
+// Reconstruit le Heiken Ashi depuis l'OHLC standard puis applique
+// la règle Heishinator validée (SHA alpha adaptatif vs EMA33).
+// Retourne aussi SuperTrend / EMA50 / RSI / MACD pour le strength.
+f_mtf_pack() =>
+    mtf_ha_c = (open + high + low + close) / 4
+    var float mtf_ha_o = na
+    mtf_ha_o := na(mtf_ha_o[1]) ? (open + close) / 2 : (mtf_ha_o[1] + mtf_ha_c[1]) / 2
+    mtf_ha_h = math.max(high, math.max(mtf_ha_o, mtf_ha_c))
+    mtf_ha_l = math.min(low,  math.min(mtf_ha_o, mtf_ha_c))
+    mtf_ha_ohlc4 = (mtf_ha_o + mtf_ha_h + mtf_ha_l + mtf_ha_c) / 4
+
+    mtf_alpha = timeframe.in_seconds(timeframe.period) < 30 * 60 ? 0.42 : 0.44
+    var float mtf_sha = na
+    mtf_sha := na(mtf_sha[1]) ? mtf_ha_ohlc4 : mtf_alpha * mtf_ha_ohlc4 + (1.0 - mtf_alpha) * mtf_sha[1]
+
+    mtf_hei_bull = mtf_sha > ta.ema(close, 33)
+
+    [mtf_stv, mtf_std] = ta.supertrend(3, 10)
+    mtf_e50  = ta.ema(close, 50)
+    mtf_r14  = ta.rsi(close, 14)
+    [mtf_ml, mtf_ms, mtf_mh] = ta.macd(close, 12, 26, 9)
+
+    [mtf_hei_bull, mtf_std < 0, close > mtf_e50, mtf_r14 >= 50, mtf_ml > mtf_ms]
+
+f_tf_short(tf) =>
+    s = timeframe.in_seconds(tf)
+    s < 3600 ? str.tostring(math.round(s / 60)) + "m" :
+     s < 86400 ? str.tostring(math.round(s / 3600)) + "H" :
+     s < 604800 ? str.tostring(math.round(s / 86400)) + "D" :
+     str.tostring(math.round(s / 604800)) + "W"
+
+f_table_pos(p) =>
+    p == "Bottom Right" ? position.bottom_right :
+     p == "Bottom Left" ? position.bottom_left :
+     p == "Bottom Center" ? position.bottom_center :
+     p == "Top Right" ? position.top_right :
+     p == "Top Left" ? position.top_left :
+     p == "Top Center" ? position.top_center :
+     p == "Middle Right" ? position.middle_right : position.middle_left
+
+// ══════════════════════════════════════════════════════════════
+// EPHORE DASHATOR V6 — Colonne verticale tendance par TF
+// ══════════════════════════════════════════════════════════════
+grp_dash = "=== EPHORE DASHATOR V6 ==="
+dash_pos_s  = input.string("Bottom Center", "Position", group=grp_dash,
+     options=["Bottom Center", "Bottom Right", "Bottom Left", "Top Center", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+dash_sz_s   = input.string("Normal", "Taille", group=grp_dash, options=["Tiny", "Small", "Normal", "Large"])
+dash_on1 = input.bool(true,  "TF[01]", group=grp_dash, inline="d1")
+dash_tf1 = input.timeframe("1",   "",  group=grp_dash, inline="d1")
+dash_on2 = input.bool(true,  "TF[02]", group=grp_dash, inline="d2")
+dash_tf2 = input.timeframe("5",   "",  group=grp_dash, inline="d2")
+dash_on3 = input.bool(true,  "TF[03]", group=grp_dash, inline="d3")
+dash_tf3 = input.timeframe("15",  "",  group=grp_dash, inline="d3")
+dash_on4 = input.bool(true,  "TF[04]", group=grp_dash, inline="d4")
+dash_tf4 = input.timeframe("60",  "",  group=grp_dash, inline="d4")
+dash_on5 = input.bool(true,  "TF[05]", group=grp_dash, inline="d5")
+dash_tf5 = input.timeframe("240", "",  group=grp_dash, inline="d5")
+dash_on6 = input.bool(true,  "TF[06]", group=grp_dash, inline="d6")
+dash_tf6 = input.timeframe("D",   "",  group=grp_dash, inline="d6")
+dash_on7 = input.bool(false, "TF[07]", group=grp_dash, inline="d7")
+dash_tf7 = input.timeframe("W",   "",  group=grp_dash, inline="d7")
+
+[dash_h1, dash_s1b, dash_e1, dash_r1b, dash_m1] = request.security(syminfo.tickerid, dash_tf1, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h2, dash_s2b, dash_e2, dash_r2b, dash_m2] = request.security(syminfo.tickerid, dash_tf2, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h3, dash_s3b, dash_e3, dash_r3b, dash_m3] = request.security(syminfo.tickerid, dash_tf3, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h4, dash_s4b, dash_e4, dash_r4b, dash_m4] = request.security(syminfo.tickerid, dash_tf4, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h5, dash_s5b, dash_e5, dash_r5b, dash_m5] = request.security(syminfo.tickerid, dash_tf5, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h6, dash_s6b, dash_e6, dash_r6b, dash_m6] = request.security(syminfo.tickerid, dash_tf6, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[dash_h7, dash_s7b, dash_e7, dash_r7b, dash_m7] = request.security(syminfo.tickerid, dash_tf7, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+
+var table dash_tbl = table.new(position.bottom_center, 1, 8, bgcolor=color.rgb(21, 22, 45), border_color=color.rgb(95, 97, 125), border_width=1)
+var bool dash_tbl_init = false
+
+if barstate.islast
+    if not dash_tbl_init
+        table.delete(dash_tbl)
+        dash_tbl := table.new(f_table_pos(dash_pos_s), 1, 8, bgcolor=color.rgb(21, 22, 45), border_color=color.rgb(95, 97, 125), border_width=1)
+        dash_tbl_init := true
+
+    dash_sz = dash_sz_s == "Tiny" ? size.tiny : dash_sz_s == "Small" ? size.small : dash_sz_s == "Large" ? size.large : size.normal
+
+    dash_lbls   = array.new_string(0)
+    dash_states = array.new_bool(0)
+    if dash_on1
+        array.push(dash_lbls, f_tf_short(dash_tf1)), array.push(dash_states, dash_h1)
+    if dash_on2
+        array.push(dash_lbls, f_tf_short(dash_tf2)), array.push(dash_states, dash_h2)
+    if dash_on3
+        array.push(dash_lbls, f_tf_short(dash_tf3)), array.push(dash_states, dash_h3)
+    if dash_on4
+        array.push(dash_lbls, f_tf_short(dash_tf4)), array.push(dash_states, dash_h4)
+    if dash_on5
+        array.push(dash_lbls, f_tf_short(dash_tf5)), array.push(dash_states, dash_h5)
+    if dash_on6
+        array.push(dash_lbls, f_tf_short(dash_tf6)), array.push(dash_states, dash_h6)
+    if dash_on7
+        array.push(dash_lbls, f_tf_short(dash_tf7)), array.push(dash_states, dash_h7)
+
+    table.cell(dash_tbl, 0, 0, "⏱", text_color=color.silver, text_size=dash_sz)
+    if array.size(dash_lbls) > 0
+        for di = 0 to array.size(dash_lbls) - 1
+            d_bull = array.get(dash_states, di)
+            table.cell(dash_tbl, 0, di + 1, array.get(dash_lbls, di),
+                 text_color=d_bull ? c_bull : c_bear,
+                 bgcolor=d_bull ? c_cell_blue : c_cell_red,
+                 text_size=dash_sz)
+
+// ══════════════════════════════════════════════════════════════
+// NOUVEAUX DASHBOARDS — INDICATOR|SIGNAL + TIMEFRAME|TREND
+// ══════════════════════════════════════════════════════════════
+grp_nd = "=== NOUVEAUX DASHBOARDS ==="
+nd_show_ind = input.bool(true, "Afficher Table INDICATOR|SIGNAL", group=grp_nd)
+nd_show_tt  = input.bool(true, "Afficher Table TIMEFRAME|TREND",  group=grp_nd)
+nd_ind_pos  = input.string("Bottom Left",  "Position Table Indicators", group=grp_nd,
+     options=["Bottom Right", "Bottom Left", "Bottom Center", "Top Right", "Top Left", "Top Center", "Middle Right", "Middle Left"])
+nd_tt_pos   = input.string("Bottom Right", "Position Table Timeframes", group=grp_nd,
+     options=["Bottom Right", "Bottom Left", "Bottom Center", "Top Right", "Top Left", "Top Center", "Middle Right", "Middle Left"])
+nd_txt_sz   = input.string("Normal", "Taille Texte", group=grp_nd, options=["Tiny", "Small", "Normal", "Large"])
+nd_emoji    = input.bool(true, "Afficher Emojis", group=grp_nd)
+
+nd_tt_tf1 = input.timeframe("3",   "TT TF1", group=grp_nd)
+nd_tt_tf2 = input.timeframe("5",   "TT TF2", group=grp_nd)
+nd_tt_tf3 = input.timeframe("15",  "TT TF3", group=grp_nd)
+nd_tt_tf4 = input.timeframe("60",  "TT TF4", group=grp_nd)
+nd_tt_tf5 = input.timeframe("240", "TT TF5", group=grp_nd)
+nd_tt_tf6 = input.timeframe("D",   "TT TF6", group=grp_nd)
+
+// ── Données MTF pour TIMEFRAME|TREND ──
+[tt_h1, tt_s1, tt_e1, tt_r1, tt_m1] = request.security(syminfo.tickerid, nd_tt_tf1, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[tt_h2, tt_s2, tt_e2, tt_r2, tt_m2] = request.security(syminfo.tickerid, nd_tt_tf2, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[tt_h3, tt_s3, tt_e3, tt_r3, tt_m3] = request.security(syminfo.tickerid, nd_tt_tf3, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[tt_h4, tt_s4, tt_e4, tt_r4, tt_m4] = request.security(syminfo.tickerid, nd_tt_tf4, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[tt_h5, tt_s5, tt_e5, tt_r5, tt_m5] = request.security(syminfo.tickerid, nd_tt_tf5, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+[tt_h6, tt_s6, tt_e6, tt_r6, tt_m6] = request.security(syminfo.tickerid, nd_tt_tf6, f_mtf_pack(), lookahead=barmerge.lookahead_off)
+
+// Strength = % des 4 confirmations (SuperTrend, EMA50, RSI, MACD)
+// alignées avec la tendance Heishinator du TF (pas de 25%)
+f_tt_strength(h, s, e, r, m) =>
+    ((s == h ? 1 : 0) + (e == h ? 1 : 0) + (r == h ? 1 : 0) + (m == h ? 1 : 0)) * 25
+
+f_tt_lbl(tf) =>
+    s = timeframe.in_seconds(tf)
+    s < 86400 ? str.tostring(math.round(s / 60)) :
+     s < 604800 ? str.tostring(math.round(s / 86400)) + "D" :
+     str.tostring(math.round(s / 604800)) + "W"
+
+// ── Calculs INDICATOR|SIGNAL ──
+// SuperTrend / Moving Avg / VWAP : réutilise les calculs du Tableau Principal
+nd_ma_bull   = close > ema_m1
+nd_vwap_bull = close > vwap_val
+
+// Lin Regress : pente de la régression linéaire (100)
+nd_lr_now  = ta.linreg(close, 100, 0)
+nd_lr_prev = ta.linreg(close, 100, 1)
+nd_lr_bull = nd_lr_now > nd_lr_prev
+
+// CPR + PDH/PDL : données journalières de la veille
+[nd_pdh, nd_pdl, nd_pdc] = request.security(syminfo.tickerid, "D",
+     [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+
+nd_cpr_p   = (nd_pdh + nd_pdl + nd_pdc) / 3
+nd_cpr_bc  = (nd_pdh + nd_pdl) / 2
+nd_cpr_tc  = 2 * nd_cpr_p - nd_cpr_bc
+nd_cpr_top = math.max(nd_cpr_tc, nd_cpr_bc)
+nd_cpr_bot = math.min(nd_cpr_tc, nd_cpr_bc)
+
+nd_cpr_lbl = close > nd_cpr_top ? "Above TC" : close < nd_cpr_bot ? "Below BC" : "In CPR"
+nd_cpr_state = close > nd_cpr_top ? 1 : close < nd_cpr_bot ? -1 : 0
+
+// ORB 15min : range des 15 premières minutes de la session
+var float nd_orb_h  = na
+var float nd_orb_l  = na
+var int   nd_orb_t0 = na
+
+nd_new_day = ta.change(time("D")) != 0
+if nd_new_day
+    nd_orb_t0 := time
+    nd_orb_h  := high
+    nd_orb_l  := low
+else if not na(nd_orb_t0) and time - nd_orb_t0 < 15 * 60 * 1000
+    nd_orb_h := math.max(nd_orb_h, high)
+    nd_orb_l := math.min(nd_orb_l, low)
+
+nd_orb_forming = not na(nd_orb_t0) and time - nd_orb_t0 < 15 * 60 * 1000
+nd_orb_lbl = not timeframe.isintraday or na(nd_orb_h) ? "N/A" :
+     nd_orb_forming ? "Forming" :
+     close > nd_orb_h ? "Break ↑" : close < nd_orb_l ? "Break ↓" : "In Range"
+nd_orb_state = nd_orb_lbl == "Break ↑" ? 1 : nd_orb_lbl == "Break ↓" ? -1 : 0
+
+// PDH/PDL : position vs high/low de la veille
+nd_pd_lbl = close > nd_pdh ? "Above PDH" : close < nd_pdl ? "Below PDL" : "In Range"
+nd_pd_state = close > nd_pdh ? 1 : close < nd_pdl ? -1 : 0
+
+// ── Helpers affichage ──
+f_nd_sz(_s) =>
+    _s == "Tiny" ? size.tiny : _s == "Small" ? size.small : _s == "Large" ? size.large : size.normal
+
+f_nd_dot(state) =>
+    not nd_emoji ? "" : state == 1 ? "🔵 " : state == -1 ? "🔴 " : "🟠 "
+
+f_nd_sig_col(state) =>
+    state == 1 ? c_bull : state == -1 ? c_bear : color.new(color.orange, 0)
+
+f_nd_sig_bg(state) =>
+    state == 1 ? c_cell_blue : state == -1 ? c_cell_red : c_cell_gold
+
+// ── Table INDICATOR|SIGNAL (Bottom Left) ──
+var table nd_ind_tbl = na
+if barstate.isfirst
+    nd_ind_tbl := table.new(f_table_pos(nd_ind_pos), 2, 8, bgcolor=c_bg, border_color=c_border, border_width=1)
+
+if barstate.islast and nd_show_ind
+    ndsz = f_nd_sz(nd_txt_sz)
+
+    nd_st_state   = main_trend_bull ? 1 : -1
+    nd_ma_state   = nd_ma_bull ? 1 : -1
+    nd_vwap_state = nd_vwap_bull ? 1 : -1
+    nd_lr_state   = nd_lr_bull ? 1 : -1
+
+    table.cell(nd_ind_tbl, 0, 0, (nd_emoji ? "📊 " : "") + "INDICATOR", text_color=color.silver, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 0, (nd_emoji ? "🥊 " : "") + "SIGNAL",    text_color=color.silver, text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 1, "SuperTrend",  text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 1, f_nd_dot(nd_st_state) + (main_trend_bull ? "Bull" : "Bear"), text_color=f_nd_sig_col(nd_st_state), bgcolor=f_nd_sig_bg(nd_st_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 2, "Moving Avg",  text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 2, f_nd_dot(nd_ma_state) + (nd_ma_bull ? "Bull" : "Bear"), text_color=f_nd_sig_col(nd_ma_state), bgcolor=f_nd_sig_bg(nd_ma_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 3, "VWAP",        text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 3, f_nd_dot(nd_vwap_state) + (nd_vwap_bull ? "Bull" : "Bear"), text_color=f_nd_sig_col(nd_vwap_state), bgcolor=f_nd_sig_bg(nd_vwap_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 4, "Lin Regress", text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 4, f_nd_dot(nd_lr_state) + (nd_lr_bull ? "Bull" : "Bear"), text_color=f_nd_sig_col(nd_lr_state), bgcolor=f_nd_sig_bg(nd_lr_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 5, "CPR",         text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 5, f_nd_dot(nd_cpr_state) + nd_cpr_lbl, text_color=f_nd_sig_col(nd_cpr_state), bgcolor=f_nd_sig_bg(nd_cpr_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 6, "ORB 15min",   text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 6, f_nd_dot(nd_orb_state) + nd_orb_lbl, text_color=f_nd_sig_col(nd_orb_state), bgcolor=f_nd_sig_bg(nd_orb_state), text_size=ndsz)
+
+    table.cell(nd_ind_tbl, 0, 7, "PDH/PDL",     text_color=c_label, text_size=ndsz)
+    table.cell(nd_ind_tbl, 1, 7, f_nd_dot(nd_pd_state) + nd_pd_lbl, text_color=f_nd_sig_col(nd_pd_state), bgcolor=f_nd_sig_bg(nd_pd_state), text_size=ndsz)
+
+// ── Table TIMEFRAME|TREND (Bottom Right) ──
+var table nd_tt_tbl = na
+if barstate.isfirst
+    nd_tt_tbl := table.new(f_table_pos(nd_tt_pos), 3, 7, bgcolor=c_bg, border_color=c_border, border_width=1)
+
+if barstate.islast and nd_show_tt
+    ttsz = f_nd_sz(nd_txt_sz)
+
+    tt_lbls = array.new_string(0)
+    tt_heis = array.new_bool(0)
+    tt_strs = array.new_int(0)
+
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf1)), array.push(tt_heis, tt_h1), array.push(tt_strs, f_tt_strength(tt_h1, tt_s1, tt_e1, tt_r1, tt_m1))
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf2)), array.push(tt_heis, tt_h2), array.push(tt_strs, f_tt_strength(tt_h2, tt_s2, tt_e2, tt_r2, tt_m2))
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf3)), array.push(tt_heis, tt_h3), array.push(tt_strs, f_tt_strength(tt_h3, tt_s3, tt_e3, tt_r3, tt_m3))
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf4)), array.push(tt_heis, tt_h4), array.push(tt_strs, f_tt_strength(tt_h4, tt_s4, tt_e4, tt_r4, tt_m4))
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf5)), array.push(tt_heis, tt_h5), array.push(tt_strs, f_tt_strength(tt_h5, tt_s5, tt_e5, tt_r5, tt_m5))
+    array.push(tt_lbls, f_tt_lbl(nd_tt_tf6)), array.push(tt_heis, tt_h6), array.push(tt_strs, f_tt_strength(tt_h6, tt_s6, tt_e6, tt_r6, tt_m6))
+
+    table.cell(nd_tt_tbl, 0, 0, (nd_emoji ? "🌐 " : "") + "TIMEFRAME", text_color=color.silver, text_size=ttsz)
+    table.cell(nd_tt_tbl, 1, 0, "TREND",    text_color=color.silver, text_size=ttsz)
+    table.cell(nd_tt_tbl, 2, 0, "STRENGTH", text_color=color.silver, text_size=ttsz)
+
+    for ti = 0 to 5
+        tt_bull = array.get(tt_heis, ti)
+        tt_col  = tt_bull ? c_bull : c_bear
+        tt_bg   = tt_bull ? c_cell_blue : c_cell_red
+        table.cell(nd_tt_tbl, 0, ti + 1, array.get(tt_lbls, ti), text_color=c_label, text_size=ttsz)
+        table.cell(nd_tt_tbl, 1, ti + 1, (nd_emoji ? (tt_bull ? "🔵 " : "🔴 ") : "") + (tt_bull ? "BULLISH" : "BEARISH"), text_color=tt_col, bgcolor=tt_bg, text_size=ttsz)
+        table.cell(nd_tt_tbl, 2, ti + 1, str.tostring(array.get(tt_strs, ti)) + "%", text_color=tt_col, bgcolor=tt_bg, text_size=ttsz)
+
+// ══════════════════════════════════════════════════════════════
+// ALERTES PIVOTS + ORDER BLOCKS + SIGNATOR + TRENDLINES
+// ══════════════════════════════════════════════════════════════
+alertcondition(ta.cross(close, s1_p),  "Set1 P cross",  "Prix croise Pivot Set 1")
+alertcondition(ta.cross(close, s1_r1), "Set1 R1 cross", "Prix croise R1 Set 1")
+alertcondition(ta.cross(close, s1_s1), "Set1 S1 cross", "Prix croise S1 Set 1")
+alertcondition(ta.cross(close, s1_r2), "Set1 R2 cross", "Prix croise R2 Set 1")
+alertcondition(ta.cross(close, s1_s2), "Set1 S2 cross", "Prix croise S2 Set 1")
+alertcondition(ta.cross(close, s2_p),  "Set2 P cross",  "Prix croise Pivot Set 2")
+alertcondition(ta.cross(close, s2_r1), "Set2 R1 cross", "Prix croise R1 Set 2")
+alertcondition(ta.cross(close, s2_s1), "Set2 S1 cross", "Prix croise S1 Set 2")
+alertcondition(ta.cross(close, s2_r2), "Set2 R2 cross", "Prix croise R2 Set 2")
+alertcondition(ta.cross(close, s2_s2), "Set2 S2 cross", "Prix croise S2 Set 2")
+alertcondition(bull_ob_alert, "Bullish OB Formed", "Bullish Order Block detected")
+alertcondition(bear_ob_alert, "Bearish OB Formed", "Bearish Order Block detected")
+
+alertcondition(mitigated_bull, 'Bullish OB Mitigated', 'Bullish order block mitigated')
+
+alertcondition(mitigated_bear, 'Bearish OB Mitigated', 'bearish order block mitigated')
+
+alertcondition(sig_long_fort,    "Signator Long FORT",    "Signal Signator LONG (FORT)")
+alertcondition(sig_short_fort,   "Signator Short FORT",   "Signal Signator SHORT (FORT)")
+alertcondition(breakout_signal,  "Trendline Breakout",    "Breakout de trendline baissière détecté")
+alertcondition(breakdown_signal, "Support Breakdown",     "Cassure baissière du support ascendant détectée")
