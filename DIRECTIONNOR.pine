@@ -1,0 +1,120 @@
+//@version=6
+// ════════════════════════════════════════════════════════════════
+// DIRECTIONNOR — Choix du sens trading (MTF)
+// Pilote : Detector / Heishinator validé  ->  SHA_close vs EMA33
+//   SHA_close = EMA récursif de ohlc4, alpha adaptatif (0.42 <30m / 0.44 >=30m)
+//   Calculé sur Heiken Ashi (comme le chart), via request.security par TF.
+// 3 états par TF : LONG (bleu) / SHORT (rouge) / RANGE (gris, zone neutre).
+// Action = 4h + 1h (15m = renfort "FORT"). Tableau déplaçable.
+// ════════════════════════════════════════════════════════════════
+indicator("Directionnor", overlay=true)
+
+// ── INPUTS : TIMEFRAMES (paramétrables) ──────────────────────────
+grp = "=== DIRECTIONNOR · TIMEFRAMES ==="
+tf_hi  = input.timeframe("240", "TF Haute (défaut 4h)",   group=grp)
+tf_mid = input.timeframe("60",  "TF Moyenne (défaut 1h)", group=grp)
+tf_lo  = input.timeframe("15",  "TF Basse (défaut 15m)",  group=grp)
+
+// ── INPUTS : ZONE NEUTRE (définition du RANGE) ───────────────────
+grpR = "=== ZONE NEUTRE (RANGE) ==="
+dir_mode     = input.string("% fixe", "Mode largeur zone neutre", options=["% fixe", "ATR"], group=grpR)
+dir_pct      = input.float(0.10, "Largeur % (mode % fixe)", group=grpR, minval=0.0, step=0.01)
+dir_atr_len  = input.int(14,     "ATR longueur (mode ATR)", group=grpR, minval=1)
+dir_atr_mult = input.float(0.5,  "ATR × (mode ATR)",        group=grpR, minval=0.0, step=0.1)
+
+// ── INPUTS : TABLEAU ─────────────────────────────────────────────
+grpV = "=== TABLEAU ==="
+tbl_pos  = input.string("Top Right", "Position du tableau",
+     options=["Top Left","Top Center","Top Right","Middle Left","Middle Center","Middle Right","Bottom Left","Bottom Center","Bottom Right"], group=grpV)
+tbl_size = input.string("normal", "Taille texte", options=["tiny","small","normal","large"], group=grpV)
+use_15   = input.bool(true, "15m renforce l'Action (LONG FORT / SHORT FORT)", group=grpV)
+
+// ── COULEURS ─────────────────────────────────────────────────────
+c_long  = #2196F3
+c_short = #F44336
+c_range = color.rgb(130, 130, 150)
+c_head  = color.new(#2A2E39, 0)
+
+// ── MOTEUR : état directionnel (1=LONG, 0=RANGE, -1=SHORT) ───────
+// Réplique exacte du Detector/Heishinator, évalué dans le contexte du TF demandé.
+f_dir_state(mode, pct, alen, amult) =>
+    a   = timeframe.in_seconds(timeframe.period) < 1800 ? 0.42 : 0.44
+    src = (open + high + low + close) / 4
+    var float sha = na
+    sha := na(sha[1]) ? src : a * src + (1.0 - a) * sha[1]
+    ema  = ta.ema(close, 33)
+    band = mode == "ATR" ? ta.atr(alen) * amult : ema * pct / 100.0
+    d    = sha - ema
+    d > band ? 1 : d < -band ? -1 : 0
+
+ha = ticker.heikinashi(syminfo.tickerid)
+s_hi  = request.security(ha, tf_hi,  f_dir_state(dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
+s_mid = request.security(ha, tf_mid, f_dir_state(dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
+s_lo  = request.security(ha, tf_lo,  f_dir_state(dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
+
+// ── ACTION (pilotée par 4h + 1h, 15m = renfort) ──────────────────
+drv_long  = s_hi == 1  and s_mid == 1
+drv_short = s_hi == -1 and s_mid == -1
+act_state = drv_long ? 1 : drv_short ? -1 : 0
+strong    = use_15 and ((drv_long and s_lo == 1) or (drv_short and s_lo == -1))
+act_lbl   = act_state == 1  ? (strong ? "LONG FORT"  : "LONG")
+          : act_state == -1 ? (strong ? "SHORT FORT" : "SHORT")
+          : "ATTENDRE"
+act_col   = act_state == 1 ? c_long : act_state == -1 ? c_short : c_range
+
+// ── HELPERS ──────────────────────────────────────────────────────
+f_lbl(s) => s == 1 ? "LONG" : s == -1 ? "SHORT" : "RANGE"
+f_col(s) => s == 1 ? c_long : s == -1 ? c_short : c_range
+
+f_tflabel(tf) =>
+    mins = timeframe.in_seconds(tf) / 60.0
+    mins >= 1440 ? str.tostring(math.round(mins / 1440)) + "D" : mins >= 60 ? str.tostring(math.round(mins / 60)) + "H" : str.tostring(math.round(mins)) + "M"
+
+f_pos(p) =>
+    switch p
+        "Top Left"      => position.top_left
+        "Top Center"    => position.top_center
+        "Top Right"     => position.top_right
+        "Middle Left"   => position.middle_left
+        "Middle Center" => position.middle_center
+        "Middle Right"  => position.middle_right
+        "Bottom Left"   => position.bottom_left
+        "Bottom Center" => position.bottom_center
+        "Bottom Right"  => position.bottom_right
+        => position.top_right
+
+f_sz(s) =>
+    switch s
+        "tiny"  => size.tiny
+        "small" => size.small
+        "large" => size.large
+        => size.normal
+
+// ── TABLEAU ──────────────────────────────────────────────────────
+var table t = na
+if barstate.islast
+    sz = f_sz(tbl_size)
+    if na(t)
+        t := table.new(f_pos(tbl_pos), 2, 5, border_width=1, border_color=color.new(color.gray, 40))
+        // structure statique (titre + libellés TF), construite une fois
+        table.cell(t, 0, 0, "🧭 DIRECTIONNOR", text_color=color.white, text_size=sz, bgcolor=c_head)
+        table.cell(t, 1, 0, "", bgcolor=c_head)
+        table.cell(t, 0, 1, f_tflabel(tf_hi),  text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 2, f_tflabel(tf_mid), text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 3, f_tflabel(tf_lo),  text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 1, 1, "", bgcolor=c_head)
+        table.cell(t, 1, 2, "", bgcolor=c_head)
+        table.cell(t, 1, 3, "", bgcolor=c_head)
+        table.cell(t, 0, 4, "", bgcolor=c_head)
+        table.cell(t, 1, 4, "", bgcolor=c_head)
+        table.merge_cells(t, 0, 0, 1, 0)  // titre sur 2 colonnes
+        table.merge_cells(t, 0, 4, 1, 4)  // action sur 2 colonnes
+    // mises à jour dynamiques (cellules non fusionnées + coin haut-gauche de l'action)
+    table.cell(t, 1, 1, f_lbl(s_hi),  text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_hi), 0))
+    table.cell(t, 1, 2, f_lbl(s_mid), text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_mid), 0))
+    table.cell(t, 1, 3, f_lbl(s_lo),  text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_lo), 0))
+    table.cell(t, 0, 4, "ACTION ➜ " + act_lbl, text_color=color.white, text_size=sz, bgcolor=color.new(act_col, 0))
+
+// ── ALERTES ──────────────────────────────────────────────────────
+alertcondition(act_state == 1  and act_state[1] != 1,  "Directionnor LONG",  "Directionnor : biais LONG (4h+1h alignés)")
+alertcondition(act_state == -1 and act_state[1] != -1, "Directionnor SHORT", "Directionnor : biais SHORT (4h+1h alignés)")
