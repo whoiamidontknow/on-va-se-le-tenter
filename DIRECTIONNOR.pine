@@ -120,14 +120,8 @@ go_short = bias_state == -1 and trig_dn and go_confirmed
 f_lbl(s) => s == 1 ? "LONG" : s == -1 ? "SHORT" : "RANGE"
 f_col(s) => s == 1 ? c_long : s == -1 ? c_short : c_range
 
-act_lbl = bias_state == 0 ? "ATTENDRE"
-        : bias_state == 1 ? (go_long  ? "🟢 GO LONG"  : "PRÊT ▲ LONG")
-        : (go_short ? "🔴 GO SHORT" : "PRÊT ▼ SHORT")
-act_col = go_long  ? c_long
-        : go_short ? c_short
-        : bias_state == 1  ? color.new(c_long, 55)
-        : bias_state == -1 ? color.new(c_short, 55)
-        : c_range
+act_lbl = bias_state == 0 ? "ATTENDRE" : bias_state == 1 ? (go_long ? "🟢 GO LONG" : "PRÊT ▲ LONG") : (go_short ? "🔴 GO SHORT" : "PRÊT ▼ SHORT")
+act_col = go_long ? c_long : go_short ? c_short : bias_state == 1 ? color.new(c_long, 55) : bias_state == -1 ? color.new(c_short, 55) : c_range
 
 vol_lbl = vol_exp ? "Expansion" : "Calme"
 vol_col = vol_exp ? color.new(c_vol, 0) : c_range
