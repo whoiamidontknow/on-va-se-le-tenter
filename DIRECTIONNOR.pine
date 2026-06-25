@@ -1,48 +1,41 @@
 //@version=6
 // ════════════════════════════════════════════════════════════════
-// DIRECTIONNOR — Le sens + le déclencheur ("quand le marché part")
-// 1) SENS (MTF) : tendance dominante (pente EMA33) du Detector/Heishinator, 4h/1h/15m.
-//    -> Biais 4h+1h = LONG / SHORT / ATTENDRE. Un repli ne flippe PAS.
-// 2) DÉCLENCHEUR (sur le TF du chart) : GO seulement quand le marché S'ENGAGE
-//    dans le sens du biais = expansion de volatilité + cassure de range.
-//    -> filtre les faux départs (entrées à contre-tendance ou en range).
-// États : ATTENDRE -> PRÊT (biais ok, on attend) -> GO (le marché part).
-// Tableau déplaçable + flèches GO + alertes.
+// DIRECTIONNOR — Sens (order blocks) + Range = ne rien faire + Allumage
+// SENS : lit les rectangles du Detector (order blocks sur pivots de volume,
+//   même logique que PORSCHEONARRIVE). Poids de chaque zone = proximité × couleur,
+//   les zones loin ne comptent presque pas. -> % directionnel (LONG/SHORT).
+// RANGE : si zones bleues/rouges se chevauchent (congestion) OU biais équilibré
+//   -> ⛔ ne rien faire (la strat de continuation ne marche pas en range).
+// ALLUMAGE (GO) : pic de volume + expansion de volatilité, JAMAIS en range.
+// /!\ TF du chart (global). Non compile-testé : à coller dans TradingView.
 // ════════════════════════════════════════════════════════════════
 indicator("Directionnor", overlay=true, max_labels_count=300)
 
-// ── INPUTS : TIMEFRAMES (paramétrables) ──────────────────────────
-grp = "=== DIRECTIONNOR · TIMEFRAMES ==="
-tf_hi  = input.timeframe("240", "TF Haute (défaut 4h)",   group=grp)
-tf_mid = input.timeframe("60",  "TF Moyenne (défaut 1h)", group=grp)
-tf_lo  = input.timeframe("15",  "TF Basse (défaut 15m)",  group=grp)
+// ── DETECTOR (order blocks) ──────────────────────────────────────
+grpD = "=== DETECTOR (Order Blocks) ==="
+ob_len = input.int(5,      "Volume Pivot Length (= ton Detector)", group=grpD, minval=1)
+mitig  = input.string("Wick", "Mitigation", options=["Wick","Close"], group=grpD)
+max_ob = input.int(5,      "Nb max de zones par couleur",          group=grpD, minval=1, maxval=20)
 
-// ── INPUTS : MOTEUR DU SENS ──────────────────────────────────────
-grpE = "=== MOTEUR DU SENS ==="
-engine = input.string("Tendance dominante", "Ce que représente le sens", options=["Tendance dominante", "Momentum"], group=grpE, tooltip="Tendance dominante = direction de fond (pente EMA33), un repli ne flippe pas. Momentum = couleur Detector à l'instant T.")
+// ── SENS (probabilité directionnelle) ────────────────────────────
+grpS = "=== SENS (probabilité) ==="
+prox_scale = input.float(1.0,  "Portée proximité (% du prix) — au-delà ≈ 0", group=grpS, minval=0.1, step=0.1, tooltip="Une zone à plus de X % du prix ne pèse presque plus. C'est ce qui fait qu'une zone LOIN ne compte pas.")
+range_thr  = input.float(25.0, "Seuil RANGE (|biais %| en dessous = range)", group=grpS, minval=0, maxval=100, step=5)
 
-grpT = "=== TENDANCE DOMINANTE ==="
-trend_len = input.int(8,      "Lookback pente EMA33 (barres)",          group=grpT, minval=1)
-flat_pct  = input.float(0.05, "Seuil plat = RANGE (% sur le lookback)", group=grpT, minval=0.0, step=0.01)
+// ── NE RIEN FAIRE EN RANGE ───────────────────────────────────────
+grpR = "=== NE RIEN FAIRE EN RANGE ==="
+use_overlap = input.bool(true, "Range si zones bleues/rouges se chevauchent (congestion)", group=grpR)
 
-grpR = "=== MOMENTUM (zone neutre) ==="
-dir_mode     = input.string("% fixe", "Mode largeur zone neutre", options=["% fixe", "ATR"], group=grpR)
-dir_pct      = input.float(0.10, "Largeur % (mode % fixe)", group=grpR, minval=0.0, step=0.01)
-dir_atr_len  = input.int(14,     "ATR longueur (mode ATR)", group=grpR, minval=1)
-dir_atr_mult = input.float(0.5,  "ATR × (mode ATR)",        group=grpR, minval=0.0, step=0.1)
+// ── DÉCLENCHEUR (allumage : ça part) ─────────────────────────────
+grpG = "=== DÉCLENCHEUR (allumage) ==="
+vol_len     = input.int(20,   "Moyenne volume (barres)",            group=grpG, minval=1)
+vol_k       = input.float(1.8,"Pic de volume si volume > moyenne ×", group=grpG, minval=1.0, step=0.1)
+atr_fast    = input.int(5,    "ATR rapide (volatilité)",            group=grpG, minval=1)
+atr_slow    = input.int(20,   "ATR lent (baseline)",                group=grpG, minval=1)
+show_go     = input.bool(true,"Flèches GO sur le chart",            group=grpG)
+go_realtime = input.bool(false,"GO en temps réel (sinon : clôture confirmée)", group=grpG)
 
-// ── INPUTS : DÉCLENCHEUR (le marché part) ────────────────────────
-grpG = "=== DÉCLENCHEUR · le marché part ==="
-trig_mode   = input.string("Confluence (vol + cassure)", "Condition du GO", options=["Confluence (vol + cassure)", "Expansion de volatilité seule", "Cassure de range seule"], group=grpG, tooltip="Évalué sur le TF du chart, et UNIQUEMENT dans le sens du biais 4h+1h.")
-use_squeeze = input.bool(false, "Exiger une sortie de squeeze (anti-chop max)", group=grpG, tooltip="N'autorise le GO que si le marché sortait d'une phase calme (Bollinger dans Keltner) récente.")
-atr_fast    = input.int(5,    "ATR rapide (volatilité courante)", group=grpG, minval=1)
-atr_slow    = input.int(20,   "ATR lent (baseline)",              group=grpG, minval=1)
-vol_k       = input.float(1.0,"Expansion si ATR rapide > ATR lent ×", group=grpG, minval=0.1, step=0.1)
-brk_len     = input.int(10,   "Lookback cassure de range (barres)", group=grpG, minval=1)
-show_go     = input.bool(true,"Afficher les flèches GO sur le chart", group=grpG)
-go_realtime = input.bool(false,"GO en temps réel (sinon : à la clôture confirmée)", group=grpG, tooltip="Le SENS (table) est toujours en temps réel. Ce réglage ne concerne que le GO. Décoché (recommandé) : le GO ne se déclenche qu'à la CLÔTURE de la bougie -> pas de faux GO qui apparaît puis se retire. Coché : GO dès que la condition est remplie intrabar (plus tôt, mais peut flicker / repaint).")
-
-// ── INPUTS : TABLEAU ─────────────────────────────────────────────
+// ── TABLEAU ──────────────────────────────────────────────────────
 grpV = "=== TABLEAU ==="
 tbl_pos  = input.string("Top Right", "Position du tableau",
      options=["Top Left","Top Center","Top Right","Middle Left","Middle Center","Middle Right","Bottom Left","Bottom Center","Bottom Right"], group=grpV)
@@ -55,80 +48,100 @@ c_range = color.rgb(130, 130, 150)
 c_vol   = #FF9800
 c_head  = color.new(#2A2E39, 0)
 
-// ── MOTEUR DU SENS (1=LONG, 0=RANGE, -1=SHORT), par TF ───────────
-f_dir_state(eng, tlen, fthr, mode, pct, alen, amult) =>
-    a   = timeframe.in_seconds(timeframe.period) < 1800 ? 0.42 : 0.44
-    src = (open + high + low + close) / 4
-    var float sha = na
-    sha := na(sha[1]) ? src : a * src + (1.0 - a) * sha[1]
-    ema  = ta.ema(close, 33)
-    int st = 0
-    if eng == "Momentum"
-        band = mode == "ATR" ? ta.atr(alen) * amult : ema * pct / 100.0
-        d = sha - ema
-        st := d > band ? 1 : d < -band ? -1 : 0
-    else
-        slope = (ema - ema[tlen]) / ema * 100.0
-        st := slope > fthr ? 1 : slope < -fthr ? -1 : 0
-    st
+// ── DÉTECTION DES ORDER BLOCKS (port du Detector, sans dessin) ────
+upper = ta.highest(ob_len)
+lower = ta.lowest(ob_len)
+var int os = 0
+os := high[ob_len] > upper ? 0 : low[ob_len] < lower ? 1 : os[1]
+phv = not na(ta.pivothigh(volume, ob_len, ob_len))
+target_bull = mitig == "Close" ? ta.lowest(close, ob_len) : lower
+target_bear = mitig == "Close" ? ta.highest(close, ob_len) : upper
 
-ha = ticker.heikinashi(syminfo.tickerid)
-s_hi  = request.security(ha, tf_hi,  f_dir_state(engine, trend_len, flat_pct, dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
-s_mid = request.security(ha, tf_mid, f_dir_state(engine, trend_len, flat_pct, dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
-s_lo  = request.security(ha, tf_lo,  f_dir_state(engine, trend_len, flat_pct, dir_mode, dir_pct, dir_atr_len, dir_atr_mult), lookahead=barmerge.lookahead_off)
+var bull_top = array.new_float(0)
+var bull_btm = array.new_float(0)
+var bear_top = array.new_float(0)
+var bear_btm = array.new_float(0)
 
-// ── BIAIS (4h + 1h) ──────────────────────────────────────────────
-bias_state = s_hi == 1 and s_mid == 1 ? 1 : s_hi == -1 and s_mid == -1 ? -1 : 0
+// 1) Ajout d'une nouvelle zone sur pivot de volume
+if phv and os == 1
+    array.unshift(bull_top, hl2[ob_len])
+    array.unshift(bull_btm, low[ob_len])
+if phv and os == 0
+    array.unshift(bear_top, high[ob_len])
+    array.unshift(bear_btm, hl2[ob_len])
 
-// ── DÉCLENCHEUR (sur le TF du chart) ─────────────────────────────
-// 1) Expansion de volatilité : ATR court > ATR long
-atrF    = ta.atr(atr_fast)
-atrS    = ta.atr(atr_slow)
-vol_exp = atrF > atrS * vol_k
+// 2) Retrait des zones cassées (mitigées)
+if array.size(bull_btm) > 0
+    for i = array.size(bull_btm) - 1 to 0
+        if target_bull < array.get(bull_btm, i)
+            array.remove(bull_top, i)
+            array.remove(bull_btm, i)
+if array.size(bear_top) > 0
+    for i = array.size(bear_top) - 1 to 0
+        if target_bear > array.get(bear_top, i)
+            array.remove(bear_top, i)
+            array.remove(bear_btm, i)
 
-// 2) Squeeze (optionnel) : Bollinger dans Keltner = marché calme
-basis  = ta.sma(close, 20)
-dev    = 2.0 * ta.stdev(close, 20)
-kc_mid = ta.ema(close, 20)
-kc_rng = 1.5 * ta.atr(20)
-sqz_on = (basis - dev) > (kc_mid - kc_rng) and (basis + dev) < (kc_mid + kc_rng)
-sqz_ok = not use_squeeze or (ta.barssince(sqz_on) <= brk_len)
+// 3) Plafond du nombre de zones (on garde les plus récentes)
+while array.size(bull_top) > max_ob
+    array.pop(bull_top)
+    array.pop(bull_btm)
+while array.size(bear_top) > max_ob
+    array.pop(bear_top)
+    array.pop(bear_btm)
 
-// 3) Cassure de range (clôture au-delà du plus haut/bas récent)
-brk_up = close > ta.highest(high, brk_len)[1]
-brk_dn = close < ta.lowest(low,  brk_len)[1]
+// ── SENS : somme pondérée par la proximité ───────────────────────
+price  = close
+n_blue = array.size(bull_btm)
+n_red  = array.size(bear_btm)
 
-base_up = switch trig_mode
-    "Expansion de volatilité seule" => vol_exp and close > open
-    "Cassure de range seule"        => brk_up
-    => vol_exp and brk_up
-base_dn = switch trig_mode
-    "Expansion de volatilité seule" => vol_exp and close < open
-    "Cassure de range seule"        => brk_dn
-    => vol_exp and brk_dn
+f_weight(top, btm) =>
+    mid  = (top + btm) / 2.0
+    dpct = math.abs(price - mid) / price * 100.0
+    math.max(0.0, 1.0 - dpct / prox_scale)   // 1 au contact, 0 au-delà de prox_scale %
 
-trig_up = base_up and sqz_ok
-trig_dn = base_dn and sqz_ok
+float w_long  = 0.0
+float w_short = 0.0
+if n_blue > 0
+    for i = 0 to n_blue - 1
+        w_long := w_long + f_weight(array.get(bull_top, i), array.get(bull_btm, i))
+if n_red > 0
+    for i = 0 to n_red - 1
+        w_short := w_short + f_weight(array.get(bear_top, i), array.get(bear_btm, i))
 
-// GO = uniquement dans le sens du biais HTF.
-// Temps réel : déclenche intrabar. Sinon : seulement sur bougie CLÔTURÉE (anti-faux-GO).
-go_confirmed = go_realtime or barstate.isconfirmed
-go_long  = bias_state == 1  and trig_up and go_confirmed
-go_short = bias_state == -1 and trig_dn and go_confirmed
+float tot  = w_long + w_short
+float bias = tot > 0 ? (w_long - w_short) / tot * 100.0 : 0.0   // +long / -short
+
+// ── RANGE : chevauchement des zones OU biais équilibré ───────────
+bool overlap = false
+if use_overlap and n_blue > 0 and n_red > 0
+    for i = 0 to n_blue - 1
+        bt = array.get(bull_top, i)
+        bb = array.get(bull_btm, i)
+        for j = 0 to n_red - 1
+            if bt >= array.get(bear_btm, j) and array.get(bear_top, j) >= bb
+                overlap := true
+
+bool is_range = overlap or math.abs(bias) < range_thr
+int  sens     = is_range ? 0 : bias > 0 ? 1 : bias < 0 ? -1 : 0
+
+// ── ALLUMAGE (jamais en range) ───────────────────────────────────
+vol_spike = volume > ta.sma(volume, vol_len) * vol_k
+vol_exp   = ta.atr(atr_fast) > ta.atr(atr_slow)
+ignition  = vol_spike and vol_exp
+go_conf   = go_realtime or barstate.isconfirmed
+go_long   = not is_range and sens == 1  and ignition and close > open and go_conf
+go_short  = not is_range and sens == -1 and ignition and close < open and go_conf
 
 // ── LIBELLÉS ─────────────────────────────────────────────────────
-f_lbl(s) => s == 1 ? "LONG" : s == -1 ? "SHORT" : "RANGE"
-f_col(s) => s == 1 ? c_long : s == -1 ? c_short : c_range
-
-act_lbl = bias_state == 0 ? "ATTENDRE" : bias_state == 1 ? (go_long ? "🟢 GO LONG" : "PRÊT ▲ LONG") : (go_short ? "🔴 GO SHORT" : "PRÊT ▼ SHORT")
-act_col = go_long ? c_long : go_short ? c_short : bias_state == 1 ? color.new(c_long, 55) : bias_state == -1 ? color.new(c_short, 55) : c_range
-
-vol_lbl = vol_exp ? "Expansion" : "Calme"
-vol_col = vol_exp ? color.new(c_vol, 0) : c_range
-
-f_tflabel(tf) =>
-    mins = timeframe.in_seconds(tf) / 60.0
-    mins >= 1440 ? str.tostring(math.round(mins / 1440)) + "D" : mins >= 60 ? str.tostring(math.round(mins / 60)) + "H" : str.tostring(math.round(mins)) + "M"
+pct      = str.tostring(int(math.round(math.abs(bias))))
+biais_txt = is_range ? "RANGE" : sens == 1 ? "LONG " + pct + "%" : sens == -1 ? "SHORT " + pct + "%" : "—"
+biais_col = is_range ? c_range : sens == 1 ? c_long : sens == -1 ? c_short : c_range
+zones_txt = str.tostring(n_blue) + " bleu  /  " + str.tostring(n_red) + " rouge"
+ign_txt   = ignition ? "ALLUMÉ" : "calme"
+ign_col   = ignition ? color.new(c_vol, 0) : c_range
+act_lbl   = is_range ? "⛔ RANGE — ne rien faire" : sens == 1 ? (go_long ? "🟢 GO LONG" : "PRÊT ▲ LONG") : sens == -1 ? (go_short ? "🔴 GO SHORT" : "PRÊT ▼ SHORT") : "ATTENDRE"
+act_col   = is_range ? c_range : go_long ? c_long : go_short ? c_short : sens == 1 ? color.new(c_long, 55) : sens == -1 ? color.new(c_short, 55) : c_range
 
 f_pos(p) =>
     switch p
@@ -150,7 +163,7 @@ f_sz(s) =>
         "large" => size.large
         => size.normal
 
-// ── FLÈCHES GO (sur le chart) ────────────────────────────────────
+// ── FLÈCHES GO ───────────────────────────────────────────────────
 plotshape(show_go and go_long,  "GO LONG",  style=shape.triangleup,   location=location.belowbar, color=c_long,  size=size.small, text="GO")
 plotshape(show_go and go_short, "GO SHORT", style=shape.triangledown, location=location.abovebar, color=c_short, size=size.small, text="GO")
 
@@ -159,27 +172,24 @@ var table t = na
 if barstate.islast
     sz = f_sz(tbl_size)
     if na(t)
-        t := table.new(f_pos(tbl_pos), 2, 6, border_width=1, border_color=color.new(color.gray, 40))
+        t := table.new(f_pos(tbl_pos), 2, 5, border_width=1, border_color=color.new(color.gray, 40))
         table.cell(t, 0, 0, "🧭 DIRECTIONNOR", text_color=color.white, text_size=sz, bgcolor=c_head)
         table.cell(t, 1, 0, "", bgcolor=c_head)
-        table.cell(t, 0, 1, f_tflabel(tf_hi),  text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 2, f_tflabel(tf_mid), text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 3, f_tflabel(tf_lo),  text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 4, "VOLAT.", text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 1, "Sens",     text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 2, "Zones",    text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 3, "Allumage", text_color=color.silver, text_size=sz, bgcolor=c_head)
         table.cell(t, 1, 1, "", bgcolor=c_head)
         table.cell(t, 1, 2, "", bgcolor=c_head)
         table.cell(t, 1, 3, "", bgcolor=c_head)
+        table.cell(t, 0, 4, "", bgcolor=c_head)
         table.cell(t, 1, 4, "", bgcolor=c_head)
-        table.cell(t, 0, 5, "", bgcolor=c_head)
-        table.cell(t, 1, 5, "", bgcolor=c_head)
-        table.merge_cells(t, 0, 0, 1, 0)  // titre
-        table.merge_cells(t, 0, 5, 1, 5)  // action
-    table.cell(t, 1, 1, f_lbl(s_hi),  text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_hi), 0))
-    table.cell(t, 1, 2, f_lbl(s_mid), text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_mid), 0))
-    table.cell(t, 1, 3, f_lbl(s_lo),  text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_lo), 0))
-    table.cell(t, 1, 4, vol_lbl,      text_color=color.white, text_size=sz, bgcolor=color.new(vol_col, 0))
-    table.cell(t, 0, 5, act_lbl,      text_color=color.white, text_size=sz, bgcolor=color.new(act_col, 0))
+        table.merge_cells(t, 0, 0, 1, 0)
+        table.merge_cells(t, 0, 4, 1, 4)
+    table.cell(t, 1, 1, biais_txt, text_color=color.white, text_size=sz, bgcolor=color.new(biais_col, 0))
+    table.cell(t, 1, 2, zones_txt, text_color=color.white, text_size=sz, bgcolor=c_head)
+    table.cell(t, 1, 3, ign_txt,   text_color=color.white, text_size=sz, bgcolor=color.new(ign_col, 0))
+    table.cell(t, 0, 4, act_lbl,   text_color=color.white, text_size=sz, bgcolor=color.new(act_col, 0))
 
 // ── ALERTES ──────────────────────────────────────────────────────
-alertcondition(go_long,  "Directionnor GO LONG",  "Directionnor : GO LONG (biais 4h+1h + le marché part)")
-alertcondition(go_short, "Directionnor GO SHORT", "Directionnor : GO SHORT (biais 4h+1h + le marché part)")
+alertcondition(go_long,  "Directionnor GO LONG",  "Directionnor : GO LONG (zones + allumage, hors range)")
+alertcondition(go_short, "Directionnor GO SHORT", "Directionnor : GO SHORT (zones + allumage, hors range)")
