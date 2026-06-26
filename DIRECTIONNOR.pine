@@ -1,17 +1,16 @@
 //@version=6
 // ════════════════════════════════════════════════════════════════
-// DIRECTIONNOR — Sens (order blocks) 4H+1H + Range = ne rien faire + Allumage
-// RÈGLE : on agit seulement si le 4H ET le 1H donnent le MÊME sens.
+// DIRECTIONNOR — Le SENS (order blocks), 4H + 1H. Pas de signal d'entrée.
+// RÈGLE : on agit seulement si le 4H ET le 1H donnent le même sens.
 // SENS par TF = lecture des order blocks (rectangles du Detector) :
-//   poids de chaque zone non-cassée = proximité (zone loin ~0) × couleur.
-//   bleu = demande (long), rouge = offre (short) -> % directionnel.
-// RANGE (ne rien faire) : bleu ET rouge proches / se chevauchent (chop),
-//   ou biais équilibré. Le GO ne se déclenche JAMAIS en range.
-// ALLUMAGE (GO) : pic de volume + expansion ATR (sur le TF du chart).
-// /!\ Le 4H/1H calcule les order blocks dans request.security (arrays) =
-//     la partie la plus risquée. Si ça compile pas, dis-moi -> plan B.
+//   poids de chaque zone non-cassée = proximité (zone LOIN ≈ 0) × couleur.
+//   -> rouge (offre) proche / bleu (demande) loin = SHORT, et inversement.
+// RANGE (= ne rien faire) : SEULEMENT si zones bleues/rouges se CHEVAUCHENT
+//   (vrai chop / congestion), ou biais totalement équilibré.
+// Pas de flèches, pas d'allumage : Jeremy gère l'entrée (cassure de range 15m).
+// /!\ Le 4H/1H calcule les order blocks dans request.security (arrays).
 // ════════════════════════════════════════════════════════════════
-indicator("Directionnor", overlay=true, max_labels_count=300)
+indicator("Directionnor", overlay=true)
 
 // ── DIRECTION : 4H + 1H (ta règle) ───────────────────────────────
 grpTF = "=== DIRECTION : 4H + 1H ==="
@@ -27,17 +26,8 @@ max_ob = input.int(5,      "Nb max de zones par couleur",          group=grpD, m
 // ── SENS (probabilité directionnelle) ────────────────────────────
 grpS = "=== SENS (probabilité) ==="
 prox_scale = input.float(1.0,  "Portée proximité (% du prix) — au-delà ≈ 0", group=grpS, minval=0.1, step=0.1)
-range_thr  = input.float(25.0, "Seuil RANGE (|biais %| en dessous = range)", group=grpS, minval=0, maxval=100, step=5)
-use_overlap= input.bool(true,  "Range si bleu ET rouge proches / se chevauchent (chop)", group=grpS)
-
-// ── DÉCLENCHEUR (allumage) ───────────────────────────────────────
-grpG = "=== DÉCLENCHEUR (allumage) ==="
-vol_len     = input.int(20,   "Moyenne volume (barres)",            group=grpG, minval=1)
-vol_k       = input.float(1.8,"Pic de volume si volume > moyenne ×", group=grpG, minval=1.0, step=0.1)
-atr_fast    = input.int(5,    "ATR rapide (volatilité)",            group=grpG, minval=1)
-atr_slow    = input.int(20,   "ATR lent (baseline)",                group=grpG, minval=1)
-show_go     = input.bool(true,"Flèches GO sur le chart",            group=grpG)
-go_realtime = input.bool(false,"GO en temps réel (sinon : clôture confirmée)", group=grpG)
+range_thr  = input.float(15.0, "Seuil RANGE (|biais %| en dessous = range)", group=grpS, minval=0, maxval=100, step=5)
+use_overlap= input.bool(true,  "Range si zones bleues/rouges se CHEVAUCHENT (vrai chop)", group=grpS)
 
 // ── TABLEAU ──────────────────────────────────────────────────────
 grpV = "=== TABLEAU ==="
@@ -49,12 +39,11 @@ tbl_size = input.string("normal", "Taille texte", options=["tiny","small","norma
 c_long  = #2196F3
 c_short = #F44336
 c_range = color.rgb(130, 130, 150)
-c_vol   = #FF9800
 c_head  = color.new(#2A2E39, 0)
 mitig_close = mitig == "Close"
 
-// ── FONCTION : sens order-block d'un contexte -> [sens, nb, nr, range] ──
-// 1=LONG, -1=SHORT, 0=RANGE. Détection + mitigation + scoring proximité.
+// ── FONCTION : sens order-block d'un contexte -> [sens, nb, nr] ───
+// 1=LONG, -1=SHORT, 0=RANGE. Range = chevauchement de zones, ou équilibre.
 f_ob_sens(oblen, mclose, maxob, proxscale, rangethr, useov) =>
     up = ta.highest(oblen)
     lo = ta.lowest(oblen)
@@ -112,42 +101,32 @@ f_ob_sens(oblen, mclose, maxob, proxscale, rangethr, useov) =>
     float tt = wl + ws
     float bp = tt > 0 ? (wl - ws) / tt * 100.0 : 0.0
 
+    // RANGE = chevauchement réel des zones (chop), ou biais équilibré
     bool ov = false
     if useov and nb > 0 and nr > 0
         for i = 0 to nb - 1
             for j = 0 to nr - 1
                 if array.get(btop, i) >= array.get(rbtm, j) and array.get(rtop, j) >= array.get(bbtm, i)
                     ov := true
-    bool both_near = wl > 0.0 and ws > 0.0
-    bool rng = (useov and (ov or both_near)) or math.abs(bp) < rangethr
+    bool rng = ov or math.abs(bp) < rangethr
     int sn = rng ? 0 : bp > 0 ? 1 : bp < 0 ? -1 : 0
-    [sn, nb, nr, rng]
+    [sn, nb, nr]
 
-// ── SENS chart + 4H + 1H ─────────────────────────────────────────
-[s_ch, nb_ch, nr_ch, rng_ch] = f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap)
-[s_hi, h1, h2, h3] = request.security(syminfo.tickerid, tf_hi,  f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap), lookahead=barmerge.lookahead_off)
-[s_md, m1, m2, m3] = request.security(syminfo.tickerid, tf_mid, f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap), lookahead=barmerge.lookahead_off)
+// ── SENS chart (pour le compte de zones) + 4H + 1H ───────────────
+[s_ch, nb_ch, nr_ch] = f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap)
+[s_hi, h1, h2] = request.security(syminfo.tickerid, tf_hi,  f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap), lookahead=barmerge.lookahead_off)
+[s_md, m1, m2] = request.security(syminfo.tickerid, tf_mid, f_ob_sens(ob_len, mitig_close, max_ob, prox_scale, range_thr, use_overlap), lookahead=barmerge.lookahead_off)
 
 // ── RÈGLE : on agit seulement si 4H ET 1H sont d'accord ──────────
 bias = (s_hi == 1 and s_md == 1) ? 1 : (s_hi == -1 and s_md == -1) ? -1 : 0
-
-// ── ALLUMAGE (sur le TF du chart, jamais en range) ───────────────
-vol_spike = volume > ta.sma(volume, vol_len) * vol_k
-vol_exp   = ta.atr(atr_fast) > ta.atr(atr_slow)
-ignition  = vol_spike and vol_exp
-go_conf   = go_realtime or barstate.isconfirmed
-go_long   = bias == 1  and not rng_ch and ignition and close > open and go_conf
-go_short  = bias == -1 and not rng_ch and ignition and close < open and go_conf
 
 // ── LIBELLÉS ─────────────────────────────────────────────────────
 f_lbl(s) => s == 1 ? "LONG" : s == -1 ? "SHORT" : "RANGE"
 f_col(s) => s == 1 ? c_long : s == -1 ? c_short : c_range
 
 zones_txt = str.tostring(nb_ch) + " bleu / " + str.tostring(nr_ch) + " rouge"
-ign_txt   = ignition ? "ALLUMÉ" : "calme"
-ign_col   = ignition ? color.new(c_vol, 0) : c_range
-act_lbl   = bias == 0 ? "⛔ ATTENDRE (4h/1h ≠)" : bias == 1 ? (go_long ? "🟢 GO LONG" : rng_ch ? "⛔ chop — attendre" : "PRÊT ▲ LONG") : (go_short ? "🔴 GO SHORT" : rng_ch ? "⛔ chop — attendre" : "PRÊT ▼ SHORT")
-act_col   = bias == 0 ? c_range : go_long ? c_long : go_short ? c_short : rng_ch ? c_range : bias == 1 ? color.new(c_long, 55) : color.new(c_short, 55)
+act_lbl   = bias == 0 ? "⛔ ATTENDRE (4h/1h ≠)" : bias == 1 ? "▲ LONG — cherche des longs" : "▼ SHORT — cherche des shorts"
+act_col   = bias == 0 ? c_range : bias == 1 ? c_long : c_short
 
 f_pos(p) =>
     switch p
@@ -169,36 +148,29 @@ f_sz(s) =>
         "large" => size.large
         => size.normal
 
-// ── FLÈCHES GO ───────────────────────────────────────────────────
-plotshape(show_go and go_long,  "GO LONG",  style=shape.triangleup,   location=location.belowbar, color=c_long,  size=size.small, text="GO")
-plotshape(show_go and go_short, "GO SHORT", style=shape.triangledown, location=location.abovebar, color=c_short, size=size.small, text="GO")
-
 // ── TABLEAU ──────────────────────────────────────────────────────
 var table t = na
 if barstate.islast
     sz = f_sz(tbl_size)
     if na(t)
-        t := table.new(f_pos(tbl_pos), 2, 6, border_width=1, border_color=color.new(color.gray, 40))
+        t := table.new(f_pos(tbl_pos), 2, 5, border_width=1, border_color=color.new(color.gray, 40))
         table.cell(t, 0, 0, "🧭 DIRECTIONNOR", text_color=color.white, text_size=sz, bgcolor=c_head)
         table.cell(t, 1, 0, "", bgcolor=c_head)
-        table.cell(t, 0, 1, "4H",       text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 2, "1H",       text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 3, "Zones",    text_color=color.silver, text_size=sz, bgcolor=c_head)
-        table.cell(t, 0, 4, "Allumage", text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 1, "4H",    text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 2, "1H",    text_color=color.silver, text_size=sz, bgcolor=c_head)
+        table.cell(t, 0, 3, "Zones", text_color=color.silver, text_size=sz, bgcolor=c_head)
         table.cell(t, 1, 1, "", bgcolor=c_head)
         table.cell(t, 1, 2, "", bgcolor=c_head)
         table.cell(t, 1, 3, "", bgcolor=c_head)
+        table.cell(t, 0, 4, "", bgcolor=c_head)
         table.cell(t, 1, 4, "", bgcolor=c_head)
-        table.cell(t, 0, 5, "", bgcolor=c_head)
-        table.cell(t, 1, 5, "", bgcolor=c_head)
         table.merge_cells(t, 0, 0, 1, 0)
-        table.merge_cells(t, 0, 5, 1, 5)
+        table.merge_cells(t, 0, 4, 1, 4)
     table.cell(t, 1, 1, f_lbl(s_hi), text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_hi), 0))
     table.cell(t, 1, 2, f_lbl(s_md), text_color=color.white, text_size=sz, bgcolor=color.new(f_col(s_md), 0))
     table.cell(t, 1, 3, zones_txt,   text_color=color.white, text_size=sz, bgcolor=c_head)
-    table.cell(t, 1, 4, ign_txt,     text_color=color.white, text_size=sz, bgcolor=color.new(ign_col, 0))
-    table.cell(t, 0, 5, act_lbl,     text_color=color.white, text_size=sz, bgcolor=color.new(act_col, 0))
+    table.cell(t, 0, 4, act_lbl,     text_color=color.white, text_size=sz, bgcolor=color.new(act_col, 0))
 
 // ── ALERTES ──────────────────────────────────────────────────────
-alertcondition(go_long,  "Directionnor GO LONG",  "Directionnor : GO LONG (4h+1h d'accord + allumage)")
-alertcondition(go_short, "Directionnor GO SHORT", "Directionnor : GO SHORT (4h+1h d'accord + allumage)")
+alertcondition(bias == 1  and bias[1] != 1,  "Directionnor LONG",  "Directionnor : biais LONG (4h+1h d'accord)")
+alertcondition(bias == -1 and bias[1] != -1, "Directionnor SHORT", "Directionnor : biais SHORT (4h+1h d'accord)")
