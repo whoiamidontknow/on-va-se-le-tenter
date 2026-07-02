@@ -1,0 +1,156 @@
+//@version=6
+// ════════════════════════════════════════════════════════════════
+// EPHORE CLIMAX (Replique) — signaux climax seuls
+// ════════════════════════════════════════════════════════════════
+// Réplique du module climax du Climator Lite (Ephore Market Ultimate).
+// Réglages calqués sur le panneau original (lissage 14, seuils 70/30,
+// paliers 40/55/70/85, preset EMU Fort+Premium, validation clôture...).
+//
+// Buy climax  = triangle ▲ en BAS  (acheteurs en force).
+// Sell climax = triangle ▼ en HAUT (vendeurs en force).
+// 4 niveaux : Faible / Standard / Fort / Premium, couleur par niveau.
+//
+// /!\ PARTIE À CALIBRER : la "pression acheteuse 0-100" est un proxy
+//     (Elio cache son calcul de flux). Proxy = volume signé par la
+//     position du close dans la bougie, lissé facon MFI. À ajuster
+//     contre les triangles de l'original (voir plot diag "Pression").
+// ════════════════════════════════════════════════════════════════
+indicator("Ephore Climax (Replique)", overlay=true, max_labels_count=500)
+
+// ── CLIMATOR LITE — cœur ─────────────────────────────────────────
+grpC = "=== CLIMATOR LITE ==="
+c_enable = input.bool(true, "Activer Climator",        group=grpC)
+c_smooth = input.int(14,    "Période de lissage",      group=grpC, minval=1)
+
+// ── SANTÉ DU MOUVEMENT ───────────────────────────────────────────
+grpH = "=== SANTÉ DU MOUVEMENT ==="
+c_health_len = input.int(5,   "Période analyse santé",  group=grpH, minval=1)
+c_div_sens   = input.float(0.3,"Sensibilité divergence",group=grpH, step=0.05)
+
+// ── SEUILS ───────────────────────────────────────────────────────
+grpS = "=== SEUILS ==="
+c_press_high = input.int(70, "Seuil Pression Forte",   group=grpS, minval=50, maxval=100)
+c_press_low  = input.int(30, "Seuil Pression Faible",  group=grpS, minval=0,  maxval=50)
+
+// ── SIGNAUX CLIMAX ───────────────────────────────────────────────
+grpX = "=== SIGNAUX CLIMAX ==="
+c_mode       = input.string("Multi-niveaux", "Mode affichage Climax", options=["Multi-niveaux","Simple"], group=grpX)
+c_simple_min = input.int(55, "Seuil minimum (mode Simple)", group=grpX, minval=0, maxval=100)
+c_min_level  = input.string("Standard", "Niveau minimum à afficher", options=["Faible","Standard","Fort","Premium"], group=grpX)
+
+// ── CLIMAX - CONFIRMATION ────────────────────────────────────────
+grpCf = "=== CLIMAX - CONFIRMATION ==="
+c_confirm_close = input.bool(true,  "Valider uniquement à la clôture", group=grpCf)
+c_preset_emu    = input.bool(true,  "Preset EMU: Fort+Premium seulement", group=grpCf)
+c_conf_win      = input.int(3,      "Fenêtre de confirmation (barres)", group=grpCf, minval=1)
+c_max_labels    = input.int(200,    "Max labels tags (anti spam)", group=grpCf, minval=1)
+
+// ── NIVEAUX CLIMAX (MULTI-NIVEAUX) ───────────────────────────────
+grpN = "=== NIVEAUX CLIMAX (MULTI-NIVEAUX) ==="
+c_lv_faible = input.int(40, "Niveau Faible (min)",   group=grpN, minval=0, maxval=100)
+c_lv_std    = input.int(55, "Niveau Standard (min)", group=grpN, minval=0, maxval=100)
+c_lv_fort   = input.int(70, "Niveau Fort (min)",     group=grpN, minval=0, maxval=100)
+c_lv_prem   = input.int(85, "Niveau Premium (min)",  group=grpN, minval=0, maxval=100)
+
+// ── APPARENCE BUY CLIMAX ─────────────────────────────────────────
+grpBuy = "=== APPARENCE BUY CLIMAX ==="
+buy_c_faible = input.color(#FFFFFF, "Couleur Faible",   group=grpBuy)
+buy_c_std    = input.color(#7FC7D9, "Couleur Standard", group=grpBuy)
+buy_c_fort   = input.color(#5B5BF5, "Couleur Fort",     group=grpBuy)
+buy_c_prem   = input.color(#F5E24E, "Couleur Premium",  group=grpBuy)
+
+// ── APPARENCE SELL CLIMAX ────────────────────────────────────────
+grpSell = "=== APPARENCE SELL CLIMAX ==="
+sell_c_faible = input.color(#FFFFFF, "Couleur Faible",   group=grpSell)
+sell_c_std    = input.color(#E8C6DE, "Couleur Standard", group=grpSell)
+sell_c_fort   = input.color(#D65B50, "Couleur Fort",     group=grpSell)
+sell_c_prem   = input.color(#F5E24E, "Couleur Premium",  group=grpSell)
+
+// ── DIAGNOSTIC ───────────────────────────────────────────────────
+grpD = "=== DIAGNOSTIC ==="
+c_show_gauge = input.bool(false, "Afficher jauge pression (data window)", group=grpD)
+
+// ════════════════════════════════════════════════════════════════
+// PRESSION ACHETEUSE 0-100 (proxy MFI-like — À CALIBRER)
+// ════════════════════════════════════════════════════════════════
+// intra = où clôture la bougie dans son range : +1 tout en haut
+// (acheteurs), -1 tout en bas (vendeurs). Pondéré par le volume.
+rng   = high - low
+intra = rng > 0 ? ((close - low) - (high - close)) / rng : 0.0
+delta = intra * volume
+
+up = ta.rma(math.max(delta,  0.0), c_smooth)
+dn = ta.rma(math.max(-delta, 0.0), c_smooth)
+pressure        = (up + dn) > 0 ? 100.0 * up / (up + dn) : 50.0   // 0-100, 50 = neutre
+seller_pressure = 100.0 - pressure
+
+// ════════════════════════════════════════════════════════════════
+// SANTÉ / DIVERGENCE (optionnelle — "Pas de filtre" par défaut)
+// ════════════════════════════════════════════════════════════════
+press_mom = pressure - pressure[c_health_len]
+health_ok_buy  = press_mom >= -c_div_sens * 100.0
+health_ok_sell = press_mom <=  c_div_sens * 100.0
+
+// ════════════════════════════════════════════════════════════════
+// CLASSIFICATION NIVEAU (0=aucun,1=Faible,2=Standard,3=Fort,4=Premium)
+// ════════════════════════════════════════════════════════════════
+f_level(p) => p >= c_lv_prem ? 4 : p >= c_lv_fort ? 3 : p >= c_lv_std ? 2 : p >= c_lv_faible ? 1 : 0
+
+// niveau minimum à afficher : preset EMU force Fort (3) ; sinon réglage
+min_lvl = c_preset_emu ? 3 :
+     c_min_level == "Premium" ? 4 : c_min_level == "Fort" ? 3 : c_min_level == "Standard" ? 2 : 1
+
+// mode Simple : un seul seuil au lieu des paliers
+buy_lvl_ml  = f_level(pressure)
+sell_lvl_ml = f_level(seller_pressure)
+buy_lvl  = c_mode == "Simple" ? (pressure        >= c_simple_min ? 3 : 0) : buy_lvl_ml
+sell_lvl = c_mode == "Simple" ? (seller_pressure >= c_simple_min ? 3 : 0) : sell_lvl_ml
+
+// ════════════════════════════════════════════════════════════════
+// DÉTECTION CLIMAX — événement = franchissement d'un palier vers le haut
+// ════════════════════════════════════════════════════════════════
+conf = c_confirm_close ? barstate.isconfirmed : true
+
+buy_step  = buy_lvl  > buy_lvl[1]
+sell_step = sell_lvl > sell_lvl[1]
+
+buy_raw  = c_enable and conf and buy_lvl  >= min_lvl and buy_step  and health_ok_buy
+sell_raw = c_enable and conf and sell_lvl >= min_lvl and sell_step and health_ok_sell
+
+// anti-spam : fenêtre de confirmation entre deux climax de même sens
+var int last_buy_bar  = na
+var int last_sell_bar = na
+buy_ok  = buy_raw  and (na(last_buy_bar)  or bar_index - last_buy_bar  >= c_conf_win)
+sell_ok = sell_raw and (na(last_sell_bar) or bar_index - last_sell_bar >= c_conf_win)
+if buy_ok
+    last_buy_bar := bar_index
+if sell_ok
+    last_sell_bar := bar_index
+
+// couleur selon niveau atteint
+buy_col  = buy_lvl  == 4 ? buy_c_prem  : buy_lvl  == 3 ? buy_c_fort  : buy_lvl  == 2 ? buy_c_std  : buy_c_faible
+sell_col = sell_lvl == 4 ? sell_c_prem : sell_lvl == 3 ? sell_c_fort : sell_lvl == 2 ? sell_c_std : sell_c_faible
+
+// ════════════════════════════════════════════════════════════════
+// AFFICHAGE — triangle ▲ en bas (buy), triangle ▼ en haut (sell)
+// ════════════════════════════════════════════════════════════════
+plotshape(buy_ok,  "Climax acheteur", style=shape.triangleup,   location=location.bottom, color=buy_col,  size=size.small)
+plotshape(sell_ok, "Climax vendeur",  style=shape.triangledown, location=location.top,    color=sell_col, size=size.small)
+
+// jauge de pression pour calibration (data window / status line)
+plot(c_show_gauge ? pressure : na, "Pression acheteuse 0-100", color=color.new(#5B5BF5, 0), display=display.data_window)
+
+// ════════════════════════════════════════════════════════════════
+// BIAIS = dernier climax (règle Ephore : on ne trade pas contre lui)
+// ════════════════════════════════════════════════════════════════
+var int last_climax_dir = 0   // 1 = dernier climax acheteur, -1 = vendeur
+if buy_ok
+    last_climax_dir := 1
+if sell_ok
+    last_climax_dir := -1
+
+// ════════════════════════════════════════════════════════════════
+// ALERTES
+// ════════════════════════════════════════════════════════════════
+alertcondition(buy_ok,  "Climax acheteur", "Ephore : climax acheteur détecté")
+alertcondition(sell_ok, "Climax vendeur",  "Ephore : climax vendeur détecté")
