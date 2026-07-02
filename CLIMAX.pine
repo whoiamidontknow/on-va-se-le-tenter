@@ -44,6 +44,8 @@ c_confirm_close = input.bool(true,  "Valider uniquement à la clôture", group=g
 c_preset_emu    = input.bool(true,  "Preset EMU: Fort+Premium seulement", group=grpCf)
 c_conf_win      = input.int(3,      "Fenêtre de confirmation (barres)", group=grpCf, minval=1)
 c_max_labels    = input.int(200,    "Max labels tags (anti spam)", group=grpCf, minval=1)
+c_rearm         = input.int(8,      "Marge de ré-armement (hystérésis)", group=grpCf, minval=0, maxval=40)
+c_cooldown      = input.int(10,     "Cooldown min entre climax (barres)", group=grpCf, minval=1)
 
 // ── NIVEAUX CLIMAX (MULTI-NIVEAUX) ───────────────────────────────
 grpN = "=== NIVEAUX CLIMAX (MULTI-NIVEAUX) ==="
@@ -111,21 +113,33 @@ sell_lvl = c_mode == "Simple" ? (seller_pressure >= c_simple_min ? 3 : 0) : sell
 // ════════════════════════════════════════════════════════════════
 conf = c_confirm_close ? barstate.isconfirmed : true
 
-buy_step  = buy_lvl  > buy_lvl[1]
-sell_step = sell_lvl > sell_lvl[1]
+// UN SEUL climax par vague : on arme quand la pression entre dans un
+// palier ≥ min, on DÉSARME après le tir, et on ne ré-arme que lorsque la
+// pression est retombée sous (seuil Fort − marge). Fini le spam.
+buy_rearm_lvl  = c_lv_fort - c_rearm
+sell_rearm_lvl = c_lv_fort - c_rearm
 
-buy_raw  = c_enable and conf and buy_lvl  >= min_lvl and buy_step  and health_ok_buy
-sell_raw = c_enable and conf and sell_lvl >= min_lvl and sell_step and health_ok_sell
+var bool buy_armed  = true
+var bool sell_armed = true
+if pressure < buy_rearm_lvl
+    buy_armed := true
+if seller_pressure < sell_rearm_lvl
+    sell_armed := true
 
-// anti-spam : fenêtre de confirmation entre deux climax de même sens
+buy_raw  = c_enable and conf and buy_armed  and buy_lvl  >= min_lvl and health_ok_buy
+sell_raw = c_enable and conf and sell_armed and sell_lvl >= min_lvl and health_ok_sell
+
+// cooldown de sécurité entre deux climax de même sens
 var int last_buy_bar  = na
 var int last_sell_bar = na
-buy_ok  = buy_raw  and (na(last_buy_bar)  or bar_index - last_buy_bar  >= c_conf_win)
-sell_ok = sell_raw and (na(last_sell_bar) or bar_index - last_sell_bar >= c_conf_win)
+buy_ok  = buy_raw  and (na(last_buy_bar)  or bar_index - last_buy_bar  >= c_cooldown)
+sell_ok = sell_raw and (na(last_sell_bar) or bar_index - last_sell_bar >= c_cooldown)
 if buy_ok
     last_buy_bar := bar_index
+    buy_armed   := false
 if sell_ok
     last_sell_bar := bar_index
+    sell_armed    := false
 
 // couleur selon niveau atteint
 buy_col  = buy_lvl  == 4 ? buy_c_prem  : buy_lvl  == 3 ? buy_c_fort  : buy_lvl  == 2 ? buy_c_std  : buy_c_faible
