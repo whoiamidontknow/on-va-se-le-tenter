@@ -1010,6 +1010,7 @@ sig_moyen_short= input.color(#000000, "Couleur flèche Short (MOYEN)", group=grp
 
 sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
 sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
+sig_rule1_on   = input.bool(true,    "Règle N°1 : bougie entière vs Moyenator (ligne noire)", group=grp_sig)
 sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
      options=["Normal", "Rapide", "Lent"])
 
@@ -1083,8 +1084,13 @@ else
     sg_bear_count := 0
     sg_bear_fired := false
 
-sg_raw_long  = sg_bull_count == sg_lag and not sg_bull_fired
-sg_raw_short = sg_bear_count == sg_lag and not sg_bear_fired
+// Règle N°1 (formation Ephore) : bougie ENTIÈRE du bon côté de la ligne
+// noire (Moyenator ema_m1). Achat = low au-dessus, vente = high en dessous.
+sg_rule1_long  = not sig_rule1_on or low  > ema_m1
+sg_rule1_short = not sig_rule1_on or high < ema_m1
+
+sg_raw_long  = sg_bull_count == sg_lag and not sg_bull_fired and sg_rule1_long
+sg_raw_short = sg_bear_count == sg_lag and not sg_bear_fired and sg_rule1_short
 
 if sg_raw_long
     sg_bull_fired := true
@@ -1259,5 +1265,5 @@ alertcondition(bear_ob_alert, "Bearish OB Formed", "Bearish Order Block detected
 alertcondition(mitigated_bull, 'Bullish OB Mitigated', 'Bullish order block mitigated')
 alertcondition(mitigated_bear, 'Bearish OB Mitigated', 'bearish order block mitigated')
 
-alertcondition(sig_long_fort,  "Signator Long FORT",  "Signal Signator LONG (fleche blanche)")
-alertcondition(sig_short_fort, "Signator Short FORT", "Signal Signator SHORT (fleche noire)")
+alertcondition(sig_long_fort,  "Signator Long FORT",  "LONG FORT sur {{ticker}} (TF {{interval}})")
+alertcondition(sig_short_fort, "Signator Short FORT", "SHORT FORT sur {{ticker}} (TF {{interval}})")
