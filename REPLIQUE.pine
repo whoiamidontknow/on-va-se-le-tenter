@@ -1010,8 +1010,8 @@ sig_moyen_short= input.color(#000000, "Couleur flèche Short (MOYEN)", group=grp
 
 sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
 sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
-sig_rule1_on   = input.bool(true,    "Règle N°1 : bougie entière vs Moyenator (ligne noire)", group=grp_sig)
-sig_force_on   = input.bool(true,    "Filtre de force (conviction ATR)", group=grp_sig)
+sig_rule1_on   = input.bool(true,    "Règle N°1 : close du bon côté du Moyenator (ligne noire)", group=grp_sig)
+sig_force_on   = input.bool(false,   "Filtre de force (conviction ATR) — optionnel", group=grp_sig)
 sig_conv_atr   = input.float(0.15,   "├ Conviction min : close au-delà Moyenator (x ATR)", group=grp_sig, minval=0.0, maxval=3.0, step=0.05)
 sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
      options=["Normal", "Rapide", "Lent"])
@@ -1086,10 +1086,12 @@ else
     sg_bear_count := 0
     sg_bear_fired := false
 
-// Règle N°1 (formation Ephore) : bougie ENTIÈRE du bon côté de la ligne
-// noire (Moyenator ema_m1). Achat = low au-dessus, vente = high en dessous.
-sg_rule1_long  = not sig_rule1_on or low  > ema_m1
-sg_rule1_short = not sig_rule1_on or high < ema_m1
+// Règle N°1 (calibrée sur données réelles) : le CLOSE du bon côté de la
+// ligne noire (Moyenator ema_m1). L'original ne regarde que le close, PAS
+// la bougie entière (testé : 11/11 longs et 20/20 shorts manqués avaient
+// close du bon côté mais mèche de l'autre → whole-candle tuait tout).
+sg_rule1_long  = not sig_rule1_on or close > ema_m1
+sg_rule1_short = not sig_rule1_on or close < ema_m1
 
 sg_raw_long  = sg_bull_count == sg_lag and not sg_bull_fired and sg_rule1_long
 sg_raw_short = sg_bear_count == sg_lag and not sg_bear_fired and sg_rule1_short
