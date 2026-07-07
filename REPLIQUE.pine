@@ -1011,6 +1011,8 @@ sig_moyen_short= input.color(#000000, "Couleur flèche Short (MOYEN)", group=grp
 sig_filter_on  = input.bool(false,   "Activer Filtre",                 group=grp_sig)
 sig_force_min  = input.int(18,       "Seuil de Force (Min)",           group=grp_sig, minval=0, maxval=100)
 sig_rule1_on   = input.bool(true,    "Règle N°1 : bougie entière vs Moyenator (ligne noire)", group=grp_sig)
+sig_force_on   = input.bool(true,    "Filtre de force (conviction ATR)", group=grp_sig)
+sig_conv_atr   = input.float(0.55,   "├ Conviction min : close au-delà Moyenator (x ATR)", group=grp_sig, minval=0.0, maxval=3.0, step=0.05)
 sig_lag_mode   = input.string("Normal", "Mode de Lag",                 group=grp_sig,
      options=["Normal", "Rapide", "Lent"])
 
@@ -1163,8 +1165,20 @@ sg_score = f_cqf_score()
 sg_is_fort  = sg_score >= cqf_score_min
 sg_is_moyen = sg_score >= sig_force_min and sg_score < cqf_score_min
 
-sig_long_fort   = sg_raw_long  and (sig_filter_on ? sg_is_fort : true)
-sig_short_fort  = sg_raw_short and (sig_filter_on ? sg_is_fort : true)
+// ── FILTRE DE FORCE (calibré sur données réelles MES 15m, F1 80%) ──
+// La flèche "FORT" n'apparaît que si le close s'est franchement détaché
+// du Moyenator : distance close↔ligne noire >= X ATR (conviction).
+// Reproduit le tri des flèches de l'original (source : export CSV).
+sg_conv_line_long  = math.max(ema_m1, ema_m2)
+sg_conv_line_short = math.min(ema_m1, ema_m2)
+sg_conv_long  = sg_atr > 0 and (close - sg_conv_line_long)  / sg_atr >= sig_conv_atr
+sg_conv_short = sg_atr > 0 and (sg_conv_line_short - close) / sg_atr >= sig_conv_atr
+
+sg_force_long  = not sig_force_on or sg_conv_long
+sg_force_short = not sig_force_on or sg_conv_short
+
+sig_long_fort   = sg_raw_long  and sg_force_long  and (sig_filter_on ? sg_is_fort : true)
+sig_short_fort  = sg_raw_short and sg_force_short and (sig_filter_on ? sg_is_fort : true)
 sig_long_moyen  = sg_raw_long  and sig_filter_on and sg_is_moyen
 sig_short_moyen = sg_raw_short and sig_filter_on and sg_is_moyen
 
