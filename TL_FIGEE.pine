@@ -19,8 +19,8 @@ fz_on       = input.bool(true,   "Figer la droite après cassure", group=grp)
 piv_len     = input.int(10,      "Force des pivots (barres de chaque côté)", group=grp, minval=2, maxval=50)
 lb_lo       = input.int(350,     "Résistance : fenêtre ancre, TF < 30 min",  group=grp, minval=10, maxval=3000)
 lb_hi       = input.int(150,     "Résistance : fenêtre ancre, TF ≥ 30 min", group=grp, minval=10, maxval=3000)
-gap_min     = input.int(0,       "Écart min ancre → 2e pivot (barres)", group=grp, minval=0, maxval=500,
-     tooltip="Hypothèse 'Look for New Pivot High after X Bars' de l'original : les pivots plus proches de l'ancre que cet écart sont ignorés pour la pente. 0 = désactivé. Vaut pour résistance et support.")
+gap_min     = input.int(0,       "Résistance : écart min ancre → 2e pivot (barres)", group=grp, minval=0, maxval=500,
+     tooltip="Hypothèse 'Look for New Pivot High after X Bars' de l'original : les pivots plus proches de l'ancre que cet écart sont ignorés pour la pente. 0 = désactivé. Résistance uniquement ; le support a son propre réglage.")
 ext_bars    = input.int(50,      "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
 fz_col      = input.color(#FFFFFF, "Couleur droite figée", group=grp, inline="c1")
 fz_w        = input.int(2,       "Épaisseur", group=grp, minval=1, maxval=5, inline="c1")
@@ -149,6 +149,8 @@ sp_w    = input.int(2,         "Épaisseur", group=grp_sp, minval=1, maxval=5, i
 sp_lb_lo = input.int(150,      "Support : fenêtre ancre, TF < 30 min",  group=grp_sp, minval=10, maxval=3000)
 sp_lb_hi = input.int(150,      "Support : fenêtre ancre, TF ≥ 30 min", group=grp_sp, minval=10, maxval=3000)
 sp_look  = is_low_tf ? sp_lb_lo : sp_lb_hi
+sp_gap   = input.int(0,        "Support : écart min ancre → 2e pivot (barres)", group=grp_sp, minval=0, maxval=500,
+     tooltip="Séparé de la résistance : en 15m SP500, le 2e creux de la référence est à ~20 barres de l'ancre, un écart de 50 cassait le support.")
 
 pl = ta.pivotlow(low, piv_len, piv_len)
 
@@ -178,7 +180,7 @@ f_support(lk) =>
     if a_i > 0
         a_bar = array.get(pl_bar, a_i)
         for i = 0 to a_i - 1
-            if array.get(pl_bar, i) - a_bar >= gap_min
+            if array.get(pl_bar, i) - a_bar >= sp_gap
                 sl = (array.get(pl_price, i) - a_px) / (array.get(pl_bar, i) - a_bar)
                 if na(r_sl) or sl < r_sl
                     r_sl := sl
