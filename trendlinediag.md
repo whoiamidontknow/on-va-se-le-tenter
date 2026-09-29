@@ -107,9 +107,12 @@ Sept changements :
 1. **Supprimer les deux passes de repli.** Rien de valide → rien de dessiné.
 2. **Compte de touches réel** : les 2 ancrages comptent, mais il faut atteindre
    `tl_min_touches` au total → au moins 1 confirmation indépendante.
-3. **Test de non-violation (hull)** : rejeter la droite si un pivot postérieur à
-   l'ancrage la dépasse de plus que le buffer. Une résistance déjà transpercée
-   n'est plus une résistance. C'est ce test qui fait qu'une ligne « a l'air juste ».
+3. **Test de non-violation (hull)**, avec **deux buffers séparés** : rejeter la
+   droite si un pivot postérieur à l'ancrage la dépasse de plus que `tl_viol_buf`
+   (strict). Une résistance déjà transpercée n'est plus une résistance. Le comptage
+   de touches utilise un buffer distinct `tl_touch_buf` (tolérant) — un seul curseur
+   pour les deux mélangeait « la droite est percée » et « un pivot l'effleure », qui
+   demandent des sévérités opposées.
 4. **Écart minimum entre ancrages** (`tl_min_span × tl_piv_len`, défaut 20 barres)
    pour ne pas tracer sur deux vaguelettes voisines.
 5. **Classement des candidates** : touches ↓, puis longueur ↓, puis proximité ↑ —
@@ -149,15 +152,19 @@ fin de fichier.
 //   (a) ses 2 ancrages sont séparés d'au moins tl_min_span × tl_piv_len barres
 //   (b) elle est du bon côté du prix (résistance au-dessus, support en dessous)
 //   (c) aucun pivot postérieur à l'ancrage ne la dépasse (test de hull)
-//   (d) elle totalise au moins tl_min_touches pivots dans son buffer
+//   (d) elle totalise au moins tl_min_touches pivots dans tl_touch_buf
 grp_tl = "=== EPHORE TRENDLINES V2 ==="
 
 tl_enable      = input.bool(true, "Activer Trendlines", group=grp_tl)
-tl_piv_len     = input.int(10, "Force des pivots (barres de chaque côté)",
+tl_piv_len     = input.int(8, "Force des pivots (barres de chaque côté)",
      group=grp_tl, minval=2, maxval=50,
-     tooltip="Barres de chaque côté d'un sommet/creux pour le valider comme pivot.")
-tl_buffer      = input.float(0.1, "Tolérance de touche (% du prix)",
-     group=grp_tl, minval=0.01, maxval=5.0, step=0.05)
+     tooltip="Barres de chaque côté d'un sommet/creux pour le valider comme pivot. 8 = le réglage le plus stable sur MES 15 min (cf. §5).")
+tl_viol_buf    = input.float(0.05, "Tolérance de violation (% du prix)",
+     group=grp_tl, minval=0.005, maxval=5.0, step=0.005,
+     tooltip="STRICT. Au-delà de cette marge, un pivot qui dépasse la droite l'invalide. Sert aussi de seuil de cassure en clôture.")
+tl_touch_buf   = input.float(0.20, "Tolérance de touche (% du prix)",
+     group=grp_tl, minval=0.01, maxval=5.0, step=0.05,
+     tooltip="TOLÉRANT. Un pivot dans cette marge compte comme une touche. Doit rester > tolérance de violation.")
 tl_min_touches = input.int(3, "Touches minimum (ancrages inclus)",
      group=grp_tl, minval=2, maxval=10,
      tooltip="3 = les 2 ancrages + 1 confirmation indépendante. 2 = permissif.")
@@ -222,7 +229,7 @@ f_tl_value(x1, y1, slope, x) =>
 // besoin (aucun ta.* ni var à l'intérieur → appel conditionnel sans effet de bord).
 // is_res = true  → résistance sur pivots hauts (pente ≤ 0, au-dessus du prix)
 // is_res = false → support    sur pivots bas  (pente ≥ 0, en dessous du prix)
-f_best_line(run, pp, pb, is_res, lb, buf_pct, min_sep, min_touch, px_ref) =>
+f_best_line(run, pp, pb, is_res, lb, viol_buf, touch_buf, min_sep, min_touch, px_ref) =>
     float b_x1   = na
     float b_y1   = na
     float b_sl   = na
@@ -253,13 +260,14 @@ f_best_line(run, pp, pb, is_res, lb, buf_pct, min_sep, min_touch, px_ref) =>
                                 int   xk = array.get(pb, k)
                                 float yk = array.get(pp, k)
                                 if xk >= xb and (bar_index - xk) <= lb
-                                    float ly = f_tl_value(xb, yb, sl, xk)
-                                    float bf = math.abs(ly) * buf_pct / 100.0
-                                    if is_res and yk > ly + bf
+                                    float ly  = f_tl_value(xb, yb, sl, xk)
+                                    float vbf = math.abs(ly) * viol_buf  / 100.0
+                                    float tbf = math.abs(ly) * touch_buf / 100.0
+                                    if is_res and yk > ly + vbf
                                         viol := true
-                                    if (not is_res) and yk < ly - bf
+                                    if (not is_res) and yk < ly - vbf
                                         viol := true
-                                    if math.abs(yk - ly) <= bf
+                                    if math.abs(yk - ly) <= tbf
                                         tc += 1
                             if not viol and tc >= min_touch
                                 int   span = xa - xb
@@ -289,7 +297,7 @@ var line  res_ln = na
 var bool  res_on = false
 
 float res_now = res_on ? f_tl_value(res_x1, res_y1, res_sl, bar_index) : na
-float res_buf = res_on ? math.abs(res_now) * tl_buffer / 100.0 : na
+float res_buf = res_on ? math.abs(res_now) * tl_viol_buf / 100.0 : na
 
 // Cassure = clôture franche au-delà de la droite (règle Ephore : pas juste une mèche)
 breakout_signal = tl_enable and tl_show_break and res_on and close > res_now + res_buf
@@ -302,7 +310,7 @@ if breakout_signal
 
 bool res_run = tl_enable and (not res_on or not tl_hold) and (not na(tl_ph) or breakout_signal)
 [rc_x1, rc_y1, rc_sl, rc_tc] = f_best_line(res_run, ph_price, ph_bar, true,
-     tl_macro_look, tl_buffer, tl_min_sep, tl_min_touches, close)
+     tl_macro_look, tl_viol_buf, tl_touch_buf, tl_min_sep, tl_min_touches, close)
 
 if not na(rc_x1)
     if not na(res_ln)
@@ -334,7 +342,7 @@ var line  sup_ln = na
 var bool  sup_on = false
 
 float sup_now = sup_on ? f_tl_value(sup_x1, sup_y1, sup_sl, bar_index) : na
-float sup_buf = sup_on ? math.abs(sup_now) * tl_buffer / 100.0 : na
+float sup_buf = sup_on ? math.abs(sup_now) * tl_viol_buf / 100.0 : na
 
 breakdown_signal = bl_enable and bl_show_break and sup_on and close < sup_now - sup_buf
 
@@ -346,7 +354,7 @@ if breakdown_signal
 
 bool sup_run = bl_enable and (not sup_on or not tl_hold) and (not na(tl_pl) or breakdown_signal)
 [sc_x1, sc_y1, sc_sl, sc_tc] = f_best_line(sup_run, pl_price, pl_bar, false,
-     tl_lookback, tl_buffer, tl_min_sep, tl_min_touches, close)
+     tl_lookback, tl_viol_buf, tl_touch_buf, tl_min_sep, tl_min_touches, close)
 
 if not na(sc_x1)
     if not na(sup_ln)
@@ -373,19 +381,86 @@ plotshape(breakdown_signal, title="TL Breakdown", style=shape.circle,
 | Avant | Après |
 |---|---|
 | Une ligne presque toujours affichée, parfois du mauvais côté du prix | Ligne affichée seulement si la structure existe — périodes sans ligne, c'est normal et voulu |
-| Ligne recalculée à chaque barre, saute d'une paire de pivots à l'autre | Ligne stable, adoptée une fois, figée à sa cassure |
+| Ligne recalculée à chaque barre, saute d'une paire de pivots à l'autre | Ligne stable, adoptée une fois, supprimée à sa cassure |
 | ○ de cassure éparpillés hors de la droite visible | ○ aligné sur la droite tant qu'elle est active. Après cassure la droite est effacée : le ○ reste seul, sans ligne — conséquence directe d'« une seule ligne par côté » |
 | Nombre de lignes non spécifié | Exactement **1 résistance + 1 support** au maximum, à tout instant |
 | `tl_min_touches` ignoré | Actif : 3 = 2 ancrages + 1 confirmation |
 | Droite pouvant traverser des sommets postérieurs | Test de hull : aucun pivot ne la dépasse |
+| Un seul buffer pour violation et touche | Deux curseurs séparés : `tl_viol_buf` strict, `tl_touch_buf` tolérant |
 
-## 5. À vérifier après collage
+## 5. Vérification par simulation
 
-Non vérifié de mon côté : **je n'ai pas pu compiler ni exécuter ce code** — pas
-d'accès TradingView. La logique est raisonnée, pas observée. À contrôler dans cet
-ordre :
+**L'objectif n'est pas de répliquer le Breakator** — décision du 2026-09-29. On veut
+des trendlines qui tiennent, pas une copie. Donc pas besoin de vérité terrain :
+l'algorithme se juge sur la plausibilité de ce qu'il produit.
 
-1. **Compilation.** Points de risque : la déstructuration de tuple
+`trendline_sim.py` est un port Python fidèle de `f_best_line` et de la boucle de
+persistance. Exécuté sur `CME_MINI_MES1!, 15_bb0d6.csv` — 4 498 barres, 49 jours.
+
+**Ce que ça change sur le niveau de confiance :** l'algorithme est maintenant
+*observé*, plus seulement raisonné. Ce qui reste non vérifié, c'est uniquement la
+**syntaxe Pine** — je n'ai pas d'accès TradingView pour compiler.
+
+### 5.1 Balayage de `tl_piv_len`
+
+`viol_buf=0.04 %`, `touch_buf=0.20 %`, `min_span=2×`, `min_touch=3` :
+
+| piv | rés./j | rés. couv. | rés. vie | sup./j | sup. couv. | sup. vie |
+|----:|-------:|-----------:|---------:|-------:|-----------:|---------:|
+| 5 | 0.96 | 58 % | 56 | 0.61 | 80 % | 102 |
+| **8** | **0.67** | **52 %** | **73** | **0.27** | **76 %** | **232** |
+| 10 | 0.59 | 41 % | 66 | 0.20 | 62 % | 238 |
+| 13 | 0.29 | 36 % | 115 | 0.25 | 25 % | 45 |
+| 16 | 0.22 | 33 % | 133 | 0.12 | 20 % | 53 |
+| 20 | 0.20 | 15 % | 68 | 0.08 | 17 % | 53 |
+
+Aucune valeur absurde : à `piv_len=8`, une nouvelle résistance tous les 1,5 jours,
+durée de vie moyenne 73 barres (≈ 18 h). C'est l'ordre de grandeur d'une trendline
+lisible à la main.
+
+### 5.2 Validation sur moitiés indépendantes
+
+Les 5 exports MES couvrent la même période (durées de vie identiques au dixième) —
+ce ne sont pas des jeux indépendants. Vraie validation : couper le fichier en deux.
+
+| piv | 1ʳᵉ moitié (24 j) | 2ᵈᵉ moitié (24 j) |
+|----:|---|---|
+| **8** | rés. 31 % / sup. 82 % | rés. 63 % / sup. 59 % |
+| 10 | rés. 17 % / sup. 80 % (vie 297) | rés. 33 % / sup. 33 % (vie 19) |
+| 13 | rés. 11 % / sup. 16 % | rés. 27 % / sup. 31 % |
+
+Deux conclusions, et la première est la plus importante :
+
+1. **La couverture n'est pas un paramètre réglable — elle dépend du régime.** La
+   1ʳᵉ moitié montre support 82 % / résistance 31 % : c'est une phase haussière, où
+   un support ascendant tient et où il n'existe tout simplement *pas* de résistance
+   valide. Ce n'est pas un défaut, c'est le comportement correct. Ne pas chercher à
+   viser une couverture cible : ce serait du surajustement au régime passé.
+   Remarque : le symptôme ressemble à la cause 1.1 (pas de ligne en tendance
+   haussière), mais pour la bonne raison cette fois — absence de structure valide,
+   non plus un `na` accidentel.
+2. **`piv_len=8` est le seul réglage stable d'une moitié à l'autre.** `piv_len=10`
+   fait s'effondrer le support de 80 % à 33 % de couverture et sa durée de vie de
+   297 à 19 barres — instable, à éviter. `13` et au-delà sont uniformément trop
+   pauvres. D'où le défaut à **8**, choisi pour sa robustesse, pas pour un score.
+
+### 5.3 Sensibilité des autres curseurs
+
+À `piv_len=10` :
+
+- `min_touch` — **le vrai curseur de sévérité.** 2 → 0.90 rés./j, couv. 52 % ;
+  3 → 0.59/j, 41 % ; 4 → 0.22/j, 35 %.
+- `viol_buf` — **quasi sans effet** : de 0.02 % à 0.15 %, la couverture bouge de
+  40 % à 45 %. Le test de hull mord rarement à ces valeurs. Scinder le buffer était
+  juste sur le fond (deux notions distinctes ne doivent pas partager un curseur),
+  mais ce n'est pas là qu'il faut jouer.
+
+Donc : pour durcir ou assouplir, **`min_touch` d'abord**, `piv_len` ensuite. Le
+reste est du réglage fin.
+
+### 5.4 Reste à contrôler au collage
+
+1. **Compilation Pine.** Points de risque : la déstructuration de tuple
    (`[rc_x1, …] = f_best_line(…)`) est au scope global, c'est voulu — ne pas la
    déplacer dans un `if`. Vérifier aussi qu'aucun nom n'entre en collision avec le
    reste du fichier (`tl_*`, `res_*`, `sup_*` ont été choisis pour l'éviter ;
@@ -393,14 +468,10 @@ ordre :
 2. **Temps d'exécution.** La triple boucle est bornée à 12×12/2 paires × 30 pivots
    ≈ 2 000 itérations, et ne tourne que sur confirmation de pivot. Si TradingView
    râle quand même, baisser `cap` de 11 à 7.
-3. **Densité de lignes.** Sur MES 15 min, comparer visuellement au Breakator
-   original. Si trop peu de lignes : `tl_min_touches` à 2. Si trop : `tl_min_span`
-   à 3.
-4. **Calibration chiffrée.** Même protocole que le Signator : exporter un CSV avec
-   `breakout_signal` + la colonne Breakator de l'original sur les ~4 500 barres MES
-   15 min déjà disponibles, puis mesurer couverture/précision. C'est le seul moyen
-   de savoir si le correctif réplique vraiment l'original, plutôt que d'avoir l'air
-   juste.
+3. **Concordance Pine ↔ Python.** Le port suppose que `ta.pivothigh` est strict à
+   gauche et tolérant à droite. Si la densité de lignes observée dans TradingView
+   diverge nettement du tableau 5.1, c'est la première hypothèse à remettre en
+   cause.
 
 ## 6. Reste ouvert (hors trendlines)
 
