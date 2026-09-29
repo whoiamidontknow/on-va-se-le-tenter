@@ -8,8 +8,9 @@
 //
 // AFFICHAGE (choix maison, la règle de l'original reste inconnue) :
 // on garde la droite affichée tant qu'elle n'est pas cassée (clôture
-// au-delà). Une fois cassée, elle reste visible jusqu'à la prochaine
-// droite créée, qui la remplace. Pivots 10/10 comme l'original.
+// au-delà) et que son 2e point a moins de 100 barres. Sinon la prochaine
+// droite créée la remplace. Sans cette limite, sur 8000+ barres chargées,
+// une vieille droite jamais cassée restait affichée loin du prix. Pivots 10/10 comme l'original.
 // Le « 40 barres à droite » précédent collait à un seul export et a
 // décroché 8 bougies plus tard : abandonné.
 indicator("Ephore TL Paires", overlay=true, max_lines_count=50, max_labels_count=50, max_bars_back=5000)
@@ -22,6 +23,8 @@ sup_left  = input.int(10, "Support : barres à gauche", group=grp, minval=1, max
      tooltip="10 comme la résistance.")
 sup_right = input.int(10, "Support : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
      tooltip="10 comme la résistance.")
+renew     = input.int(100, "Chercher une nouvelle droite après X barres", group=grp, minval=10, maxval=1000,
+     tooltip="Comme « Look for New Pivot High after X Bars » = 100 de l'original : une droite non cassée dont le 2e point a plus de X barres est remplacée par la droite suivante. Évite de garder une vieille droite hors de l'écran.")
 ext_bars  = input.int(50, "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
 res_col   = input.color(#FF6D00, "Couleur résistance", group=grp, inline="c1")
 sup_col   = input.color(#2962FF, "Couleur support",    group=grp, inline="c1")
@@ -57,7 +60,7 @@ if not na(ph)
         for i = n - 1 to 0
             if array.get(ph_price, i) > ph
                 // Remplace seulement si aucune droite ou droite déjà cassée
-                if na(r_x1) or r_broken
+                if na(r_x1) or r_broken or bar_index - r_x2 > renew
                     r_x1 := float(array.get(ph_bar, i))
                     r_y1 := array.get(ph_price, i)
                     r_x2 := float(b)
@@ -76,7 +79,7 @@ if not na(pl)
     if n > 0
         for i = n - 1 to 0
             if array.get(pl_price, i) < pl
-                if na(s_x1) or s_broken
+                if na(s_x1) or s_broken or bar_index - s_x2 > renew
                     s_x1 := float(array.get(pl_bar, i))
                     s_y1 := array.get(pl_price, i)
                     s_x2 := float(b)
@@ -135,7 +138,7 @@ plotshape(not na(ph), "Pivot haut", style=shape.triangledown, location=location.
 plotshape(not na(pl), "Pivot bas", style=shape.triangleup, location=location.belowbar,
      color=color.new(sup_col, 30), size=size.tiny, offset=-sup_right)
 
-var table tb = table.new(position.top_left, 2, 4, bgcolor=color.new(color.black, 15),
+var table tb = table.new(position.top_left, 2, 6, bgcolor=color.new(color.black, 15),
      border_width=1, border_color=color.gray)
 if barstate.islast
     table.cell(tb, 0, 0, "Pivots hauts / bas", text_color=color.silver, text_size=size.small)
@@ -146,3 +149,7 @@ if barstate.islast
     table.cell(tb, 1, 2, na(s_x1) ? "AUCUN" : str.tostring(s_y1, format.mintick) + " → " + str.tostring(s_y2, format.mintick) + (s_broken ? "  (cassé)" : ""), text_color=sup_col, text_size=size.small)
     table.cell(tb, 0, 3, "Barres chargées", text_color=color.silver, text_size=size.small)
     table.cell(tb, 1, 3, str.tostring(bar_index + 1), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 4, "Rés : écart au prix", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 4, na(r_x1) ? "—" : str.tostring(f_y(r_x1, r_y1, r_x2, r_y2, bar_index) - close, format.mintick) + " pts, 2e point il y a " + str.tostring(bar_index - int(r_x2)) + " b", text_color=res_col, text_size=size.small)
+    table.cell(tb, 0, 5, "Sup : écart au prix", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 5, na(s_x1) ? "—" : str.tostring(f_y(s_x1, s_y1, s_x2, s_y2, bar_index) - close, format.mintick) + " pts, 2e point il y a " + str.tostring(bar_index - int(s_x2)) + " b", text_color=sup_col, text_size=size.small)
