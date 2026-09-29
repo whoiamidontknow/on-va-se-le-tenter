@@ -17,8 +17,10 @@ indicator("Ephore TL Figee", overlay=true, max_lines_count=50, max_labels_count=
 grp = "=== TL FIGÉE ==="
 fz_on       = input.bool(true,   "Figer la droite après cassure", group=grp)
 piv_len     = input.int(10,      "Force des pivots (barres de chaque côté)", group=grp, minval=2, maxval=50)
-lb_lo       = input.int(250,     "Fenêtre ancre, TF < 30 min",  group=grp, minval=10, maxval=3000)
-lb_hi       = input.int(150,     "Fenêtre ancre, TF ≥ 30 min", group=grp, minval=10, maxval=3000)
+lb_lo       = input.int(350,     "Résistance : fenêtre ancre, TF < 30 min",  group=grp, minval=10, maxval=3000)
+lb_hi       = input.int(150,     "Résistance : fenêtre ancre, TF ≥ 30 min", group=grp, minval=10, maxval=3000)
+gap_min     = input.int(0,       "Écart min ancre → 2e pivot (barres)", group=grp, minval=0, maxval=500,
+     tooltip="Hypothèse 'Look for New Pivot High after X Bars' de l'original : les pivots plus proches de l'ancre que cet écart sont ignorés pour la pente. 0 = désactivé. Vaut pour résistance et support.")
 ext_bars    = input.int(50,      "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
 fz_col      = input.color(#FFFFFF, "Couleur droite figée", group=grp, inline="c1")
 fz_w        = input.int(2,       "Épaisseur", group=grp, minval=1, maxval=5, inline="c1")
@@ -26,7 +28,8 @@ show_dyn    = input.bool(true,   "Afficher la règle actuelle (comparaison)", gr
 dyn_col     = input.color(#FF9800, "", group=grp, inline="c2")
 show_dbg    = input.bool(true,   "Marquer les gels (croix orange) + état", group=grp)
 
-look = timeframe.in_seconds(timeframe.period) < 30 * 60 ? lb_lo : lb_hi
+is_low_tf = timeframe.in_seconds(timeframe.period) < 30 * 60
+look = is_low_tf ? lb_lo : lb_hi
 
 // ── Pivots hauts (plafond 200 : ne pas tronquer la fenêtre en silence) ──
 ph = ta.pivothigh(high, piv_len, piv_len)
@@ -63,10 +66,11 @@ f_resist(lk) =>
     if a_i > 0
         a_bar = array.get(ph_bar, a_i)
         for i = 0 to a_i - 1
-            sl = (array.get(ph_price, i) - a_px) / (array.get(ph_bar, i) - a_bar)
-            if na(r_sl) or sl > r_sl
-                r_sl := sl
-        r_x1 := float(a_bar)
+            if array.get(ph_bar, i) - a_bar >= gap_min
+                sl = (array.get(ph_price, i) - a_px) / (array.get(ph_bar, i) - a_bar)
+                if na(r_sl) or sl > r_sl
+                    r_sl := sl
+        r_x1 := na(r_sl) ? na : float(a_bar)
     [r_x1, a_px, r_sl]
 
 [c_x1, c_y1, c_sl] = f_resist(look)
@@ -142,6 +146,9 @@ grp_sp  = "=== SUPPORT ASCENDANT ==="
 sp_on   = input.bool(true,     "Activer le support ascendant", group=grp_sp)
 sp_col  = input.color(#000000, "Couleur support figé", group=grp_sp, inline="s1")
 sp_w    = input.int(2,         "Épaisseur", group=grp_sp, minval=1, maxval=5, inline="s1")
+sp_lb_lo = input.int(150,      "Support : fenêtre ancre, TF < 30 min",  group=grp_sp, minval=10, maxval=3000)
+sp_lb_hi = input.int(150,      "Support : fenêtre ancre, TF ≥ 30 min", group=grp_sp, minval=10, maxval=3000)
+sp_look  = is_low_tf ? sp_lb_lo : sp_lb_hi
 
 pl = ta.pivotlow(low, piv_len, piv_len)
 
@@ -171,13 +178,14 @@ f_support(lk) =>
     if a_i > 0
         a_bar = array.get(pl_bar, a_i)
         for i = 0 to a_i - 1
-            sl = (array.get(pl_price, i) - a_px) / (array.get(pl_bar, i) - a_bar)
-            if na(r_sl) or sl < r_sl
-                r_sl := sl
-        r_x1 := float(a_bar)
+            if array.get(pl_bar, i) - a_bar >= gap_min
+                sl = (array.get(pl_price, i) - a_px) / (array.get(pl_bar, i) - a_bar)
+                if na(r_sl) or sl < r_sl
+                    r_sl := sl
+        r_x1 := na(r_sl) ? na : float(a_bar)
     [r_x1, a_px, r_sl]
 
-[s_x1, s_y1, s_sl] = f_support(look)
+[s_x1, s_y1, s_sl] = f_support(sp_look)
 s_ok = sp_on and not na(s_x1) and not na(s_sl)
 
 var float sp_x1     = na
@@ -251,7 +259,7 @@ if barstate.islast and show_dbg
         for i = 0 to array.size(ph_bar) - 1
             if bar_index - array.get(ph_bar, i) <= look
                 n_win += 1
-    f_row(0, "Fenêtre", str.tostring(look) + " barres")
+    f_row(0, "Fenêtres rés / sup", str.tostring(look) + " / " + str.tostring(sp_look) + " barres, écart " + str.tostring(gap_min))
     f_row(1, "Pivots en mémoire", str.tostring(array.size(ph_bar)))
     f_row(2, "Pivots dans fenêtre", str.tostring(n_win))
     f_row(3, "Candidate", cand_ok ? "OK" : "aucune (ancre = dernier pivot ?)")
