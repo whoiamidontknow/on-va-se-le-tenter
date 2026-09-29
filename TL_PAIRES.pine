@@ -12,8 +12,9 @@
 // NQ rés 447→458, NQ sup 452→507) sortent toutes de cette règle.
 // RÉSISTANCE VALIDÉE 4/4 (MES + NQ, 15m + 1h) avec 10 barres à gauche et
 // 38 à 50 à droite : la référence confirme ses pivots hauts avec retard.
-// SUPPORT NON RÉSOLU : cette règle ne retrouve au mieux que 1 à 2 supports
-// sur 4, quel que soit le réglage. Le support de l'original suit une autre
+// SUPPORT PARTIEL 2/4 : meilleur réglage = pivots bas 42 à gauche / 10 à
+// droite, le miroir exact de la résistance (bon : NQ 15m, MES 1h ;
+// faux : MES 15m, NQ 1h). Le support de l'original suit une autre
 // logique (NQ 1h : il garde une droite cassée depuis 10 jours).
 indicator("Ephore TL Paires", overlay=true, max_lines_count=50, max_labels_count=50)
 
@@ -21,7 +22,9 @@ grp = "=== TL PAIRES ==="
 piv_left  = input.int(10, "Pivots : barres à gauche", group=grp, minval=1, maxval=50)
 res_right = input.int(40, "Résistance : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
      tooltip="Validé sur MES et NQ, 15m et 1h : 38 à 50 donne les 4 bonnes résistances.")
-sup_right = input.int(20, "Support : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
+sup_left  = input.int(42, "Support : barres à gauche", group=grp, minval=1, maxval=100,
+     tooltip="Miroir de la résistance (10 gauche / 40 droite) : le support veut ~40 à gauche / 10 à droite. 41 à 44 donnent le même résultat.")
+sup_right = input.int(10, "Support : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
      tooltip="Expérimental : le support de l'original suit une autre logique, non retrouvée.")
 ext_bars  = input.int(50, "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
 res_col   = input.color(#FFFFFF, "Couleur résistance", group=grp, inline="c1")
@@ -31,7 +34,7 @@ show_lbl  = input.bool(true, "Étiquettes (points de la droite)", group=grp)
 
 // ── Pivots ──
 ph = ta.pivothigh(high, piv_left, res_right)
-pl = ta.pivotlow(low,  piv_left, sup_right)
+pl = ta.pivotlow(low,  sup_left, sup_right)
 
 var float[] ph_price = array.new_float(0)
 var int[]   ph_bar   = array.new_int(0)
