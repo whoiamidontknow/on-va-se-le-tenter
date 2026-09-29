@@ -1,0 +1,134 @@
+//@version=6
+// ════════════════════════════════════════════════════════════
+// EPHORE TL FIGÉE — test de l'hypothèse "ligne figée après cassure"
+// ════════════════════════════════════════════════════════════
+// Même règle que la résistance de PORSCHEONARRIVE :
+//   ancre = pivot haut le plus élevé de la fenêtre,
+//   pente = la moins négative parmi les pivots suivants.
+// Différence testée : dès qu'une clôture passe au-dessus de la droite,
+// la droite est FIGÉE. Un pivot qui la traverse ensuite ne la redessine
+// plus. Elle n'est remplacée que par un nouveau pivot plus haut que
+// l'ancre (ou, en option, quand l'ancre sort de la fenêtre).
+//
+// À superposer à la référence : droite figée en blanc, droite
+// recalculée à chaque bougie (règle actuelle) en gris pointillé.
+indicator("Ephore TL Figee", overlay=true, max_lines_count=50, max_labels_count=50)
+
+grp = "=== TL FIGÉE ==="
+fz_on       = input.bool(true,   "Figer la droite après cassure", group=grp)
+fz_expire   = input.bool(false,  "Libérer quand l'ancre sort de la fenêtre", group=grp)
+piv_len     = input.int(10,      "Force des pivots (barres de chaque côté)", group=grp, minval=2, maxval=50)
+lb_lo       = input.int(250,     "Fenêtre ancre, TF < 30 min",  group=grp, minval=10, maxval=3000)
+lb_hi       = input.int(150,     "Fenêtre ancre, TF ≥ 30 min", group=grp, minval=10, maxval=3000)
+ext_bars    = input.int(50,      "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
+fz_col      = input.color(#FFFFFF, "Couleur droite figée", group=grp, inline="c1")
+fz_w        = input.int(2,       "Épaisseur", group=grp, minval=1, maxval=5, inline="c1")
+show_dyn    = input.bool(true,   "Afficher la règle actuelle (comparaison)", group=grp, inline="c2")
+dyn_col     = input.color(color.new(color.gray, 20), "", group=grp, inline="c2")
+show_dbg    = input.bool(true,   "Marquer les gels (croix orange) + état", group=grp)
+
+look = timeframe.in_seconds(timeframe.period) < 30 * 60 ? lb_lo : lb_hi
+
+// ── Pivots hauts (plafond 200 : ne pas tronquer la fenêtre en silence) ──
+ph = ta.pivothigh(high, piv_len, piv_len)
+
+var float[] ph_price = array.new_float(0)
+var int[]   ph_bar   = array.new_int(0)
+
+if not na(ph)
+    array.unshift(ph_price, ph)
+    array.unshift(ph_bar,   bar_index - piv_len)
+    if array.size(ph_price) > 200
+        array.pop(ph_price)
+        array.pop(ph_bar)
+
+// ── Fonctions ──
+f_val(x1, y1, slope, x) =>
+    y1 + slope * (x - x1)
+
+// Candidate : [x1, y1, pente], na si pas de pivot après l'ancre
+f_resist(lk) =>
+    int   a_i  = -1
+    float a_px = na
+    n = array.size(ph_price)
+    if n > 0
+        for i = 0 to n - 1
+            if bar_index - array.get(ph_bar, i) <= lk
+                pv = array.get(ph_price, i)
+                if na(a_px) or pv > a_px
+                    a_px := pv
+                    a_i  := i
+    float r_x1 = na
+    float r_sl = na
+    // Tableaux du plus récent au plus ancien : les pivots après l'ancre sont aux indices < a_i
+    if a_i > 0
+        a_bar = array.get(ph_bar, a_i)
+        for i = 0 to a_i - 1
+            sl = (array.get(ph_price, i) - a_px) / (array.get(ph_bar, i) - a_bar)
+            if na(r_sl) or sl > r_sl
+                r_sl := sl
+        r_x1 := float(a_bar)
+    [r_x1, a_px, r_sl]
+
+[c_x1, c_y1, c_sl] = f_resist(look)
+cand_ok = not na(c_x1) and not na(c_sl)
+
+// ── Machine à états : active → figée → (nouvelle ancre) active ──
+var float fz_x1     = na
+var float fz_y1     = na
+var float fz_sl     = na
+var bool  fz_broken = false
+bool broke_now = false
+
+if not fz_on
+    fz_x1 := cand_ok ? c_x1 : na
+    fz_y1 := cand_ok ? c_y1 : na
+    fz_sl := cand_ok ? c_sl : na
+    fz_broken := false
+else
+    if fz_broken
+        new_higher = cand_ok and c_x1 != fz_x1 and c_y1 > fz_y1
+        expired    = fz_expire and bar_index - fz_x1 > look
+        if new_higher or expired
+            fz_x1 := cand_ok ? c_x1 : na
+            fz_y1 := cand_ok ? c_y1 : na
+            fz_sl := cand_ok ? c_sl : na
+            fz_broken := false
+    else if cand_ok
+        // Tant qu'elle n'est pas cassée, la droite suit la règle actuelle.
+        // Si la candidate disparaît (ancre = dernier pivot), on garde la précédente.
+        fz_x1 := c_x1
+        fz_y1 := c_y1
+        fz_sl := c_sl
+
+    if not fz_broken and not na(fz_x1)
+        if close > f_val(fz_x1, fz_y1, fz_sl, bar_index)
+            fz_broken := true
+            broke_now := true
+
+plotshape(show_dbg and broke_now, "Gel", style=shape.xcross,
+     location=location.abovebar, color=color.orange, size=size.tiny)
+
+// ── Dessin ──
+var line  ln_fz  = na
+var line  ln_dyn = na
+var label lb_st  = na
+
+if barstate.islast
+    line.delete(ln_fz)
+    line.delete(ln_dyn)
+    label.delete(lb_st)
+    ex = bar_index + ext_bars
+
+    if not na(fz_x1)
+        ln_fz := line.new(int(fz_x1), fz_y1, ex, f_val(fz_x1, fz_y1, fz_sl, ex),
+             xloc=xloc.bar_index, color=fz_col, width=fz_w, style=line.style_solid)
+        if show_dbg
+            lb_st := label.new(ex, f_val(fz_x1, fz_y1, fz_sl, ex),
+                 (fz_broken ? "FIGÉE" : "ACTIVE") + "  ancre " + str.tostring(fz_y1, format.mintick),
+                 xloc=xloc.bar_index, style=label.style_label_left,
+                 color=color.new(color.black, 100), textcolor=fz_col, size=size.small)
+
+    if show_dyn and cand_ok
+        ln_dyn := line.new(int(c_x1), c_y1, ex, f_val(c_x1, c_y1, c_sl, ex),
+             xloc=xloc.bar_index, color=dyn_col, width=1, style=line.style_dotted)
