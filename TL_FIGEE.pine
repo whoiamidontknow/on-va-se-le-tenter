@@ -132,8 +132,113 @@ if barstate.islast
         ln_dyn := line.new(int(c_x1), c_y1, ex, f_val(c_x1, c_y1, c_sl, ex),
              xloc=xloc.bar_index, color=dyn_col, width=1, style=line.style_dotted)
 
+// ══════════════════════════════════════════════════════════════
+// SUPPORT ASCENDANT — miroir exact de la résistance
+//   ancre = pivot bas le plus bas de la fenêtre,
+//   pente = la moins positive parmi les pivots suivants (tous au-dessus),
+//   figée à la première clôture SOUS la droite, libérée quand l'ancre change.
+// ══════════════════════════════════════════════════════════════
+grp_sp  = "=== SUPPORT ASCENDANT ==="
+sp_on   = input.bool(true,     "Activer le support ascendant", group=grp_sp)
+sp_col  = input.color(#000000, "Couleur support figé", group=grp_sp, inline="s1")
+sp_w    = input.int(2,         "Épaisseur", group=grp_sp, minval=1, maxval=5, inline="s1")
+
+pl = ta.pivotlow(low, piv_len, piv_len)
+
+var float[] pl_price = array.new_float(0)
+var int[]   pl_bar   = array.new_int(0)
+
+if not na(pl)
+    array.unshift(pl_price, pl)
+    array.unshift(pl_bar,   bar_index - piv_len)
+    if array.size(pl_price) > 200
+        array.pop(pl_price)
+        array.pop(pl_bar)
+
+f_support(lk) =>
+    int   a_i  = -1
+    float a_px = na
+    n = array.size(pl_price)
+    if n > 0
+        for i = 0 to n - 1
+            if bar_index - array.get(pl_bar, i) <= lk
+                pv = array.get(pl_price, i)
+                if na(a_px) or pv < a_px
+                    a_px := pv
+                    a_i  := i
+    float r_x1 = na
+    float r_sl = na
+    if a_i > 0
+        a_bar = array.get(pl_bar, a_i)
+        for i = 0 to a_i - 1
+            sl = (array.get(pl_price, i) - a_px) / (array.get(pl_bar, i) - a_bar)
+            if na(r_sl) or sl < r_sl
+                r_sl := sl
+        r_x1 := float(a_bar)
+    [r_x1, a_px, r_sl]
+
+[s_x1, s_y1, s_sl] = f_support(look)
+s_ok = sp_on and not na(s_x1) and not na(s_sl)
+
+var float sp_x1     = na
+var float sp_y1     = na
+var float sp_sl     = na
+var bool  sp_broken = false
+bool sp_broke_now = false
+
+if not sp_on
+    sp_x1 := na
+    sp_broken := false
+else if not fz_on
+    sp_x1 := s_ok ? s_x1 : na
+    sp_y1 := s_ok ? s_y1 : na
+    sp_sl := s_ok ? s_sl : na
+    sp_broken := false
+else
+    if sp_broken
+        if s_ok and s_x1 != sp_x1
+            sp_x1 := s_x1
+            sp_y1 := s_y1
+            sp_sl := s_sl
+            sp_broken := false
+    else if s_ok
+        sp_x1 := s_x1
+        sp_y1 := s_y1
+        sp_sl := s_sl
+
+    if not sp_broken and not na(sp_x1)
+        if close < f_val(sp_x1, sp_y1, sp_sl, bar_index)
+            sp_broken := true
+            sp_broke_now := true
+
+plotshape(show_dbg and sp_broke_now, "Gel support", style=shape.xcross,
+     location=location.belowbar, color=color.orange, size=size.tiny)
+
+var line  ln_sp     = na
+var line  ln_sp_dyn = na
+var label lb_sp     = na
+
+if barstate.islast
+    line.delete(ln_sp)
+    line.delete(ln_sp_dyn)
+    label.delete(lb_sp)
+    sex = bar_index + ext_bars
+
+    if not na(sp_x1)
+        ln_sp := line.new(int(sp_x1), sp_y1, sex, f_val(sp_x1, sp_y1, sp_sl, sex),
+             xloc=xloc.bar_index, color=sp_col, width=sp_w, style=line.style_solid)
+        if show_dbg
+            lb_sp := label.new(sex, f_val(sp_x1, sp_y1, sp_sl, sex),
+                 (sp_broken ? "FIGÉ" : "ACTIF") + "  ancre " + str.tostring(sp_y1, format.mintick),
+                 xloc=xloc.bar_index, style=label.style_label_left,
+                 color=color.new(color.black, 100), textcolor=sp_col, size=size.small)
+
+    if show_dyn and s_ok
+        ln_sp_dyn := line.new(int(s_x1), s_y1, sex, f_val(s_x1, s_y1, s_sl, sex),
+             xloc=xloc.bar_index, color=dyn_col, width=1, style=line.style_dotted)
+
 // ── Diagnostic : dit pourquoi une droite est absente ──
-var table dbg = table.new(position.top_left, 2, 6, bgcolor=color.new(color.black, 20),
+var table dbg = table.new(position.top_left, 2, 8, bgcolor=color.new(color.black, 20),
      border_width=1, border_color=color.gray)
 
 f_row(r, k, v) =>
@@ -150,5 +255,7 @@ if barstate.islast and show_dbg
     f_row(1, "Pivots en mémoire", str.tostring(array.size(ph_bar)))
     f_row(2, "Pivots dans fenêtre", str.tostring(n_win))
     f_row(3, "Candidate", cand_ok ? "OK" : "aucune (ancre = dernier pivot ?)")
-    f_row(4, "Droite", na(fz_x1) ? "AUCUNE" : fz_broken ? "FIGÉE" : "ACTIVE")
+    f_row(4, "Résistance", na(fz_x1) ? "AUCUNE" : fz_broken ? "FIGÉE" : "ACTIVE")
     f_row(5, "Ancre", na(fz_x1) ? "—" : str.tostring(fz_y1, format.mintick) + " (il y a " + str.tostring(bar_index - int(fz_x1)) + " barres)")
+    f_row(6, "Support", na(sp_x1) ? "AUCUN" : sp_broken ? "FIGÉ" : "ACTIF")
+    f_row(7, "Ancre support", na(sp_x1) ? "—" : str.tostring(sp_y1, format.mintick) + " (il y a " + str.tostring(bar_index - int(sp_x1)) + " barres)")
