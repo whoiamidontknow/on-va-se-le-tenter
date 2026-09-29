@@ -16,7 +16,7 @@
 // droite, le miroir exact de la résistance (bon : NQ 15m, MES 1h ;
 // faux : MES 15m, NQ 1h). Le support de l'original suit une autre
 // logique (NQ 1h : il garde une droite cassée depuis 10 jours).
-indicator("Ephore TL Paires", overlay=true, max_lines_count=50, max_labels_count=50)
+indicator("Ephore TL Paires", overlay=true, max_lines_count=50, max_labels_count=50, max_bars_back=5000)
 
 grp = "=== TL PAIRES ==="
 piv_left  = input.int(10, "Pivots : barres à gauche", group=grp, minval=1, maxval=50)
@@ -27,9 +27,9 @@ sup_left  = input.int(42, "Support : barres à gauche", group=grp, minval=1, max
 sup_right = input.int(10, "Support : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
      tooltip="Expérimental : le support de l'original suit une autre logique, non retrouvée.")
 ext_bars  = input.int(50, "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
-res_col   = input.color(#FFFFFF, "Couleur résistance", group=grp, inline="c1")
-sup_col   = input.color(#FFFFFF, "Couleur support",    group=grp, inline="c1")
-width     = input.int(2, "Épaisseur", group=grp, minval=1, maxval=5)
+res_col   = input.color(#FF6D00, "Couleur résistance", group=grp, inline="c1")
+sup_col   = input.color(#2962FF, "Couleur support",    group=grp, inline="c1")
+tl_width  = input.int(3, "Épaisseur", group=grp, minval=1, maxval=5)
 show_lbl  = input.bool(true, "Étiquettes (points de la droite)", group=grp)
 
 // ── Pivots ──
@@ -42,8 +42,14 @@ var float[] pl_price = array.new_float(0)
 var int[]   pl_bar   = array.new_int(0)
 
 // Droites courantes : x1, y1, x2, y2
-var float r_x1 = na, var float r_y1 = na, var float r_x2 = na, var float r_y2 = na
-var float s_x1 = na, var float s_y1 = na, var float s_x2 = na, var float s_y2 = na
+var float r_x1 = na
+var float r_y1 = na
+var float r_x2 = na
+var float r_y2 = na
+var float s_x1 = na
+var float s_y1 = na
+var float s_x2 = na
+var float s_y2 = na
 
 if not na(ph)
     b = bar_index - res_right
@@ -90,12 +96,14 @@ var label lb_r = na
 var label lb_s = na
 
 if barstate.islast
-    line.delete(ln_r), line.delete(ln_s)
-    label.delete(lb_r), label.delete(lb_s)
+    line.delete(ln_r)
+    line.delete(ln_s)
+    label.delete(lb_r)
+    label.delete(lb_s)
     ex = bar_index + ext_bars
     if not na(r_x1)
         ln_r := line.new(int(r_x1), r_y1, ex, f_y(r_x1, r_y1, r_x2, r_y2, ex),
-             xloc=xloc.bar_index, color=res_col, width=width)
+             xloc=xloc.bar_index, color=res_col, width=tl_width)
         if show_lbl
             lb_r := label.new(ex, f_y(r_x1, r_y1, r_x2, r_y2, ex),
                  "RÉS " + str.tostring(r_y1, format.mintick) + " → " + str.tostring(r_y2, format.mintick),
@@ -103,9 +111,27 @@ if barstate.islast
                  color=color.new(color.black, 100), textcolor=res_col, size=size.small)
     if not na(s_x1)
         ln_s := line.new(int(s_x1), s_y1, ex, f_y(s_x1, s_y1, s_x2, s_y2, ex),
-             xloc=xloc.bar_index, color=sup_col, width=width)
+             xloc=xloc.bar_index, color=sup_col, width=tl_width)
         if show_lbl
             lb_s := label.new(ex, f_y(s_x1, s_y1, s_x2, s_y2, ex),
                  "SUP " + str.tostring(s_y1, format.mintick) + " → " + str.tostring(s_y2, format.mintick),
                  xloc=xloc.bar_index, style=label.style_label_left,
                  color=color.new(color.black, 100), textcolor=sup_col, size=size.small)
+
+// ── Contrôle : pivots détectés (triangles) + tableau d'état ──
+plotshape(not na(ph), "Pivot haut", style=shape.triangledown, location=location.abovebar,
+     color=color.new(res_col, 30), size=size.tiny, offset=-res_right)
+plotshape(not na(pl), "Pivot bas", style=shape.triangleup, location=location.belowbar,
+     color=color.new(sup_col, 30), size=size.tiny, offset=-sup_right)
+
+var table tb = table.new(position.top_left, 2, 4, bgcolor=color.new(color.black, 15),
+     border_width=1, border_color=color.gray)
+if barstate.islast
+    table.cell(tb, 0, 0, "Pivots hauts / bas", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 0, str.tostring(array.size(ph_price)) + " / " + str.tostring(array.size(pl_price)), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 1, "Résistance", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 1, na(r_x1) ? "AUCUNE" : str.tostring(r_y1, format.mintick) + " → " + str.tostring(r_y2, format.mintick), text_color=res_col, text_size=size.small)
+    table.cell(tb, 0, 2, "Support", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 2, na(s_x1) ? "AUCUN" : str.tostring(s_y1, format.mintick) + " → " + str.tostring(s_y2, format.mintick), text_color=sup_col, text_size=size.small)
+    table.cell(tb, 0, 3, "Barres chargées", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 3, str.tostring(bar_index + 1), text_color=color.white, text_size=size.small)
