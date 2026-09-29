@@ -1,31 +1,27 @@
 //@version=6
 // ════════════════════════════════════════════════════════════
-// EPHORE TL PAIRES — règle retrouvée sur données (MES + NQ 15m, 2026-09-29)
+// EPHORE TL PAIRES — construction de l'original, affichage stable
 // ════════════════════════════════════════════════════════════
-// À chaque nouveau pivot haut confirmé, on le relie au pivot haut
-// PRÉCÉDENT le plus proche qui est PLUS HAUT que lui. La droite affichée
-// est la dernière créée. Miroir pour le support : nouveau pivot bas relié
-// au pivot bas précédent le plus proche qui est PLUS BAS.
-// Pas de fenêtre de recherche.
+// CONSTRUCTION (sûre : les 8 droites de référence MES/NQ 15m/1h sont
+// toutes de ce type) : chaque nouveau pivot haut est relié au pivot haut
+// précédent le plus proche qui est PLUS HAUT ; miroir pour les bas.
 //
-// Les 4 droites de référence (MES rés 380→458, MES sup 507→523,
-// NQ rés 447→458, NQ sup 452→507) sortent toutes de cette règle.
-// RÉSISTANCE VALIDÉE 4/4 (MES + NQ, 15m + 1h) avec 10 barres à gauche et
-// 38 à 50 à droite : la référence confirme ses pivots hauts avec retard.
-// SUPPORT PARTIEL 2/4 : meilleur réglage = pivots bas 42 à gauche / 10 à
-// droite, le miroir exact de la résistance (bon : NQ 15m, MES 1h ;
-// faux : MES 15m, NQ 1h). Le support de l'original suit une autre
-// logique (NQ 1h : il garde une droite cassée depuis 10 jours).
+// AFFICHAGE (choix maison, la règle de l'original reste inconnue) :
+// on garde la droite affichée tant qu'elle n'est pas cassée (clôture
+// au-delà). Une fois cassée, elle reste visible jusqu'à la prochaine
+// droite créée, qui la remplace. Pivots 10/10 comme l'original.
+// Le « 40 barres à droite » précédent collait à un seul export et a
+// décroché 8 bougies plus tard : abandonné.
 indicator("Ephore TL Paires", overlay=true, max_lines_count=50, max_labels_count=50, max_bars_back=5000)
 
 grp = "=== TL PAIRES ==="
 piv_left  = input.int(10, "Pivots : barres à gauche", group=grp, minval=1, maxval=50)
-res_right = input.int(40, "Résistance : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
-     tooltip="Validé sur MES et NQ, 15m et 1h : 38 à 50 donne les 4 bonnes résistances.")
-sup_left  = input.int(42, "Support : barres à gauche", group=grp, minval=1, maxval=100,
-     tooltip="Miroir de la résistance (10 gauche / 40 droite) : le support veut ~40 à gauche / 10 à droite. 41 à 44 donnent le même résultat.")
+res_right = input.int(10, "Résistance : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
+     tooltip="10 comme l'original (Pivot High Bars Required for Anchor).")
+sup_left  = input.int(10, "Support : barres à gauche", group=grp, minval=1, maxval=100,
+     tooltip="10 comme la résistance.")
 sup_right = input.int(10, "Support : barres à droite (confirmation)", group=grp, minval=1, maxval=100,
-     tooltip="Expérimental : le support de l'original suit une autre logique, non retrouvée.")
+     tooltip="10 comme la résistance.")
 ext_bars  = input.int(50, "Prolongement à droite (barres)", group=grp, minval=0, maxval=490)
 res_col   = input.color(#FF6D00, "Couleur résistance", group=grp, inline="c1")
 sup_col   = input.color(#2962FF, "Couleur support",    group=grp, inline="c1")
@@ -50,6 +46,8 @@ var float s_x1 = na
 var float s_y1 = na
 var float s_x2 = na
 var float s_y2 = na
+var bool  r_broken = false
+var bool  s_broken = false
 
 if not na(ph)
     b = bar_index - res_right
@@ -58,10 +56,13 @@ if not na(ph)
         // Du plus récent au plus ancien : premier pivot plus haut
         for i = n - 1 to 0
             if array.get(ph_price, i) > ph
-                r_x1 := float(array.get(ph_bar, i))
-                r_y1 := array.get(ph_price, i)
-                r_x2 := float(b)
-                r_y2 := ph
+                // Remplace seulement si aucune droite ou droite déjà cassée
+                if na(r_x1) or r_broken
+                    r_x1 := float(array.get(ph_bar, i))
+                    r_y1 := array.get(ph_price, i)
+                    r_x2 := float(b)
+                    r_y2 := ph
+                    r_broken := false
                 break
     array.push(ph_price, ph)
     array.push(ph_bar, b)
@@ -75,10 +76,12 @@ if not na(pl)
     if n > 0
         for i = n - 1 to 0
             if array.get(pl_price, i) < pl
-                s_x1 := float(array.get(pl_bar, i))
-                s_y1 := array.get(pl_price, i)
-                s_x2 := float(b)
-                s_y2 := pl
+                if na(s_x1) or s_broken
+                    s_x1 := float(array.get(pl_bar, i))
+                    s_y1 := array.get(pl_price, i)
+                    s_x2 := float(b)
+                    s_y2 := pl
+                    s_broken := false
                 break
     array.push(pl_price, pl)
     array.push(pl_bar, b)
@@ -89,6 +92,14 @@ if not na(pl)
 // ── Dessin ──
 f_y(x1, y1, x2, y2, x) =>
     y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+
+// ── Cassures (clôture au-delà de la droite) ──
+if not na(r_x1) and not r_broken and bar_index > r_x2
+    if close > f_y(r_x1, r_y1, r_x2, r_y2, bar_index)
+        r_broken := true
+if not na(s_x1) and not s_broken and bar_index > s_x2
+    if close < f_y(s_x1, s_y1, s_x2, s_y2, bar_index)
+        s_broken := true
 
 var line  ln_r = na
 var line  ln_s = na
@@ -130,8 +141,8 @@ if barstate.islast
     table.cell(tb, 0, 0, "Pivots hauts / bas", text_color=color.silver, text_size=size.small)
     table.cell(tb, 1, 0, str.tostring(array.size(ph_price)) + " / " + str.tostring(array.size(pl_price)), text_color=color.white, text_size=size.small)
     table.cell(tb, 0, 1, "Résistance", text_color=color.silver, text_size=size.small)
-    table.cell(tb, 1, 1, na(r_x1) ? "AUCUNE" : str.tostring(r_y1, format.mintick) + " → " + str.tostring(r_y2, format.mintick), text_color=res_col, text_size=size.small)
+    table.cell(tb, 1, 1, na(r_x1) ? "AUCUNE" : str.tostring(r_y1, format.mintick) + " → " + str.tostring(r_y2, format.mintick) + (r_broken ? "  (cassée)" : ""), text_color=res_col, text_size=size.small)
     table.cell(tb, 0, 2, "Support", text_color=color.silver, text_size=size.small)
-    table.cell(tb, 1, 2, na(s_x1) ? "AUCUN" : str.tostring(s_y1, format.mintick) + " → " + str.tostring(s_y2, format.mintick), text_color=sup_col, text_size=size.small)
+    table.cell(tb, 1, 2, na(s_x1) ? "AUCUN" : str.tostring(s_y1, format.mintick) + " → " + str.tostring(s_y2, format.mintick) + (s_broken ? "  (cassé)" : ""), text_color=sup_col, text_size=size.small)
     table.cell(tb, 0, 3, "Barres chargées", text_color=color.silver, text_size=size.small)
     table.cell(tb, 1, 3, str.tostring(bar_index + 1), text_color=color.white, text_size=size.small)
