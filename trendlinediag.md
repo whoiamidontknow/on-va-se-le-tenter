@@ -114,9 +114,12 @@ Sept changements :
    pour ne pas tracer sur deux vaguelettes voisines.
 5. **Classement des candidates** : touches ↓, puis longueur ↓, puis proximité ↑ —
    plus seulement la proximité.
-6. **Persistance** : la ligne est créée comme objet `line` dès qu'elle est validée,
-   prolongée à chaque barre, puis **figée** à sa cassure. Corrige 1.5 et donne
-   l'historique visuel des trendlines cassées.
+6. **Persistance, et une seule ligne par côté** : la ligne est créée comme objet
+   `line` dès qu'elle est validée, puis prolongée à chaque barre. À sa cassure elle
+   est **supprimée** et la recherche repart. Il n'y a donc jamais plus d'**une
+   résistance et d'un support** à l'écran, à aucun moment. Corrige la ligne
+   sautillante de 1.5 ; en contrepartie l'historique des trendlines cassées n'est
+   pas conservé — c'est le compromis assumé (voir §4).
 7. **Coût d'exécution** : la recherche ne tourne que sur confirmation d'un nouveau
    pivot ou juste après une cassure — pas à chaque barre.
 
@@ -139,13 +142,14 @@ fin de fichier.
 // EPHORE TRENDLINES V2 — Résistance descendante + Support ascendant
 // ══════════════════════════════════════════════════════════════
 // Règle : pas de structure valide → aucune ligne tracée.
+// UNE SEULE résistance et UN SEUL support à l'écran, à tout instant : la ligne
+// active est un objet `line` unique par côté, supprimé dès qu'il est cassé ou
+// remplacé. Aucun historique de trendlines cassées ne s'accumule.
 // Une droite n'est retenue que si :
 //   (a) ses 2 ancrages sont séparés d'au moins tl_min_span × tl_piv_len barres
 //   (b) elle est du bon côté du prix (résistance au-dessus, support en dessous)
 //   (c) aucun pivot postérieur à l'ancrage ne la dépasse (test de hull)
 //   (d) elle totalise au moins tl_min_touches pivots dans son buffer
-// La ligne validée est figée à sa cassure → l'historique reste visible et les
-// marqueurs de cassure tombent sur la droite réellement dessinée.
 grp_tl = "=== EPHORE TRENDLINES V2 ==="
 
 tl_enable      = input.bool(true, "Activer Trendlines", group=grp_tl)
@@ -292,7 +296,7 @@ breakout_signal = tl_enable and tl_show_break and res_on and close > res_now + r
 
 if breakout_signal
     if not na(res_ln)
-        line.set_xy2(res_ln, bar_index, res_now)   // on fige la ligne sur la cassure
+        line.delete(res_ln)        // cassée → effacée : une seule résistance à l'écran
     res_ln := na
     res_on := false
 
@@ -301,8 +305,8 @@ bool res_run = tl_enable and (not res_on or not tl_hold) and (not na(tl_ph) or b
      tl_macro_look, tl_buffer, tl_min_sep, tl_min_touches, close)
 
 if not na(rc_x1)
-    if res_on and not na(res_ln)
-        line.delete(res_ln)                        // remplacement (tl_hold = off)
+    if not na(res_ln)
+        line.delete(res_ln)        // remplacement : jamais 2 résistances simultanées
     res_x1 := rc_x1
     res_y1 := rc_y1
     res_sl := rc_sl
@@ -336,7 +340,7 @@ breakdown_signal = bl_enable and bl_show_break and sup_on and close < sup_now - 
 
 if breakdown_signal
     if not na(sup_ln)
-        line.set_xy2(sup_ln, bar_index, sup_now)
+        line.delete(sup_ln)        // cassé → effacé : un seul support à l'écran
     sup_ln := na
     sup_on := false
 
@@ -345,8 +349,8 @@ bool sup_run = bl_enable and (not sup_on or not tl_hold) and (not na(tl_pl) or b
      tl_lookback, tl_buffer, tl_min_sep, tl_min_touches, close)
 
 if not na(sc_x1)
-    if sup_on and not na(sup_ln)
-        line.delete(sup_ln)
+    if not na(sup_ln)
+        line.delete(sup_ln)        // remplacement : jamais 2 supports simultanés
     sup_x1 := sc_x1
     sup_y1 := sc_y1
     sup_sl := sc_sl
@@ -370,7 +374,8 @@ plotshape(breakdown_signal, title="TL Breakdown", style=shape.circle,
 |---|---|
 | Une ligne presque toujours affichée, parfois du mauvais côté du prix | Ligne affichée seulement si la structure existe — périodes sans ligne, c'est normal et voulu |
 | Ligne recalculée à chaque barre, saute d'une paire de pivots à l'autre | Ligne stable, adoptée une fois, figée à sa cassure |
-| ○ de cassure éparpillés hors de la droite visible | ○ sur l'extrémité de la droite figée |
+| ○ de cassure éparpillés hors de la droite visible | ○ aligné sur la droite tant qu'elle est active. Après cassure la droite est effacée : le ○ reste seul, sans ligne — conséquence directe d'« une seule ligne par côté » |
+| Nombre de lignes non spécifié | Exactement **1 résistance + 1 support** au maximum, à tout instant |
 | `tl_min_touches` ignoré | Actif : 3 = 2 ancrages + 1 confirmation |
 | Droite pouvant traverser des sommets postérieurs | Test de hull : aucun pivot ne la dépasse |
 
@@ -399,8 +404,13 @@ ordre :
 
 ## 6. Reste ouvert (hors trendlines)
 
-- `tl_max_lines` reste inactif : 1 ligne par côté. Plusieurs trendlines simultanées
-  demanderaient un tableau d'états persistants, pas juste un jeu de `var`.
+- `tl_max_lines` a été **retiré des inputs** : une seule ligne par côté est
+  désormais la spécification, pas une limitation résiduelle. Si l'historique des
+  trendlines cassées devenait souhaitable un jour, il faudrait un tableau d'objets
+  `line` au lieu du `var line` unique — et ça rouvrirait l'encombrement visuel.
+- Corollaire : `max_lines_count=500` dans l'appel `indicator()` n'est plus sollicité
+  par les trendlines (2 objets vivants au maximum). Il reste nécessaire pour les
+  Pivator et Round Levels.
 - Validation de cassure incomplète vs `document-de-reference` §4 : il manque
   encore « prix reste du bon côté après cassure », alignement Moyenator, signal
   Heishinator dans le sens, et le blocage news 3★. Ces conditions existent ailleurs
