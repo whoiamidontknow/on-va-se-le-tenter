@@ -7,8 +7,8 @@
 //   pente = la moins négative parmi les pivots suivants.
 // Différence testée : dès qu'une clôture passe au-dessus de la droite,
 // la droite est FIGÉE. Un pivot qui la traverse ensuite ne la redessine
-// plus. Elle n'est remplacée que par un nouveau pivot plus haut que
-// l'ancre (ou, en option, quand l'ancre sort de la fenêtre).
+// plus. Elle est remplacée dès que l'ancre change : nouveau sommet plus
+// haut, ou ancre sortie de la fenêtre.
 //
 // À superposer à la référence : droite figée en blanc, droite
 // recalculée à chaque bougie (règle actuelle) en gris pointillé.
@@ -16,7 +16,6 @@ indicator("Ephore TL Figee", overlay=true, max_lines_count=50, max_labels_count=
 
 grp = "=== TL FIGÉE ==="
 fz_on       = input.bool(true,   "Figer la droite après cassure", group=grp)
-fz_expire   = input.bool(false,  "Libérer quand l'ancre sort de la fenêtre", group=grp)
 piv_len     = input.int(10,      "Force des pivots (barres de chaque côté)", group=grp, minval=2, maxval=50)
 lb_lo       = input.int(250,     "Fenêtre ancre, TF < 30 min",  group=grp, minval=10, maxval=3000)
 lb_hi       = input.int(150,     "Fenêtre ancre, TF ≥ 30 min", group=grp, minval=10, maxval=3000)
@@ -24,7 +23,7 @@ ext_bars    = input.int(50,      "Prolongement à droite (barres)", group=grp, m
 fz_col      = input.color(#FFFFFF, "Couleur droite figée", group=grp, inline="c1")
 fz_w        = input.int(2,       "Épaisseur", group=grp, minval=1, maxval=5, inline="c1")
 show_dyn    = input.bool(true,   "Afficher la règle actuelle (comparaison)", group=grp, inline="c2")
-dyn_col     = input.color(color.new(color.gray, 20), "", group=grp, inline="c2")
+dyn_col     = input.color(#FF9800, "", group=grp, inline="c2")
 show_dbg    = input.bool(true,   "Marquer les gels (croix orange) + état", group=grp)
 
 look = timeframe.in_seconds(timeframe.period) < 30 * 60 ? lb_lo : lb_hi
@@ -87,12 +86,12 @@ if not fz_on
     fz_broken := false
 else
     if fz_broken
-        new_higher = cand_ok and c_x1 != fz_x1 and c_y1 > fz_y1
-        expired    = fz_expire and bar_index - fz_x1 > look
-        if new_higher or expired
-            fz_x1 := cand_ok ? c_x1 : na
-            fz_y1 := cand_ok ? c_y1 : na
-            fz_sl := cand_ok ? c_sl : na
+        // L'ancre a changé (sommet plus haut ou ancienne ancre hors fenêtre) :
+        // sans ça, la droite restait collée à un vieux sommet, hors écran.
+        if cand_ok and c_x1 != fz_x1
+            fz_x1 := c_x1
+            fz_y1 := c_y1
+            fz_sl := c_sl
             fz_broken := false
     else if cand_ok
         // Tant qu'elle n'est pas cassée, la droite suit la règle actuelle.
