@@ -1,11 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// PORSCHEONARRIVE — VERSION V6 (2026-09-30)
+// PORSCHEONARRIVE — VERSION V7 (2026-09-30)
 // Fichier de référence : mis à jour à chaque MAJ majeure.
 // Installation : copier tout le fichier dans l'éditeur Pine de TradingView,
 // graphique en Heiken Ashi.
 //
 // JOURNAL DES VERSIONS
+//   V7  2026-09-30  Pivots annuels : ligne du 2 janvier 00:00 au 4 janvier de
+//                   l'année suivante, même quand janvier n'est pas chargé sur
+//                   le graphique (15m, 5m…). Sets initialisés dès la 1re bougie.
 //   V6  2026-09-30  Pivots : lignes sur toute la période, en heure (Europe/Paris) :
 //                   weekly lundi 00:00 → lundi suivant 00:00 ; mensuel → 1er du
 //                   mois suivant 11:00 ; annuel → 4 janvier de l'année suivante.
@@ -390,6 +393,12 @@ f_period_end(tf_name, st) =>
         r := timestamp(piv_tz, year(t2, piv_tz), month(t2, piv_tz), dayofmonth(t2, piv_tz), 0, 0, 0)
     r
 
+// Début d'affichage : l'annuel part toujours du 2 janvier 00:00 (fuseau piv_tz),
+// même si janvier n'est pas chargé sur le graphique (ex. 15m) ; les autres
+// périodes partent de la première bougie de la période.
+f_period_start(tf_name, t) =>
+    tf_name == "Annuel" ? timestamp(piv_tz, year(t, piv_tz), 1, 2, 0, 0, 0) : t
+
 // Étiquettes « près du prix » : ~30 bougies à droite de la dernière
 f_lbl_x(end_t) =>
     near = time_close + 30 * timeframe.in_seconds(timeframe.period) * 1000
@@ -425,7 +434,7 @@ var int s1_target_t2 = na
 var int s1_start_bi  = na
 var int s1_start_t   = na
 
-if new_tf1
+if (new_tf1 or na(s1_start_bi)) and not na(s1_p)
     line.delete(ln_s1_p),  line.delete(ln_s1_r1), line.delete(ln_s1_s1)
     line.delete(ln_s1_r2), line.delete(ln_s1_s2), line.delete(ln_s1_r3)
     line.delete(ln_s1_s3), line.delete(ln_s1_r4), line.delete(ln_s1_s4)
@@ -436,8 +445,8 @@ if new_tf1
     label.delete(lb_s1_r5), label.delete(lb_s1_s5)
 
     s1_start_bi  := bar_index
-    s1_start_t   := time
-    s1_target_t2 := f_period_end(piv_s1_tf, time)
+    s1_start_t   := f_period_start(piv_s1_tf, time)
+    s1_target_t2 := f_period_end(piv_s1_tf, s1_start_t)
 
     rv_s1_p  := s1_p
     rv_s1_r1 := s1_r1,  rv_s1_s1 := s1_s1
@@ -476,7 +485,7 @@ var int s2_target_t2 = na
 var int s2_start_bi  = na
 var int s2_start_t   = na
 
-if piv_s2_enable and new_tf2
+if piv_s2_enable and (new_tf2 or na(s2_start_bi)) and not na(s2_p)
     line.delete(ln_s2_p),  line.delete(ln_s2_r1), line.delete(ln_s2_s1)
     line.delete(ln_s2_r2), line.delete(ln_s2_s2), line.delete(ln_s2_r3)
     line.delete(ln_s2_s3), line.delete(ln_s2_r4), line.delete(ln_s2_s4)
@@ -487,8 +496,8 @@ if piv_s2_enable and new_tf2
     label.delete(lb_s2_r5), label.delete(lb_s2_s5)
 
     s2_start_bi  := bar_index
-    s2_start_t   := time
-    s2_target_t2 := f_period_end(piv_s2_tf, time)
+    s2_start_t   := f_period_start(piv_s2_tf, time)
+    s2_target_t2 := f_period_end(piv_s2_tf, s2_start_t)
 
     rv_s2_p  := s2_p
     rv_s2_r1 := s2_r1,  rv_s2_s1 := s2_s1
@@ -527,7 +536,7 @@ var int s3_target_t2 = na
 var int s3_start_bi  = na
 var int s3_start_t   = na
 
-if piv_s3_enable and new_tf3
+if piv_s3_enable and (new_tf3 or na(s3_start_bi)) and not na(s3_p)
     line.delete(ln_s3_p),  line.delete(ln_s3_r1), line.delete(ln_s3_s1)
     line.delete(ln_s3_r2), line.delete(ln_s3_s2), line.delete(ln_s3_r3)
     line.delete(ln_s3_s3), line.delete(ln_s3_r4), line.delete(ln_s3_s4)
@@ -538,8 +547,8 @@ if piv_s3_enable and new_tf3
     label.delete(lb_s3_r5), label.delete(lb_s3_s5)
 
     s3_start_bi  := bar_index
-    s3_start_t   := time
-    s3_target_t2 := f_period_end(piv_s3_tf, time)
+    s3_start_t   := f_period_start(piv_s3_tf, time)
+    s3_target_t2 := f_period_end(piv_s3_tf, s3_start_t)
 
     rv_s3_p  := s3_p
     rv_s3_r1 := s3_r1,  rv_s3_s1 := s3_s1
