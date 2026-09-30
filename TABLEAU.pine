@@ -1,0 +1,257 @@
+//@version=6
+// ══════════════════════════════════════════════════════════════
+// EPHORE TABLEAUX — VERSION V1 (2026-09-30)
+// Indicateur séparé pour reproduire les tableaux de l'original.
+// Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
+// Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
+//
+// JOURNAL DES VERSIONS
+//   V1  2026-09-30  Tableau principal = réplique de l'original (logique du script
+//                   public « SuperTrader Trend Analysis and Trade Study Dashboard »
+//                   de Midgar-). Vérifié MES 15m : RSI 60.67, CCI 134.23,
+//                   YoYo 0.08 %, Bull 0/3, Bear 1/3.
+//                   À venir : INDICATOR|SIGNAL, TIMEFRAME|TREND|STRENGTH,
+//                   Dashator, Signator.
+// ══════════════════════════════════════════════════════════════
+indicator("Ephore Tableaux", overlay=true)
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU PRINCIPAL V7 — réplique de l'original
+// ══════════════════════════════════════════════════════════════
+// Logique reprise de « SuperTrader Trend Analysis and Trade Study
+// Dashboard » par Midgar- (script public open source) :
+// https://www.tradingview.com/script/4hlaRIHC-SuperTrader-Trend-Analysis-and-Trade-Study-Dashboard/
+// Ephore l'a copié tel quel (mêmes libellés) avec ses couleurs.
+// Vérifié MES 15m HA, 30/09 bougie 09:30 : RSI 60.67, CCI 134.23,
+// YoYo 0.08 %, Bull 0/3, Bear 1/3 — identiques à l'original.
+grp_main     = "=== EPHORE TABLEAU PRINCIPAL ==="
+main_show    = input.bool(true, "Afficher Tableau Principal", group=grp_main)
+main_pos     = input.string("Top Right", "Position", group=grp_main, options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+main_sz      = input.string("Normal", "Taille Texte", group=grp_main, options=["Tiny", "Small", "Normal", "Large", "Huge"])
+st_tk1       = input.symbol("", "Ticker 1 (volume) — vide = symbole du graphique", group=grp_main)
+st_tk2       = input.symbol("", "Ticker 2 (volume) — vide = symbole du graphique", group=grp_main)
+st_vix_sym   = input.symbol("CBOE:VIX", "Symbole VIX", group=grp_main)
+
+// ─── PALETTE STYLE TABLEAU ───
+c_bg         = color.rgb(21, 22, 45)     // fond général
+c_border     = color.rgb(95, 97, 125)    // bordures
+c_label      = color.rgb(190, 190, 205)  // texte gris clair
+c_bull       = color.rgb(56, 149, 255)   // bleu
+c_bear       = color.rgb(255, 82, 99)    // rouge
+c_neut       = color.rgb(130, 130, 150)  // neutre gris
+c_super      = color.rgb(140, 180, 255)  // bleu clair (SUPERBULL, Unusual)
+c_warn       = color.rgb(245, 166, 35)   // orange (Basing, Melt)
+c_cell_blue  = color.rgb(24, 38, 92)     // fond bleu foncé
+c_cell_red   = color.rgb(74, 26, 49)     // fond rouge/bordeaux
+c_cell_neut  = color.rgb(45, 46, 70)     // fond neutre
+c_cell_gold  = color.rgb(98, 63, 16)     // fond orange/marron
+c_cell_sup   = color.rgb(52, 64, 110)    // fond bleu-gris (SUPERBULL, Unusual)
+
+// Couleurs sémantiques de l'original → palette Ephore
+// "bull" = vert d'origine, "bear" = rouge, "super" = bleu, "warn" = jaune/orange, "neut" = gris/blanc
+f_st_txt(s) => s == "bull" ? c_bull : s == "bear" ? c_bear : s == "super" ? c_super : s == "warn" ? c_warn : c_neut
+f_st_bg(s)  => s == "bull" ? c_cell_blue : s == "bear" ? c_cell_red : s == "super" ? c_cell_sup : s == "warn" ? c_cell_gold : c_cell_neut
+
+// ─── CONSTANTES DE L'ORIGINAL ───
+st_rsiLen = 14
+st_vidPer = 10      // Trend Line Period
+st_vidMom = 20      // Trend Momentum
+st_band   = 2.0     // Trend Band Distance (x ATR 200)
+st_yoyoTh = 3.0     // YoYo Threshold (%)
+st_mFast  = 20      // MACD 20 / 40 / 5 (EMA)
+st_mSlow  = 40
+st_mSig   = 5
+st_bbLen  = 20
+st_bbMult = 2.0
+
+st_macd(src) =>
+    m = ta.ema(src, st_mFast) - ta.ema(src, st_mSlow)
+    s = ta.ema(m, st_mSig)
+    [m, s]
+
+// ─── DONNÉES EXTERNES ───
+[st_dSma50, st_dSma200] = request.security(syminfo.tickerid, "D", [ta.sma(close, 50), ta.sma(close, 200)])
+[st_dH, st_dL, st_dO, st_dC] = request.security(syminfo.tickerid, "D", [high, low, open, close])
+st_vixP = request.security(st_vix_sym, "D", close,  lookahead=barmerge.lookahead_on)
+st_vixV = request.security(st_vix_sym, "D", volume, lookahead=barmerge.lookahead_on)
+st_v1   = request.security(st_tk1, "D", volume, lookahead=barmerge.lookahead_on)
+st_v2   = request.security(st_tk2, "D", volume, lookahead=barmerge.lookahead_on)
+
+// ─── CROSS SIGNAL : golden / death cross SMA50/200 journalier, remis à « — » chaque semaine ───
+st_golden = ta.crossover(st_dSma50, st_dSma200)
+st_death  = ta.crossunder(st_dSma50, st_dSma200)
+st_week   = int(math.floor(time / 604800000))
+var int    st_lastWeek  = na
+var string st_crossTxt  = "—"
+var string st_crossSem  = "neut"
+if na(st_lastWeek)
+    st_lastWeek := st_week
+if st_week != st_lastWeek
+    st_crossTxt := "—"
+    st_crossSem := "neut"
+    st_lastWeek := st_week
+if st_golden
+    st_crossTxt := "Golden"
+    st_crossSem := "warn"
+if st_death
+    st_crossTxt := "Death"
+    st_crossSem := "warn"
+
+// ─── MACD (10m) ───
+[st_m10, st_s10] = request.security(syminfo.tickerid, "10", st_macd(close))
+st_mBull   = st_m10 > st_s10
+st_mStrong = st_mBull and st_m10 > -0.25 and st_s10 > -0.25
+st_mBase   = not st_mBull and st_m10 > -0.025 and st_s10 > -0.025
+st_macdTxt = st_mStrong ? "SUPERBULL" : st_mBase ? "Basing" : st_mBull ? "Bullish" : "Bearish"
+st_macdSem = st_mStrong ? "super" : st_mBase ? "warn" : st_mBull ? "bull" : "bear"
+
+// ─── RSI + DIVERGENCE (pivots 5/5, écart 5 à 60 barres, affichée 10 barres) ───
+st_rsi = ta.rsi(close, st_rsiLen)
+st_inRange(cond) =>
+    bb = ta.barssince(cond)
+    5 <= bb and bb <= 60
+st_rsiLBR = st_rsi[5]
+st_plFound = not na(ta.pivotlow(st_rsi, 5, 5))
+st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRange(st_plFound[1])
+st_priceLL = low[5] < ta.valuewhen(st_plFound, low[5], 1)
+st_bullDiv = st_priceLL and st_rsiHL and st_plFound
+st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
+st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRange(st_phFound[1])
+st_priceHH = high[5] > ta.valuewhen(st_phFound, high[5], 1)
+st_bearDiv = st_priceHH and st_rsiLH and st_phFound
+var string st_divTxt = "None"
+var string st_divSem = "neut"
+var int    st_divTimer = 0
+if st_bullDiv
+    st_divTxt := "Bullish"
+    st_divSem := "bull"
+    st_divTimer := 10
+else if st_bearDiv
+    st_divTxt := "Bearish"
+    st_divSem := "bear"
+    st_divTimer := 10
+else
+    st_divTimer := math.max(st_divTimer - 1, 0)
+st_divShow    = st_divTimer > 0 ? st_divTxt : "None"
+st_divShowSem = st_divTimer > 0 ? st_divSem : "neut"
+
+// ─── BULL / BEAR SCORE (non complémentaires) ───
+st_cci    = ta.cci(close, 30)
+st_basis  = ta.sma(close, st_bbLen)
+st_upBB   = st_basis + st_bbMult * ta.stdev(close, st_bbLen)
+st_loBB   = st_basis - st_bbMult * ta.stdev(close, st_bbLen)
+st_emaF   = ta.ema(close, 50)
+st_emaS   = ta.ema(close, 200)
+st_bullCount = (st_emaF > st_emaS ? 1 : 0) + (ta.crossover(st_rsi, 30) ? 1 : 0) + (ta.crossover(close, st_loBB) ? 1 : 0)
+st_bearCount = (st_emaF < st_emaS ? 1 : 0) + (ta.crossunder(st_rsi, 70) ? 1 : 0) + (ta.crossunder(close, st_upBB) ? 1 : 0)
+st_buySignal = st_bullCount >= 2
+
+// ─── TREND : VIDYA (CMO 20, période 10, SMA 15) ± ATR(200) x 2 ───
+st_vidya_calc(src, len, mom) =>
+    mo = ta.change(src)
+    sp = math.sum(mo >= 0 ? mo : 0.0, mom)
+    sn = math.sum(mo < 0 ? -mo : 0.0, mom)
+    cmo = math.abs(100 * (sp - sn) / math.max(sp + sn, 1))
+    alpha = 2.0 / (len + 1.0)
+    var float v = na
+    v := alpha * cmo / 100 * src + (1 - alpha * cmo / 100) * nz(v[1])
+    v
+st_vidya  = ta.sma(st_vidya_calc(close, st_vidPer, st_vidMom), 15)
+st_atr200 = ta.atr(200)
+st_upBand = st_vidya + st_atr200 * st_band
+st_loBand = st_vidya - st_atr200 * st_band
+var bool st_trendUp = false
+st_trendUp := ta.crossover(close, st_upBand) ? true : ta.crossunder(close, st_loBand) ? false : st_trendUp[1]
+
+// ─── YOYO : distance en % au SMA(10) ───
+st_sma10 = ta.sma(close, 10)
+st_yoyo  = (close - st_sma10) / st_sma10 * 100
+st_yoyoSem = math.abs(st_yoyo) > st_yoyoTh + 3.0 ? "bear" : math.abs(st_yoyo) > st_yoyoTh + 1.5 ? "warn" : "bull"
+
+// ─── GAP ↑ / ↓ PROB (pondération double) ───
+st_smaVol   = ta.sma(volume, 20)
+st_rangePos = st_dH != st_dL ? (st_dC - st_dL) / (st_dH - st_dL) : 0.5
+st_chg      = st_dO != 0 ? (st_dC - st_dO) / st_dO * 100 * 0.5 : 0.0
+st_macdS    = ta.ema(close, 12) - ta.ema(close, 26)
+st_sigS     = ta.ema(st_macdS, 9)
+st_squeeze  = ta.stdev(close, st_bbLen) < ta.lowest(ta.stdev(close, st_bbLen), 20) ? 7 : 0
+st_bullF = st_rangePos * 20 + st_chg + (volume > st_smaVol ? 10 : 0) + (ta.crossover(st_macdS, st_sigS) ? 10 : 0) + (close > ta.ema(close, 20) ? 5 : 0) + (st_buySignal ? 10 : 0) + st_squeeze
+st_bearF = (1 - st_rangePos) * 20 - st_chg + (volume < st_smaVol ? 10 : 0) + (ta.crossunder(st_macdS, st_sigS) ? 10 : 0) + (close < ta.ema(close, 20) ? 5 : 0)
+st_bullT = math.max(0, math.min(100, st_bullF))
+st_bearT = math.max(0, math.min(100, st_bearF))
+st_bullPct = st_bullT / (st_bullT + st_bearT) * 100
+st_bearPct = st_bearT / (st_bullT + st_bearT) * 100
+
+// ─── TF1 / TF2 / TF3 PA : 1, 5, 15 minutes (codés en dur dans l'original) ───
+st_status(tf) =>
+    [sH, sL] = request.security(syminfo.tickerid, tf, [ta.sma(high, 20), ta.sma(low, 20)])
+    [mT, sT] = request.security(syminfo.tickerid, tf, st_macd(close))
+    pT = request.security(syminfo.tickerid, tf, close)
+    mb = mT > sT
+    above = pT > sH and pT > sL
+    txt = ""
+    sem = "neut"
+    if above and mb and mT > -0.025
+        txt := "SUPERBULL"
+        sem := "super"
+    else if mT > -0.025 and not mb
+        txt := "Basing"
+        sem := "warn"
+    else if above and mb
+        txt := "Bullish"
+        sem := "bull"
+    else if not above and not mb
+        txt := "Bearish"
+        sem := "bear"
+    [txt, sem]
+[st_pa1, st_pa1s] = st_status("1")
+[st_pa2, st_pa2s] = st_status("5")
+[st_pa3, st_pa3s] = st_status("15")
+
+// ─── VOLUMES (Ticker 1 / 2, VIX) ───
+st_volCat(vol, base) =>
+    vol < base ? (vol < base / 2.0 ? "Melt" : vol < base / 1.5 ? "Low Vol" : "Normal") : (vol < 1.5 * base ? "Elevated" : "Unusual")
+st_volSem(c) => c == "Normal" ? "neut" : c == "Low Vol" ? "bear" : c == "Melt" ? "warn" : c == "Elevated" ? "bull" : "super"
+st_lvl1 = st_volCat(st_v1, ta.sma(st_v1, 20))
+st_lvl2 = st_volCat(st_v2, ta.sma(st_v2, 20))
+st_vixBase = ta.sma(st_vixV, 20)
+st_vixLvl  = st_vixV < st_vixBase ? "Normal" : st_vixV < 1.5 * st_vixBase ? "Elevated" : "Unusual"
+st_vixLvlSem = st_vixLvl == "Normal" ? "bear" : st_vixLvl == "Elevated" ? "warn" : "super"
+st_vixTxt = st_vixP >= 80 ? "HOLY SHIT" : str.tostring(st_vixP, "#.##")
+st_vixSem = st_vixP >= 80 ? "neut" : st_vixP < 20 ? "bull" : st_vixP < 50 ? "bear" : "warn"
+
+// ─── CONSTRUCTION TABLEAU ───
+f_sz(_s) =>
+    _s == "Tiny" ? size.tiny : _s == "Small" ? size.small : _s == "Normal" ? size.normal : _s == "Large" ? size.large : size.huge
+
+m_pos = main_pos == "Bottom Right" ? position.bottom_right : main_pos == "Bottom Left" ? position.bottom_left :
+     main_pos == "Top Left" ? position.top_left : main_pos == "Middle Right" ? position.middle_right :
+     main_pos == "Middle Left" ? position.middle_left : position.top_right
+
+var table tbl_main = table.new(position.top_right, 4, 9, bgcolor=c_bg, border_color=c_border, border_width=1)
+
+f_st_row(col, row, lbl, val, sem, sz) =>
+    table.cell(tbl_main, col,     row, lbl, text_color=c_label, text_size=sz)
+    table.cell(tbl_main, col + 1, row, val, text_color=f_st_txt(sem), bgcolor=f_st_bg(sem), text_size=sz)
+
+if barstate.islast and main_show
+    table.set_position(tbl_main, m_pos)
+    sz = f_sz(main_sz)
+    f_st_row(0, 0, "Trend",        st_trendUp ? "Bullish" : "Bearish", st_trendUp ? "bull" : "bear", sz)
+    f_st_row(0, 1, "Bull Score",   str.tostring(st_bullCount) + " / 3", "bull", sz)
+    f_st_row(0, 2, "Bear Score",   str.tostring(st_bearCount) + " / 3", "bear", sz)
+    f_st_row(0, 3, "YoYo",         str.tostring(st_yoyo, "#.##") + "%", st_yoyoSem, sz)
+    f_st_row(0, 4, "Gap ↑ Prob",   str.tostring(st_bullPct, "#.##") + "%", st_bullPct >= st_bearPct ? "bull" : "bear", sz)
+    f_st_row(0, 5, "Gap ↓ Prob",   str.tostring(st_bearPct, "#.##") + "%", st_bearPct > st_bullPct ? "bull" : "bear", sz)
+    f_st_row(0, 6, "Divergence",   st_divShow, st_divShowSem, sz)
+    f_st_row(0, 7, "Vix",          st_vixTxt, st_vixSem, sz)
+    f_st_row(0, 8, "Ticker 1 Vol", st_lvl1, st_volSem(st_lvl1), sz)
+    f_st_row(2, 0, "Cross Signal", st_crossTxt, st_crossSem, sz)
+    f_st_row(2, 1, "CCI (30)",     str.tostring(st_cci, "#.##"), st_cci >= 0 ? "bull" : "bear", sz)
+    f_st_row(2, 2, "RSI (14)",     str.tostring(st_rsi, "#.##"), st_rsi >= 50 ? "bull" : "bear", sz)
+    f_st_row(2, 3, "MACD (10m)",   st_macdTxt, st_macdSem, sz)
+    f_st_row(2, 4, "TF1 PA",       st_pa1, st_pa1s, sz)
+    f_st_row(2, 5, "TF2 PA",       st_pa2, st_pa2s, sz)
+    f_st_row(2, 6, "TF3 PA",       st_pa3, st_pa3s, sz)
+    f_st_row(2, 7, "Vix Vol",      st_vixLvl, st_vixLvlSem, sz)
+    f_st_row(2, 8, "Ticker 2 Vol", st_lvl2, st_volSem(st_lvl2), sz)
