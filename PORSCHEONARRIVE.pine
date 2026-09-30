@@ -1178,10 +1178,9 @@ tl_supCol  = input.color(#000000, "Couleur support",    group=tl_grp_s, inline="
 tl_tlW     = input.int(2, "Épaisseur", group=tl_grp_s, minval=1, maxval=5)
 tl_ext     = input.bool(true, "Prolonger les droites (Extend Trendlines)", group=tl_grp_s)
 tl_showBo  = input.bool(true, "Points de cassure", group=tl_grp_s)
-tl_boShapes = ["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"]
-tl_boUpShp = input.string("Cercle", "Cassure haussière : forme", options=tl_boShapes, group=tl_grp_s, inline="bu")
+tl_boUpShp = input.string("Cercle", "Cassure haussière : forme", options=["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"], group=tl_grp_s, inline="bu")
 tl_boUpCol = input.color(color.lime, "couleur", group=tl_grp_s, inline="bu")
-tl_boDnShp = input.string("Cercle", "Cassure baissière : forme", options=tl_boShapes, group=tl_grp_s, inline="bd")
+tl_boDnShp = input.string("Cercle", "Cassure baissière : forme", options=["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"], group=tl_grp_s, inline="bd")
 tl_boDnCol = input.color(color.red,  "couleur", group=tl_grp_s, inline="bd")
 tl_boSzS   = input.string("Minuscule", "Taille des points", options=["Auto", "Minuscule", "Petite", "Normale", "Grande", "Énorme"], group=tl_grp_s)
 
