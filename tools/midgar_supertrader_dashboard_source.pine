@@ -1,0 +1,969 @@
+//@version=6
+indicator("SuperTrader Trend Analysis and Trade Study Dashboard", shorttitle="SuperTrader", overlay=true)
+
+len1 = 10
+src1 = close
+out1 = ta.sma(src1, len1)
+plot(out1, title="SMA", color=close >= out1 ? #03ff0c : color.rgb(12, 170, 17), linewidth=2)
+
+// Groups
+groupColors = "Colors"
+groupTF     = "Targets"
+optionSettingsGroup = "Unusual Volume Monitoring"
+groupSR     = "Dynamic S/R"
+groupFrames = "Trend Monitoring Time Frames"
+groupTG     = "Toggle"
+tableRowsGroup = "Table Rows Visibility"
+
+//-----------------------------------------
+// 1) Hidden/Constant Parameters
+//-----------------------------------------
+var int    emaFastLen = 50
+var int    emaSlowLen = 200
+var int    bbLen      = 20
+var float  bbMult     = 2.0
+var bool   showBuySellSignals = false  // Hardcoded from groupMain
+var string lineType = "Lines to the Right of Bars"  // Hardcoded from groupMain
+var int    lineRightExtension = 5  // Hardcoded from groupMain
+var int    _tagHOffset = 30  // Horizontal offset for labels
+var float  _tagVOffset = 0.0  // Vertical offset for labels
+var int    WhiteLabels = 85  // Hardcoded from groupMain
+var int    WhiteLines = 0  // Hardcoded from groupMain
+var color  NoColor = color.new(color.black, 100)
+var color  limeLine = color.new(color.lime, 0)
+var color  purpleLine = color.new(color.fuchsia, 0)
+var color  whiteLine = color.new(color.white, 0)
+var color  redLine = color.new(color.red, 0)
+var color  Red = color.new(color.red, 90)
+var color  Green = color.new(color.green, 90)
+var color  transpwhite = color.new(color.white, WhiteLabels)
+var color  whiteforlines = color.new(color.white, WhiteLines)
+var float monthly_vwap_sum = 0.0
+var float monthly_volume_sum = 0.0
+var float monthly_anchored_vwap = 0.0
+var float quarterly_vwap_sum = 0.0
+var float quarterly_volume_sum = 0.0
+var float quarterly_anchored_vwap = 0.0
+
+//-----------------------------------------
+// 2) Visible User Inputs
+//-----------------------------------------
+rsiLen = input.int(14, title="RSI Length", tooltip="Lookback length used for RSI calculations.")
+trendLinePeriod = input.int(10, title="Trend Line Period", tooltip="Base period for the primary trend line calculation.")
+trendMomentum = input.int(20, title="Trend Momentum", tooltip="Lookback used for momentum in the trend line calculation.")
+trendBandDistance = input.float(2.0, title="Trend Band Distance", tooltip="Multiplier of ATR for defining upper & lower trend bands.")
+yoyoThreshold = input.float(3.0, title="YoYo Threshold (%)", tooltip="Price % distance from SMA(10) to evaluate 'yoyo' conditions.")
+
+// Option Settings – these appear side-by-side at the top
+callOptionSymbol = input.string("", title="Ticker 1", inline="opt", group=optionSettingsGroup, tooltip="Enter a Symbol to Monitor for Unusual Volume Activity. If no Value Default is current symbol.")
+putOptionSymbol = input.string("", title="Ticker 2", inline="opt", group=optionSettingsGroup, tooltip="Enter a Symbol to Monitor for Unusual Volume Activity. If no Value Default is current symbol.")
+showVolumeNumeric = input.bool(false, title="Show Volume Numeric Value", tooltip="Toggle to display the actual volume number with the volume status. If disabled, only the status (Normal, Elevated, Unusual) is shown.", group=optionSettingsGroup, inline="vol")
+
+// Inputs for Highlight Impulse Channels
+show_daytrade_channel = input.bool(true, "Show DayTrade Channel", group=groupSR, tooltip="Emables a simple yet powerfully effective dynamic trend channel that connects the previous Day H/L to the current day H/L. Current day will Anchor at Noon and no longer dynamically adjust. Perfect for daytrading.")
+show_heartline = input.bool(true, "Show Channel Heartline", group=groupSR, tooltip="Creats a midline between the DayTrade Channel trendlines. The Heartline typically indicates an area of high volume acceleration in price movement when broken.")
+impulseThreshold = input.float(3.0, title="Impulse Channel Distance (%)", minval=0.1, group=groupSR, tooltip="Percentage distance threshold for highlighting dynamic S/R lines when close together.")
+highlightImpulse = input.bool(false, title="Highlight Impulse Channels", group=groupSR, tooltip="If true, dynamic S/R lines are highlighted when their distance is less than or equal to the Impulse Channel Distance threshold.")
+impulseThickness = input.int(2, title="Dynamic S/R Line Thickness", options=[1, 2, 3, 4, 5], group=groupSR, tooltip="Line thickness for dynamic S/R lines when Highlight Impulse Channels is enabled.")
+
+// MACD Settings
+macdFastLen = input.int(20, title="MACD Fast Length", minval=1, group="MACD Settings", tooltip="MACD fast period (default 20) Standard MacD is 12")
+macdSlowLen = input.int(40, title="MACD Slow Length", minval=1, group="MACD Settings", tooltip="MACD slow period (default 40) Standard MacD is 26")
+macdSignalLen = input.int(5, title="MACD Signal Smoothing", minval=1, group="MACD Settings", tooltip="MACD signal smoothing period (default 5) Standard MacD is 9")
+maType = input.string("EMA", title="MACD MA Type", options=["EMA", "SMA", "WMA"], group="MACD Settings", tooltip="Select the moving average type for MACD calculation")
+
+// Timeframe inputs for monitoring other frames
+tf1 = input.timeframe("1", title="TF1 - Short", group=groupFrames)
+tf2 = input.timeframe("5", title="TF2 - Medium", group=groupFrames)
+tf3 = input.timeframe("15", title="TF3 - Long", group=groupFrames)
+
+// Toggle settings
+DynamicSR = input.bool(true, title="Show Dynamic Support and Resistance Channels", group=groupTG)
+shadow = input.bool(true, title="Show Trend Shaded Fill", tooltip="If true, show a shaded area around the trend line.", group=groupTG)
+showTable = input.bool(true, title="Show Table Widget", tooltip="Toggle the stats table on/off in the chart.", group=groupTG)
+showPrimaryLabel = input.bool(true, title="Show Primary Trend Label", group=groupTG)
+ShowPriceLabels = input.bool(false, title="Show Price Labels", group=groupTG)
+showDistanceTags = input.bool(false, title="Show Percentage Distance Tags", group=groupTG)
+DynamicSRLines = input.bool(false, title="Show Algo Targets", group=groupTG)
+ShowMarketMakerTargets = input.bool(false, title="Show Market Maker Targets", group=groupTG)
+show_monthly_vwap = input.bool(false, title = 'Show Monthly VWAP', group=groupTG)
+show_quarterly_vwap = input.bool(false, title = 'Show Quarterly VWAP', group=groupTG)
+
+// Colors
+upTrendColor = input.color(color.teal, title="Up Trend Color", tooltip="Color for bullish (up) trend.", group=groupColors)
+downTrendColor = input.color(color.fuchsia, title="Down Trend Color", tooltip="Color for bearish (down) trend.", group=groupColors)
+impulseColor = input.color(color.yellow, title="Impulse Channel Color", tooltip="Color for dynamic S/R lines when Highlight Impulse Channels is enabled and lines are within the distance threshold.", group=groupColors)
+srLineColor = input.color(color.gray, title="SR Line Color", tooltip="Choose the color for Support and Resistance lines.", group=groupColors)
+daytrade_dynamic_color = input.color(color.orange, "DayTrade Dynamic Channel Color", group=groupColors)
+daytrade_proj_color = input.color(#d19b4b, "DayTrade Projection Channel Color", group=groupColors)
+heartline_color = input.color(color.white, "Heartline Color", group=groupColors)
+plot(show_monthly_vwap ? monthly_anchored_vwap : na, title = 'Monthly VWAP', color = #0496FF, linewidth = 3)
+plot(show_quarterly_vwap ? quarterly_anchored_vwap : na, title = 'Quarterly VWAP', color = #880e4f, linewidth = 3)
+ColorBackRedInput = input.color(title="Change Color of the Red background", defval=Red, group=groupColors)
+ColorBackGreenInput = input.color(title="Change Color of the Green background", defval=Green, group=groupColors)
+
+// Table Row Visibility Settings
+showRowTrend = input.bool(true, title="Show Row: Trend", group=tableRowsGroup)
+showRowBullScore = input.bool(true, title="Show Row: Bull Score", group=tableRowsGroup)
+showRowBearScore = input.bool(true, title="Show Row: Bear Score", group=tableRowsGroup)
+showRowYoYo = input.bool(true, title="Show Row: YoYo", group=tableRowsGroup)
+showRowGapUp = input.bool(true, title="Show Row: Gap ↑ Prob", group=tableRowsGroup)
+showRowGapDown = input.bool(true, title="Show Row: Gap ↓ Prob", group=tableRowsGroup)
+showRowDivergence = input.bool(true, title="Show Row: Divergence", group=tableRowsGroup)
+showRowCrossSignal = input.bool(true, title="Show Row: Cross Signal", group=tableRowsGroup)
+showRowCCI = input.bool(true, title="Show Row: CCI (30)", group=tableRowsGroup)
+showRowRSI = input.bool(true, title="Show Row: RSI", group=tableRowsGroup)
+showRowMACD = input.bool(true, title="Show Row: MACD (10m)", group=tableRowsGroup)
+showRowTF1 = input.bool(true, title="Show Row: TF1 PA", group=tableRowsGroup)
+showRowTF2 = input.bool(true, title="Show Row: TF2 PA", group=tableRowsGroup)
+showRowTF3 = input.bool(true, title="Show Row: TF3 PA", group=tableRowsGroup)
+showRowVIX = input.bool(true, title="Show Row: Vix & Vix Vol", group=tableRowsGroup)
+showRowOptionVol = input.bool(true, title="Show Row: Ticker 1/2 Vol", group=tableRowsGroup)
+
+//-----------------------------------------
+// 3) Security Requests
+//-----------------------------------------
+optVolCall = request.security(callOptionSymbol, "D", volume, lookahead=barmerge.lookahead_on)
+optVolPut = request.security(putOptionSymbol, "D", volume, lookahead=barmerge.lookahead_on)
+callPrice = request.security(callOptionSymbol, "D", close, lookahead=barmerge.lookahead_on)
+putPrice = request.security(putOptionSymbol, "D", close, lookahead=barmerge.lookahead_on)
+[dailySMA50, dailySMA200] = request.security(syminfo.tickerid, "D", [ta.sma(close, 50), ta.sma(close, 200)])
+[dayHigh, dayLow, dayOpen, dayClose] = request.security(syminfo.tickerid, "D", [high, low, open, close])
+vixPrice = request.security("VIX", "D", close, lookahead=barmerge.lookahead_on)
+vixVolume = request.security("VIX", "D", volume, lookahead=barmerge.lookahead_on)
+
+//-----------------------------------------
+// 4) Mag 8 Stocks Daily Performance
+//-----------------------------------------
+getScore(cond, value) => cond ? value : 0
+f_close(ticker) => request.security(ticker, "D", close)
+
+aapl = getScore(f_close("AAPL") > f_close("AAPL")[1], 1)
+amzn = getScore(f_close("AMZN") > f_close("AMZN")[1], 1)
+goog = getScore(f_close("GOOG") > f_close("GOOG")[1], 1)
+nflx = getScore(f_close("NFLX") > f_close("NFLX")[1], 1)
+nvda = getScore(f_close("NVDA") > f_close("NVDA")[1], 1)
+tsla = getScore(f_close("TSLA") > f_close("TSLA")[1], 1)
+meta = getScore(f_close("META") > f_close("META")[1], 1)
+msft = getScore(f_close("MSFT") > f_close("MSFT")[1], 1)
+
+mag8Green = aapl + amzn + goog + nflx + nvda + tsla + meta + msft
+mag8Red = 8 - mag8Green
+mag8Text = "Mag 8: Green " + str.tostring(mag8Green) + " |VS| Red " + str.tostring(mag8Red)
+
+//-----------------------------------------
+// 5) Golden/Death Cross (Daily) + Weekly Reset in Table
+//-----------------------------------------
+periodHL = 20
+isGoldenCross = ta.crossover(dailySMA50, dailySMA200)
+isDeathCross = ta.crossunder(dailySMA50, dailySMA200)
+
+plotshape(isGoldenCross, title="Golden Cross", location=location.belowbar, style=shape.circle, color=color.yellow, size=size.small)
+plotshape(isDeathCross, title="Death Cross", location=location.abovebar, style=shape.circle, color=#ff5e00, size=size.small)
+
+weekIndex = int(math.floor(time / 604800000))
+var int lastWeekIndex = na
+var string lastDailyCrossType = "—"
+var color lastDailyCrossCol = color.gray
+
+if na(lastWeekIndex)
+    lastWeekIndex := weekIndex
+
+if weekIndex != lastWeekIndex
+    lastDailyCrossType := "—"
+    lastDailyCrossCol := color.gray
+    lastWeekIndex := weekIndex
+
+if isGoldenCross
+    lastDailyCrossType := "Golden"
+    lastDailyCrossCol := color.yellow
+if isDeathCross
+    lastDailyCrossType := "Death"
+    lastDailyCrossCol := color.orange
+
+//-----------------------------------------
+// 6) MACD Calculations
+//-----------------------------------------
+calcMACD(_src, _fastLen, _slowLen, _signalLen) =>
+    fastMA = maType == "EMA" ? ta.ema(_src, _fastLen) : maType == "SMA" ? ta.sma(_src, _fastLen) : ta.wma(_src, _fastLen)
+    slowMA = maType == "EMA" ? ta.ema(_src, _slowLen) : maType == "SMA" ? ta.sma(_src, _slowLen) : ta.wma(_src, _slowLen)
+    macdValue = fastMA - slowMA
+    signalLine = maType == "EMA" ? ta.ema(macdValue, _signalLen) : maType == "SMA" ? ta.sma(macdValue, _signalLen) : ta.wma(macdValue, _signalLen)
+    hist = macdValue - signalLine
+    [macdValue, signalLine, hist]
+
+[macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, "10", calcMACD(close, macdFastLen, macdSlowLen, macdSignalLen))
+macdBullish = macdLine > signalLine
+macdStrong = macdBullish and macdLine > -0.25 and signalLine > -0.25
+macdNeutral = not macdBullish and macdLine > -0.025 and signalLine > -0.025
+macdText = macdStrong ? "SUPERBULL" : macdNeutral ? "Basing" : macdBullish ? "Bullish" : "Bearish"
+macdColor = macdStrong ? color.blue : macdNeutral ? color.yellow : macdBullish ? color.green : color.red
+
+//-----------------------------------------
+// 7) RSI + Divergence (Pivot Logic, indefinite tracking)
+//-----------------------------------------
+rsi = ta.rsi(close, rsiLen)
+lookbackRight = 5
+lookbackLeft = 5
+rangeUpper = 60
+rangeLower = 5
+
+_inRange(cond) =>
+    barsBack = ta.barssince(cond)
+    rangeLower <= barsBack and barsBack <= rangeUpper
+
+var bool plFound = false
+var bool phFound = false
+var bool bullDiv = false
+var bool bearDiv = false
+var string lastDivText = "None"
+var color lastDivColor = color.gray
+
+rsiLBR = rsi[lookbackRight]
+plFound := not na(ta.pivotlow(rsi, lookbackLeft, lookbackRight))
+rsiHL = rsiLBR > ta.valuewhen(plFound, rsiLBR, 1) and _inRange(plFound[1])
+lowLBR = low[lookbackRight]
+priceLL = lowLBR < ta.valuewhen(plFound, lowLBR, 1)
+bullDiv := priceLL and rsiHL and plFound
+
+phFound := not na(ta.pivothigh(rsi, lookbackLeft, lookbackRight))
+rsiLH = rsiLBR < ta.valuewhen(phFound, rsiLBR, 1) and _inRange(phFound[1])
+highLBR = high[lookbackRight]
+priceHH = highLBR > ta.valuewhen(phFound, highLBR, 1)
+bearDiv := priceHH and rsiLH and phFound
+
+var int divTimer = 0
+if bullDiv
+    lastDivText := "Bullish"
+    lastDivColor := color.green
+    divTimer := 10
+else if bearDiv
+    lastDivText := "Bearish"
+    lastDivColor := color.red
+    divTimer := 10
+else
+    divTimer := math.max(divTimer - 1, 0)
+
+displayDivText = divTimer > 0 ? lastDivText : "None"
+displayDivColor = divTimer > 0 ? lastDivColor : color.gray
+
+//-----------------------------------------
+// 8) GAP Tracking (Hardcoded)
+//-----------------------------------------
+gapMinDeviation = 30.0 / 100 * ta.sma(high - low, 14)
+isGapDown = high < low[1] and (low[1] - high >= gapMinDeviation)
+isGapUp = low > high[1] and (low - high[1] >= gapMinDeviation)
+
+var float nearestGapLevel = na
+var float gapDistancePct = na
+
+if isGapDown or isGapUp
+    gapLevel = isGapDown ? high : low
+    nearestGapLevel := gapLevel
+
+if not na(nearestGapLevel)
+    gapDistancePct := math.abs((close - nearestGapLevel) / nearestGapLevel) * 100
+
+gapDistanceText = na(gapDistancePct) ? "N/A" : str.tostring(gapDistancePct, "#.##") + "%"
+
+//-----------------------------------------
+// 9) Indicators & Signals (Trend, Bollinger, etc.)
+//-----------------------------------------
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+cci = ta.cci(close, 30)
+basis = ta.sma(close, bbLen)
+stdev_val = ta.stdev(close, bbLen)
+dev = bbMult * stdev_val
+upperBB = basis + dev
+lowerBB = basis - dev
+
+trendBull = emaFast > emaSlow
+trendBear = emaFast < emaSlow
+meanRevBull = ta.crossover(rsi, 30)
+meanRevBear = ta.crossunder(rsi, 70)
+arbBull = ta.crossover(close, lowerBB)
+arbBear = ta.crossunder(close, upperBB)
+
+bullCount = (trendBull ? 1 : 0) + (meanRevBull ? 1 : 0) + (arbBull ? 1 : 0)
+bearCount = (trendBear ? 1 : 0) + (meanRevBear ? 1 : 0) + (arbBear ? 1 : 0)
+
+buySignal = bullCount >= 2
+sellSignal = bearCount >= 2
+
+plotshape(buySignal, title="Buy Signal", location=location.belowbar, color=color.green, style=shape.labelup, text="BUY", display=showBuySellSignals ? display.all : display.none)
+plotshape(sellSignal, title="Sell Signal", location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL", display=showBuySellSignals ? display.all : display.none)
+
+//-----------------------------------------
+// 10) VIDYA Calculation
+//-----------------------------------------
+vidya_calc(_src, _len, _mom) =>
+    momentum = ta.change(_src)
+    sumPos = math.sum(momentum >= 0 ? momentum : 0.0, _mom)
+    sumNeg = math.sum(momentum < 0 ? -momentum : 0.0, _mom)
+    cmo = math.abs(100 * (sumPos - sumNeg) / math.max(sumPos + sumNeg, 1))
+    alpha = 2.0 / (_len + 1.0)
+    var float vidya_val = na
+    vidya_val := alpha * cmo / 100 * _src + (1 - alpha * cmo / 100) * nz(vidya_val[1])
+    vidya_val
+
+vidya_raw = vidya_calc(close, trendLinePeriod, trendMomentum)
+vidya = ta.sma(vidya_raw, 15)
+atr = ta.atr(200)
+upperBand = vidya + atr * trendBandDistance
+lowerBand = vidya - atr * trendBandDistance
+
+var bool isTrendUp = false
+isTrendUp := ta.crossover(close, upperBand) ? true : ta.crossunder(close, lowerBand) ? false : isTrendUp[1]
+trendColor = isTrendUp ? upTrendColor : downTrendColor
+
+plot(vidya, color=trendColor, linewidth=2, title="Trend Line")
+fill(plot(vidya), plot(hl2, display=display.none), color=color.new(trendColor, shadow ? 80 : 100), title="Trend Fill")
+
+//-----------------------------------------
+// 11) YoYo Distance from SMA(10)
+//-----------------------------------------
+sma10 = ta.sma(close, 10)
+distFromSMA = ((close - sma10) / sma10) * 100
+distText = str.tostring(distFromSMA, "#.##") + "%"
+trendText = isTrendUp ? "Bullish" : "Bearish"
+trendTextColor = isTrendUp ? color.rgb(30, 255, 0) : color.rgb(255, 2, 242)
+orangeLevel = yoyoThreshold + 1.5
+redLevel = yoyoThreshold + 3.0
+yoyoColor = math.abs(distFromSMA) > redLevel ? color.red : math.abs(distFromSMA) > orangeLevel ? color.orange : color.green
+
+//-----------------------------------------
+// 12) Gap Up/Down Probability Logic (Dual-Weighted)
+//-----------------------------------------
+smaVol = ta.sma(volume, 20)
+rangePos = dayHigh != dayLow ? (dayClose - dayLow) / (dayHigh - dayLow) : 0.5
+posScore = rangePos * 20
+changeScore = dayOpen != 0 ? (dayClose - dayOpen) / dayOpen * 100 * 0.5 : 0.0
+volScore = volume > smaVol ? 10 : 0
+macd_forScore = ta.ema(close, 12) - ta.ema(close, 26)
+signal_forScore = ta.ema(macd_forScore, 9)
+macdScore = ta.crossover(macd_forScore, signal_forScore) ? 10 : 0
+aboveEMA20 = close > ta.ema(close, 20) ? 5 : 0
+buyWeight = buySignal ? 10 : 0
+squeeze = ta.stdev(close, bbLen) < ta.lowest(ta.stdev(close, bbLen), 20) ? 7 : 0
+
+posBear = (1 - rangePos) * 20
+changeBear = -changeScore
+volBear = volume < smaVol ? 10 : 0
+macdBear = ta.crossunder(macd_forScore, signal_forScore) ? 10 : 0
+belowEMA20 = close < ta.ema(close, 20) ? 5 : 0
+var int baselinePeriod = 20
+
+bullFactors = posScore + changeScore + volScore + macdScore + aboveEMA20 + buyWeight + squeeze
+bearFactors = posBear + changeBear + volBear + macdBear + belowEMA20
+
+bullTotal = math.max(0, math.min(100, bullFactors))
+bearTotal = math.max(0, math.min(100, bearFactors))
+bullPct = bullTotal / (bullTotal + bearTotal) * 100
+bearPct = bearTotal / (bullTotal + bearTotal) * 100
+
+bullColor = bullPct >= bearPct ? color.green : color.red
+bearColor = bearPct > bullPct ? color.green : color.red
+
+f_getStatus(tf) =>
+    [smaHigh, smaLow] = request.security(syminfo.tickerid, tf, [ta.sma(high, 20), ta.sma(low, 20)])
+    [macdLine_tf, signalLine_tf, _] = request.security(syminfo.tickerid, tf, calcMACD(close, macdFastLen, macdSlowLen, macdSignalLen))
+    price_tf = request.security(syminfo.tickerid, tf, close)
+    macdBullish_tf = macdLine_tf > signalLine_tf
+    aboveSMAs = price_tf > smaHigh and price_tf > smaLow
+    status = ""
+    statusColor = color.gray
+    if aboveSMAs and macdBullish_tf and macdLine_tf > -0.025
+        status := "SUPERBULL"
+        statusColor := color.blue
+    else if macdLine_tf > -0.025 and not macdBullish_tf
+        status := "Basing"
+        statusColor := color.yellow
+    else if aboveSMAs and macdBullish_tf
+        status := "Bullish"
+        statusColor := color.green
+    else if not aboveSMAs and not macdBullish_tf
+        status := "Bearish"
+        statusColor := color.red
+    [status, statusColor]
+
+//-----------------------------------------
+// 13) Option Volume Tracker
+//-----------------------------------------
+baselineCall = ta.sma(optVolCall, baselinePeriod)
+baselinePut = ta.sma(optVolPut, baselinePeriod)
+
+f_getVolCategory(float vol, float baseline) =>
+    vol < baseline ? vol < (baseline / 2.0) ? "Melt" : vol < (baseline / 1.5) ? "Low Vol" : "Normal" : vol < 1.5 * baseline ? "Elevated" : "Unusual"
+
+levelCall = f_getVolCategory(optVolCall, baselineCall)
+levelPut = f_getVolCategory(optVolPut, baselinePut)
+callColor = levelCall == "Normal" ? color.white : levelCall == "Low Vol" ? color.red : levelCall == "Melt" ? color.yellow : levelCall == "Elevated" ? color.green : color.blue
+putColor = levelPut == "Normal" ? color.white : levelPut == "Low Vol" ? color.red : levelPut == "Melt" ? color.yellow : levelPut == "Elevated" ? color.green : color.blue
+
+f_compress(num) =>
+    num < 1000 ? str.tostring(num, "#.##") : num < 1000000 ? str.tostring(num / 1000, "#.##") + "k" : str.tostring(num / 1000000, "#.##") + "m"
+
+baselineVix = ta.sma(vixVolume, baselinePeriod)
+levelVixVol = vixVolume < baselineVix ? "Normal" : vixVolume < 1.5 * baselineVix ? "Elevated" : "Unusual"
+vixVolColor = levelVixVol == "Normal" ? color.red : levelVixVol == "Elevated" ? color.yellow : color.blue
+vixDisplay = vixPrice >= 80 ? "HOLY SHIT" : str.tostring(vixPrice, "#.##")
+vixDispColor = vixPrice >= 80 ? color.white : vixPrice < 20 ? color.green : vixPrice < 50 ? color.red : color.orange
+
+//-----------------------------------------
+// 14) Bounce Tracker Dotted S&R Lines & Bounce Score Calculation
+//-----------------------------------------
+bt_pivotLookback = input.int(50, title="Pivot Lookback (SR)", minval=5, inline="BT", tooltip="A lesser value displays more pivots. A greater value displays less pivots.", group=groupTF)
+showSRLines = input.bool(true, title="Show S&R Levels", inline="BT", tooltip="Displays Market Structure Pivot Levels as Support and Resistance Lines.", group=groupTF)
+bt_sr_sensitivity = 0.005
+bt_min_bounce_dist = 3
+bt_offsetBars = -15
+bt_lineExtension = 15
+
+bt_isPivotHigh = high[bt_pivotLookback] == ta.highest(high, bt_pivotLookback * 2 + 1)
+bt_isPivotLow = low[bt_pivotLookback] == ta.lowest(low, bt_pivotLookback * 2 + 1)
+bt_pivotHigh = bt_isPivotHigh ? high[bt_pivotLookback] : na
+bt_pivotLow = bt_isPivotLow ? low[bt_pivotLookback] : na
+
+var float[] bt_sr_levels = array.new_float()
+var int[] bt_bounce_counts = array.new_int()
+var int[] bt_last_bounce_bar = array.new_int()
+var line[] bt_sr_lines = array.new_line()
+
+bt_withinZone(val, level) =>
+    math.abs(val - level) / level <= bt_sr_sensitivity
+
+if not na(bt_pivotHigh)
+    bt_isNew = true
+    if array.size(bt_sr_levels) > 0
+        for i = 0 to array.size(bt_sr_levels) - 1
+            if bt_withinZone(bt_pivotHigh, array.get(bt_sr_levels, i))
+                bt_isNew := false
+    if bt_isNew
+        array.push(bt_sr_levels, bt_pivotHigh)
+        array.push(bt_bounce_counts, 0)
+        array.push(bt_last_bounce_bar, na)
+
+if not na(bt_pivotLow)
+    bt_isNew = true
+    if array.size(bt_sr_levels) > 0
+        for i = 0 to array.size(bt_sr_levels) - 1
+            if bt_withinZone(bt_pivotLow, array.get(bt_sr_levels, i))
+                bt_isNew := false
+    if bt_isNew
+        array.push(bt_sr_levels, bt_pivotLow)
+        array.push(bt_bounce_counts, 0)
+        array.push(bt_last_bounce_bar, na)
+
+if showSRLines
+    int levelsSize = array.size(bt_sr_levels)
+    int linesSize = array.size(bt_sr_lines)
+    if levelsSize > 0 and linesSize > 0
+        int existingLines = math.min(levelsSize, linesSize)
+        for i = 0 to existingLines - 1
+            level = array.get(bt_sr_levels, i)
+            _line = array.get(bt_sr_lines, i)
+            line.set_xy1(_line, bar_index + bt_offsetBars, level)
+            line.set_xy2(_line, bar_index + bt_offsetBars + bt_lineExtension, level)
+    if levelsSize > linesSize
+        for i = linesSize to levelsSize - 1
+            level = array.get(bt_sr_levels, i)
+            _line = line.new(x1=bar_index + bt_offsetBars, y1=level, x2=bar_index + bt_offsetBars + bt_lineExtension, y2=level, extend=extend.none, color=srLineColor, width=1, style=line.style_dotted)
+            array.push(bt_sr_lines, _line)
+
+var int currentBounceScore = na
+if array.size(bt_sr_levels) > 0
+    float bestDiff = 1e10
+    for i = 0 to array.size(bt_sr_levels) - 1
+        level = array.get(bt_sr_levels, i)
+        if bt_withinZone(close, level)
+            lastB = array.get(bt_last_bounce_bar, i)
+            if na(lastB) or bar_index - lastB >= bt_min_bounce_dist
+                countVal = array.get(bt_bounce_counts, i) + 1
+                array.set(bt_bounce_counts, i, countVal)
+                array.set(bt_last_bounce_bar, i, bar_index)
+            diff = math.abs(close - level)
+            if diff < bestDiff
+                bestDiff := diff
+                currentBounceScore := array.get(bt_bounce_counts, i)
+
+//-----------------------------------------
+// 15) Trend Label with Mag 8, Gap Info & Bounce Score
+//-----------------------------------------
+var label trendLabel = na
+avgPctMove = request.security(syminfo.tickerid, "D", ta.sma(((high - low) / close) * 100, periodHL))
+avgPointMove = close * avgPctMove / 100
+
+if showPrimaryLabel and barstate.islast
+    label.delete(trendLabel)
+    trendLabel := label.new(bar_index, vidya,"Trend: " + trendText +"\nParabolic: " + distText +"\nGap Distance: " + gapDistanceText +"\n" + mag8Text +"\nAvg D Move: " + str.tostring(avgPctMove, "#.##") + "% |" + str.tostring(avgPointMove, "#.##") + " pt" +"\nBounce Score: " + (na(currentBounceScore) ? "N/A" : str.tostring(currentBounceScore)),textcolor=trendTextColor,color=color.new(trendColor, 90),style=label.style_label_left,size=size.normal)
+else
+    label.delete(trendLabel)
+
+//-----------------------------------------
+// 16) Alert Conditions
+//-----------------------------------------
+trendCrossUp = not isTrendUp[2] and isTrendUp[1]
+trendCrossDown = isTrendUp[2] and not isTrendUp[1]
+alertcondition(trendCrossUp, title="Confirmed Bullish Trend", message="Trend change confirmed: Bullish")
+alertcondition(trendCrossDown, title="Confirmed Bearish Trend", message="Trend change confirmed: Bearish")
+
+//-----------------------------------------
+// 17) Heikin-Ashi Calculations (Current Timeframe)
+//-----------------------------------------
+ha_high = math.max(open, high, close)
+ha_low = math.min(open, low, close)
+ha_close = (open + high + low + close) / 4
+var float ha_open = open
+ha_open := barstate.isfirst ? open : (ha_open[1] + ha_close[1]) / 2
+
+//-----------------------------------------
+// 18) Function: _lonelyCandle
+//-----------------------------------------
+_lonelyCandle(rog, comp) =>
+    if not comp
+        if rog
+            (ha_close[2] > ha_open[2]) and (ha_close[1] < ha_open[1]) and (ha_close > ha_open)
+        else
+            (ha_close[2] < ha_open[2]) and (ha_close[1] > ha_open[1]) and (ha_close < ha_open)
+    else
+        if rog
+            (ha_close[1] < ha_open[1]) and (ha_close < ha_open) and (ha_low[1] < ha_low)
+        else
+            (ha_close[1] > ha_open[1]) and (ha_close > ha_open) and (ha_high[1] > ha_high)
+
+//-----------------------------------------
+// 19) Function: _plotRays
+//-----------------------------------------
+_plotRays(_greenCondition, _greenValue, _greenText, _redCondition, _redValue, _redText) =>
+    var rightLines = array.new_line()
+    var rightLines2 = array.new_line()
+    if _greenCondition
+        if ShowPriceLabels
+            label.new(bar_index, _greenValue, text=_greenText, style=label.style_label_down, color=transpwhite, textcolor=color.black, size=size.normal)
+        if lineType == "Infinite Lines"
+            array.unshift(rightLines, line.new(bar_index, _greenValue, bar_index, _greenValue, xloc.bar_index, extend.both, color=whiteforlines))
+        else
+            array.unshift(rightLines, line.new(bar_index + 1, _greenValue, bar_index + lineRightExtension, _greenValue, xloc.bar_index, extend.none, color=whiteforlines))
+    if _redCondition
+        if ShowPriceLabels
+            label.new(bar_index, _redValue, text=_redText, style=label.style_label_up, color=transpwhite, textcolor=color.black, size=size.normal)
+        if lineType == "Infinite Lines"
+            array.unshift(rightLines2, line.new(bar_index, _redValue, bar_index, _redValue, xloc.bar_index, extend.both, color=whiteforlines))
+        else
+            array.unshift(rightLines2, line.new(bar_index + 1, _redValue, bar_index + lineRightExtension, _redValue, xloc.bar_index, extend.none, color=whiteforlines))
+    for _line in rightLines
+        line.set_x1(_line, bar_index + 1)
+        line.set_x2(_line, bar_index + lineRightExtension)
+    for _line in rightLines2
+        line.set_x1(_line, bar_index + 1)
+        line.set_x2(_line, bar_index + lineRightExtension)
+
+//-----------------------------------------
+// 20) CURRENT TIMEFRAME DYNAMIC S/R (Background Fill, Rays and Percentage Tags)
+//-----------------------------------------
+GreenCandle = _lonelyCandle(false, false)
+RedCandle = _lonelyCandle(true, false)
+RedCandleValue = ha_low[1]
+GreenCandleValue = ha_high[1]
+GreenLabelText = str.tostring(GreenCandleValue)
+RedLabelText = str.tostring(RedCandleValue)
+
+if DynamicSRLines
+    _plotRays(GreenCandle, GreenCandleValue, GreenLabelText, RedCandle, RedCandleValue, RedLabelText)
+
+FixRedCandle = ta.valuewhen(RedCandle, RedCandleValue, 0)
+FixGreenCandle = ta.valuewhen(GreenCandle, GreenCandleValue, 0)
+
+distance = math.abs(FixGreenCandle - FixRedCandle)
+percentage_distance = (distance / FixGreenCandle) * 100
+isImpulseChannel = highlightImpulse and percentage_distance <= impulseThreshold
+lineColor = isImpulseChannel ? color.new(impulseColor, 0) : NoColor
+IsLime = DynamicSR ? (isImpulseChannel ? lineColor : limeLine) : NoColor
+IsPurple = DynamicSR ? (isImpulseChannel ? lineColor : purpleLine) : NoColor
+IsRed = DynamicSR and FixGreenCandle > FixRedCandle ? ColorBackRedInput : NoColor
+IsGreen = DynamicSR and FixGreenCandle < FixRedCandle ? ColorBackGreenInput : NoColor
+
+FRC = plot(FixRedCandle, title="Dynamic Lime Ray", color=IsLime, linewidth=impulseThickness, style=plot.style_stepline, offset=-1)
+FGC = plot(FixGreenCandle, title="Dynamic Purple Ray", color=IsPurple, linewidth=impulseThickness, style=plot.style_stepline, offset=-1)
+fill(FRC, FGC, color=IsRed, title="Dynamic Background Red")
+fill(FRC, FGC, color=IsGreen, title="Dynamic Background Green")
+
+var float last_distance = na
+if FixRedCandle != FixRedCandle[1] or FixGreenCandle != FixGreenCandle[1]
+    last_distance := percentage_distance
+    if showDistanceTags
+        label.new(bar_index, close, text=str.tostring(last_distance, "#.##") + "%", color=color.white, textcolor=color.black, style=label.style_label_up, size=size.normal)
+
+//-----------------------------------------
+// 21) MULTI-TIMEFRAME FUNCTION
+//-----------------------------------------
+f_dynamicSR(mode) =>
+    _ha_high = math.max(open, high, close)
+    _ha_low = math.min(open, low, close)
+    _ha_close = (open + high + low + close) / 4
+    var float _ha_open_local = open
+    _ha_open_local := barstate.isfirst ? open : (_ha_open_local[1] + _ha_close) / 2
+    _cond = mode == "red" ? ((_ha_close[2] > _ha_open_local[2]) and (_ha_close[1] < _ha_open_local[1]) and (_ha_close > _ha_open_local)) : ((_ha_close[2] < _ha_open_local[2]) and (_ha_close[1] > _ha_open_local[1]) and (_ha_close < _ha_open_local))
+    _val = mode == "red" ? _ha_low[1] : _ha_high[1]
+    ta.valuewhen(_cond, _val, 0)
+
+//-----------------------------------------
+// 22) MULTI-TIMEFRAME LEVELS (Market Maker Targets)
+//-----------------------------------------
+if ShowMarketMakerTargets
+    tf1H = "1H"
+    tf2H = "2H"
+    tf4H = "4H"
+    tfD = "Daily"
+    tfW = "Weekly"
+    tfM = "Monthly"
+    tfQ = "Quarterly"
+    
+    red_1H = request.security(syminfo.tickerid, "60", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_1H = request.security(syminfo.tickerid, "60", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_2H = request.security(syminfo.tickerid, "120", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_2H = request.security(syminfo.tickerid, "120", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_4H = request.security(syminfo.tickerid, "240", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_4H = request.security(syminfo.tickerid, "240", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_D = request.security(syminfo.tickerid, "D", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_D = request.security(syminfo.tickerid, "D", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_W = request.security(syminfo.tickerid, "W", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_W = request.security(syminfo.tickerid, "W", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_M = request.security(syminfo.tickerid, "M", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_M = request.security(syminfo.tickerid, "M", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    red_Q = request.security(syminfo.tickerid, "3M", f_dynamicSR("red"), lookahead=barmerge.lookahead_on)
+    green_Q = request.security(syminfo.tickerid, "3M", f_dynamicSR("green"), lookahead=barmerge.lookahead_on)
+    
+    var label lbl_1H_red = na
+    var label lbl_1H_green = na
+    var label lbl_2H_red = na
+    var label lbl_2H_green = na
+    var label lbl_4H_red = na
+    var label lbl_4H_green = na
+    var label lbl_D_red = na
+    var label lbl_D_green = na
+    var label lbl_W_red = na
+    var label lbl_W_green = na
+    var label lbl_M_red = na
+    var label lbl_M_green = na
+    var label lbl_Q_red = na
+    var label lbl_Q_green = na
+    
+    if barstate.islast
+        if not na(red_1H)
+            if na(lbl_1H_red)
+                lbl_1H_red := label.new(bar_index + _tagHOffset, red_1H + _tagVOffset, tf1H + " " + str.tostring(red_1H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_1H_red, bar_index + _tagHOffset, red_1H + _tagVOffset)
+            label.set_text(lbl_1H_red, tf1H + " " + str.tostring(red_1H, "#.##"))
+        if not na(green_1H)
+            if na(lbl_1H_green)
+                lbl_1H_green := label.new(bar_index + _tagHOffset, green_1H + _tagVOffset, tf1H + " " + str.tostring(green_1H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_1H_green, bar_index + _tagHOffset, green_1H + _tagVOffset)
+            label.set_text(lbl_1H_green, tf1H + " " + str.tostring(green_1H, "#.##"))
+        if not na(red_2H)
+            if na(lbl_2H_red)
+                lbl_2H_red := label.new(bar_index + _tagHOffset, red_2H + _tagVOffset, tf2H + " " + str.tostring(red_2H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_2H_red, bar_index + _tagHOffset, red_2H + _tagVOffset)
+            label.set_text(lbl_2H_red, tf2H + " " + str.tostring(red_2H, "#.##"))
+        if not na(green_2H)
+            if na(lbl_2H_green)
+                lbl_2H_green := label.new(bar_index + _tagHOffset, green_2H + _tagVOffset, tf2H + " " + str.tostring(green_2H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_2H_green, bar_index + _tagHOffset, green_2H + _tagVOffset)
+            label.set_text(lbl_2H_green, tf2H + " " + str.tostring(green_2H, "#.##"))
+        if not na(red_4H)
+            if na(lbl_4H_red)
+                lbl_4H_red := label.new(bar_index + _tagHOffset, red_4H + _tagVOffset, tf4H + " " + str.tostring(red_4H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_4H_red, bar_index + _tagHOffset, red_4H + _tagVOffset)
+            label.set_text(lbl_4H_red, tf4H + " " + str.tostring(red_4H, "#.##"))
+        if not na(green_4H)
+            if na(lbl_4H_green)
+                lbl_4H_green := label.new(bar_index + _tagHOffset, green_4H + _tagVOffset, tf4H + " " + str.tostring(green_4H, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_4H_green, bar_index + _tagHOffset, green_4H + _tagVOffset)
+            label.set_text(lbl_4H_green, tf4H + " " + str.tostring(green_4H, "#.##"))
+        if not na(red_D)
+            if na(lbl_D_red)
+                lbl_D_red := label.new(bar_index + _tagHOffset, red_D + _tagVOffset, tfD + " " + str.tostring(red_D, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_D_red, bar_index + _tagHOffset, red_D + _tagVOffset)
+            label.set_text(lbl_D_red, tfD + " " + str.tostring(red_D, "#.##"))
+        if not na(green_D)
+            if na(lbl_D_green)
+                lbl_D_green := label.new(bar_index + _tagHOffset, green_D + _tagVOffset, tfD + " " + str.tostring(green_D, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_D_green, bar_index + _tagHOffset, green_D + _tagVOffset)
+            label.set_text(lbl_D_green, tfD + " " + str.tostring(green_D, "#.##"))
+        if not na(red_W)
+            if na(lbl_W_red)
+                lbl_W_red := label.new(bar_index + _tagHOffset, red_W + _tagVOffset, tfW + " " + str.tostring(red_W, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_W_red, bar_index + _tagHOffset, red_W + _tagVOffset)
+            label.set_text(lbl_W_red, tfW + " " + str.tostring(red_W, "#.##"))
+        if not na(green_W)
+            if na(lbl_W_green)
+                lbl_W_green := label.new(bar_index + _tagHOffset, green_W + _tagVOffset, tfW + " " + str.tostring(green_W, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_W_green, bar_index + _tagHOffset, green_W + _tagVOffset)
+            label.set_text(lbl_W_green, tfW + " " + str.tostring(green_W, "#.##"))
+        if not na(red_M)
+            if na(lbl_M_red)
+                lbl_M_red := label.new(bar_index + _tagHOffset, red_M + _tagVOffset, tfM + " " + str.tostring(red_M, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_M_red, bar_index + _tagHOffset, red_M + _tagVOffset)
+            label.set_text(lbl_M_red, tfM + " " + str.tostring(red_M, "#.##"))
+        if not na(green_M)
+            if na(lbl_M_green)
+                lbl_M_green := label.new(bar_index + _tagHOffset, green_M + _tagVOffset, tfM + " " + str.tostring(green_M, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_M_green, bar_index + _tagHOffset, green_M + _tagVOffset)
+            label.set_text(lbl_M_green, tfM + " " + str.tostring(green_M, "#.##"))
+        if not na(red_Q)
+            if na(lbl_Q_red)
+                lbl_Q_red := label.new(bar_index + _tagHOffset, red_Q + _tagVOffset, tfQ + " " + str.tostring(red_Q, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.lime)
+            else
+                label.set_xy(lbl_Q_red, bar_index + _tagHOffset, red_Q + _tagVOffset)
+            label.set_text(lbl_Q_red, tfQ + " " + str.tostring(red_Q, "#.##"))
+        if not na(green_Q)
+            if na(lbl_Q_green)
+                lbl_Q_green := label.new(bar_index + _tagHOffset, green_Q + _tagVOffset, tfQ + " " + str.tostring(green_Q, "#.##"), style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.fuchsia)
+            else
+                label.set_xy(lbl_Q_green, bar_index + _tagHOffset, green_Q + _tagVOffset)
+            label.set_text(lbl_Q_green, tfQ + " " + str.tostring(green_Q, "#.##"))
+
+//-----------------------------------------
+// 23) Table Creation (Stat Table)
+//-----------------------------------------
+if showTable and barstate.islast
+    var table statTable = table.new(position.top_right, 4, 9, border_width=1)
+    if showRowTrend
+        table.cell(statTable, 0, 0, "Trend", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 0, trendText, text_color=trendTextColor, bgcolor=color.new(trendColor, 85))
+    if showRowBullScore
+        table.cell(statTable, 0, 1, "Bull Score", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 1, str.tostring(bullCount) + " / 3", text_color=color.green, bgcolor=color.new(color.green, 85))
+    if showRowBearScore
+        table.cell(statTable, 0, 2, "Bear Score", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 2, str.tostring(bearCount) + " / 3", text_color=color.red, bgcolor=color.new(color.red, 85))
+    if showRowYoYo
+        table.cell(statTable, 0, 3, "YoYo", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 3, distText, text_color=yoyoColor, bgcolor=color.new(yoyoColor, 85))
+    if showRowGapUp
+        table.cell(statTable, 0, 4, "Gap ↑ Prob", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 4, str.tostring(bullPct, "#.##") + "%", text_color=bullColor, bgcolor=color.new(color.green, 85))
+    if showRowGapDown
+        table.cell(statTable, 0, 5, "Gap ↓ Prob", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 5, str.tostring(bearPct, "#.##") + "%", text_color=bearColor, bgcolor=color.new(color.red, 85))
+    if showRowDivergence
+        table.cell(statTable, 0, 6, "Divergence", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 6, displayDivText, text_color=displayDivColor, bgcolor=color.new(displayDivColor, 85))
+    if showRowCrossSignal
+        table.cell(statTable, 2, 0, "Cross Signal", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 0, lastDailyCrossType, text_color=lastDailyCrossCol, bgcolor=color.new(lastDailyCrossCol, 85))
+    if showRowCCI
+        table.cell(statTable, 2, 1, "CCI (30)", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 1, str.tostring(cci, "#.##"), text_color=cci >= 0 ? color.green : color.red, bgcolor=color.new(cci >= 0 ? color.green : color.red, 85))
+    if showRowRSI
+        table.cell(statTable, 2, 2, "RSI (" + str.tostring(rsiLen) + ")", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 2, str.tostring(rsi, "#.##"), text_color=rsi >= 50 ? color.green : color.red, bgcolor=color.new(rsi >= 50 ? color.green : color.red, 85))
+    if showRowMACD
+        table.cell(statTable, 2, 3, "MACD (10m)", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 3, macdText, text_color=macdColor, bgcolor=color.new(macdColor, 85))
+    if showRowTF1
+        [status1, color1] = f_getStatus("1")
+        table.cell(statTable, 2, 4, "TF1 PA", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 4, status1, text_color=color1, bgcolor=color.new(color1, 85))
+    if showRowTF2
+        [status5, color5] = f_getStatus("5")
+        table.cell(statTable, 2, 5, "TF2 PA", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 5, status5, text_color=color5, bgcolor=color.new(color5, 85))
+    if showRowTF3
+        [status15, color15] = f_getStatus("15")
+        table.cell(statTable, 2, 6, "TF3 PA", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 6, status15, text_color=color15, bgcolor=color.new(color15, 85))
+    if showRowVIX
+        table.cell(statTable, 0, 7, "Vix", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 7, vixDisplay, text_color=vixDispColor, bgcolor=color.new(color.gray, 85))
+        table.cell(statTable, 2, 7, "Vix Vol", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 7, levelVixVol, text_color=vixVolColor, bgcolor=color.new(color.gray, 85))
+    if showRowOptionVol
+        callDisplay = showVolumeNumeric ? (f_compress(optVolCall) + " " + levelCall) : levelCall
+        putDisplay = showVolumeNumeric ? (f_compress(optVolPut) + " " + levelPut) : levelPut
+        table.cell(statTable, 0, 8, "Ticker 1 Vol", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 1, 8, callDisplay, text_color=callColor, bgcolor=color.new(callColor, 85))
+        table.cell(statTable, 2, 8, "Ticker 2 Vol", text_color=color.white, bgcolor=color.gray, text_size=size.small)
+        table.cell(statTable, 3, 8, putDisplay, text_color=putColor, bgcolor=color.new(putColor, 85))
+
+//-----------------------------------------
+// 24) Example Logic for TF Tags
+//-----------------------------------------
+priceAbove20High_tf1 = close > ta.sma(high, 20)
+macdFast_tf1 = request.security(syminfo.tickerid, tf1, ta.ema(close, 12))
+macdSlow_tf1 = request.security(syminfo.tickerid, tf1, ta.ema(close, 26))
+macdBull_tf1 = macdFast_tf1 > macdSlow_tf1
+
+//DayTrader Channels//
+
+// === Input options ===
+
+// === Detect new day and time check ===
+isNewDay = ta.change(time("D")) != 0
+isBefore1200 = hour(time) < 12  // Before 12:00
+
+// === Track DayTrade Channel: highest high and lowest low ===
+var float prevDayHigh = na
+var int prevDayHighBar = na
+var int prevDayHighTime = na
+var float currDayHigh = na
+var int currDayHighBar = na
+var int currDayHighTime = na
+var float prevDayLow = na
+var int prevDayLowBar = na
+var int prevDayLowTime = na
+var float currDayLow = na
+var int currDayLowBar = na
+var int currDayLowTime = na
+
+// === Line references ===
+var line highLine = na
+var line highProj = na
+var line lowLine = na
+var line lowProj = na
+var line heartLine = na
+
+// === Update DayTrade Channel highs and lows ===
+if isNewDay and show_daytrade_channel
+    prevDayHigh := currDayHigh
+    prevDayHighBar := currDayHighBar
+    prevDayHighTime := currDayHighTime
+    currDayHigh := high
+    currDayHighBar := bar_index
+    currDayHighTime := time
+
+    prevDayLow := currDayLow
+    prevDayLowBar := currDayLowBar
+    prevDayLowTime := currDayLowTime
+    currDayLow := low
+    currDayLowBar := bar_index
+    currDayLowTime := time
+else
+    if isBefore1200 and show_daytrade_channel
+        if high > currDayHigh or na(currDayHigh)
+            currDayHigh := high
+            currDayHighBar := bar_index
+            currDayHighTime := time
+        if low < currDayLow or na(currDayLow)
+            currDayLow := low
+            currDayLowBar := bar_index
+            currDayLowTime := time
+
+// === Calculate shared deltas for projection slope ===
+barDeltaHigh = currDayHighBar - prevDayHighBar
+priceDeltaHigh = currDayHigh - prevDayHigh
+slopeHigh = barDeltaHigh != 0 ? priceDeltaHigh / barDeltaHigh : 0.0
+projectedHigh = currDayHigh + slopeHigh * (bar_index - currDayHighBar)
+
+barDeltaLow = currDayLowBar - prevDayLowBar
+priceDeltaLow = currDayLow - prevDayLow
+slopeLow = barDeltaLow != 0 ? priceDeltaLow / barDeltaLow : 0.0
+projectedLow = currDayLow + slopeLow * (bar_index - currDayLowBar)
+
+// === High Line and Projection ===
+if isNewDay and not na(prevDayHigh) and not na(prevDayHighBar) and show_daytrade_channel
+    line.delete(highLine)
+    highLine := line.new(prevDayHighBar, prevDayHigh, currDayHighBar, currDayHigh, color=daytrade_dynamic_color, width=2)
+
+    line.delete(highProj)
+    highProj := line.new(currDayHighBar, currDayHigh, bar_index, projectedHigh, color=daytrade_proj_color, style=line.style_dashed)
+else
+    if not na(highLine) and show_daytrade_channel
+        line.set_xy2(highLine, currDayHighBar, currDayHigh)
+    if not na(highProj) and show_daytrade_channel
+        line.set_xy1(highProj, currDayHighBar, currDayHigh)
+        line.set_xy2(highProj, bar_index, projectedHigh)
+
+// === Low Line and Projection ===
+if isNewDay and not na(prevDayLow) and not na(prevDayLowBar) and show_daytrade_channel
+    line.delete(lowLine)
+    lowLine := line.new(prevDayLowBar, prevDayLow, currDayLowBar, currDayLow, color=daytrade_dynamic_color, width=2)
+
+    line.delete(lowProj)
+    lowProj := line.new(currDayLowBar, currDayLow, bar_index, projectedLow, color=daytrade_proj_color, style=line.style_dashed)
+else
+    if not na(lowLine) and show_daytrade_channel
+        line.set_xy2(lowLine, currDayLowBar, currDayLow)
+    if not na(lowProj) and show_daytrade_channel
+        line.set_xy1(lowProj, currDayLowBar, currDayLow)
+        line.set_xy2(lowProj, bar_index, projectedLow)
+
+// === Heartline (Midpoint between top and bottom lines) ===
+float leftHeartY = na
+float rightHeartY = na
+int leftHeartX = na
+int leftHeartTime = na
+
+if show_daytrade_channel and show_heartline and not na(prevDayHigh) and not na(prevDayLow) and not na(prevDayHighBar) and not na(prevDayLowBar) and not na(prevDayHighTime) and not na(prevDayLowTime)
+    // Calculate heartline as midpoint between high and low lines
+    leftHeartX := math.max(prevDayHighBar, prevDayLowBar)
+    leftHeartTime := math.max(prevDayHighTime, prevDayLowTime)
+    // Interpolate high line value at leftHeartX
+    float interpolatedHigh = na(prevDayHigh) ? na : prevDayHigh + (currDayHigh - prevDayHigh) * (leftHeartX - prevDayHighBar) / math.max(1, currDayHighBar - prevDayHighBar)
+    // Interpolate low line value at leftHeartX
+    float interpolatedLow = na(prevDayLow) ? na : prevDayLow + (currDayLow - prevDayLow) * (leftHeartX - prevDayLowBar) / math.max(1, currDayLowBar - prevDayLowBar)
+    leftHeartY := (interpolatedHigh + interpolatedLow) / 2
+    rightHeartY := (projectedHigh + projectedLow) / 2
+
+    line.delete(heartLine)
+    if not na(leftHeartY) and not na(rightHeartY) and not na(leftHeartTime)
+        heartLine := line.new(x1=leftHeartTime, y1=leftHeartY, x2=time, y2=rightHeartY, xloc=xloc.bar_time, color=heartline_color, style=line.style_dashed, width=2)
+// Label offsets defined in constants (_tagHOffset, _tagVOffset)
+
+////Monthly/QuaRTERLY vwaps/////
+
+// Detect new month and new quarter
+is_new_month = ta.change(time('M'))
+is_new_quarter = month % 3 == 1 and bool(is_new_month) // Quarters start in Jan, Apr, Jul, Oct
+
+
+// Reset monthly calculations at the start of a new month
+if bool(is_new_month)
+    monthly_vwap_sum := 0.0
+    monthly_volume_sum := 0.0
+    monthly_volume_sum
+
+// Calculate monthly VWAP components
+monthly_vwap_sum := monthly_vwap_sum + close * volume
+monthly_volume_sum := monthly_volume_sum + volume
+
+// Calculate Monthly Anchored VWAP
+if monthly_volume_sum != 0
+    monthly_anchored_vwap := monthly_vwap_sum / monthly_volume_sum
+    monthly_anchored_vwap
+
+// Reset quarterly calculations at the start of a new quarter
+if is_new_quarter
+    quarterly_vwap_sum := 0.0
+    quarterly_volume_sum := 0.0
+    quarterly_volume_sum
+
+// Calculate quarterly VWAP components
+quarterly_vwap_sum := quarterly_vwap_sum + close * volume
+quarterly_volume_sum := quarterly_volume_sum + volume
+
+// Calculate Quarterly Anchored VWAP
+if quarterly_volume_sum != 0
+    quarterly_anchored_vwap := quarterly_vwap_sum / quarterly_volume_sum
+    quarterly_anchored_vwap
+
+
+
+
+//-----------------------------------------
+// 25) Dummy Plot to Satisfy Indicator Requirements
+//-----------------------------------------
+plot(na, title="Dummy Plot")
