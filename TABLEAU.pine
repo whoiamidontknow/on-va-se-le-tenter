@@ -341,7 +341,7 @@ sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volR
 //   + clôture du bon côté du Moyenator 1 (EMA50).
 // Une 3e condition (probablement le volume) reste à trouver : précision ~79 %.
 var int sg_run = 0
-sg_run := na(sg_heiBull[1]) ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
+sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
 sg_long  = sg_arrows and sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close > sg_ema50
 sg_short = sg_arrows and not sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close < sg_ema50
 plotshape(sg_long,  "Signator Long",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
