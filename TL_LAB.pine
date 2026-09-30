@@ -43,9 +43,9 @@ p2Mode  = input.string("Pivot confirmé (Ephore)", "2e point de la droite", grou
 valMode = input.string("À chaque bougie (Ephore)", "Vérification de la droite", group=grp_d,
      options=["À chaque bougie (Ephore)", "Une seule fois, à la confirmation"],
      tooltip="Avec « Pivot confirmé » seulement. « À chaque bougie » : 38/38 (MES + NQ, 1m à 4h). « Une seule fois » : rate la résistance NQ 4h.")
-brkSrc  = input.string("Clôture (corps au-delà)", "Cassure (points) mesurée sur", group=grp_d,
+brkSrc  = input.string("Mèche + tampon", "Cassure (points) mesurée sur", group=grp_d,
      options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"],
-     tooltip="Défaut : le corps de la bougie HA dépasse la trend (clôture au-delà). Un seul point haussier et un seul point baissier restent affichés : le dernier de chaque.")
+     tooltip="Défaut = original : la mèche dépasse la trend de plus que le tampon (0,1 %). Vérifié sur MES 15m : point rouge à 07:00 comme l'original (la clôture le mettait à 06:15). Un seul point haussier et un seul baissier restent affichés : le dernier de chaque.")
 showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=grp_d)
 showSup = input.bool(true, "Afficher le support (trend haussière)",   group=grp_d)
 showAnc = input.bool(true, "Marquer les ancres (◆)", group=grp_d)

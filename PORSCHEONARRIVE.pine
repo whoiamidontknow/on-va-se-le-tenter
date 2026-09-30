@@ -1,11 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// PORSCHEONARRIVE — VERSION V3 (2026-09-30)
+// PORSCHEONARRIVE — VERSION V4 (2026-09-30)
 // Fichier de référence : mis à jour à chaque MAJ majeure.
 // Installation : copier tout le fichier dans l'éditeur Pine de TradingView,
 // graphique en Heiken Ashi.
 //
 // JOURNAL DES VERSIONS
+//   V4  2026-09-30  Points de cassure : déclenchés par la MÈCHE au-delà de la
+//                   trend + tampon 0,1 % (règle de l'original, vérifiée : point
+//                   rouge MES 15m à 07:00 comme l'original).
 //   V3  2026-09-30  Trendlines : un seul point de cassure haussier + un seul
 //                   baissier affichés à la fois (le dernier de chaque) ; cassure
 //                   = corps HA au-delà de la trend (clôture), options corps
@@ -1023,9 +1026,9 @@ tl_nT     = input.int(3,     "Touches minimum (Minimum Number of Touches)", grou
 tl_newH   = input.int(100,   "Nouvelle ancre après X barres (Look for New Pivot High after X Bars)", group=tl_grp, minval=1, maxval=1000)
 
 tl_grp_d = "=== TRENDLINES : affichage ==="
-tl_brkSrc  = input.string("Clôture (corps au-delà)", "Cassure (points) mesurée sur", group=tl_grp_d,
+tl_brkSrc  = input.string("Mèche + tampon", "Cassure (points) mesurée sur", group=tl_grp_d,
      options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"],
-     tooltip="Défaut : le corps de la bougie HA dépasse la trend (clôture au-delà). Un seul point haussier et un seul point baissier restent affichés : le dernier de chaque.")
+     tooltip="Défaut = original : la mèche dépasse la trend de plus que le tampon (0,1 %). Vérifié sur MES 15m : point rouge à 07:00 comme l'original (la clôture le mettait à 06:15). Un seul point haussier et un seul baissier restent affichés : le dernier de chaque.")
 tl_showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=tl_grp_d)
 tl_showSup = input.bool(true, "Afficher le support (trend haussière)",   group=tl_grp_d)
 tl_showAnc = input.bool(false, "Marquer les ancres (◆)", group=tl_grp_d)
