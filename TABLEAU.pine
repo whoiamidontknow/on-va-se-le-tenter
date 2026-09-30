@@ -1,11 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V4 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V5 (2026-09-30)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V5  2026-09-30  Score = Candle Quality Filter de l'original en mode scoring
+//                   (somme des poids des filtres réussis, Fort ≥ 50). Les flèches
+//                   exigent Score Fort : 16/16 flèches, 1 fausse (MES 15m 9348b).
 //   V4  2026-09-30  Signator : flèches retrouvées sur ~500 flèches de l'original
 //                   (2e bougie Heishinator + ADX ≥ 18 + clôture vs EMA50 ; rappel 94 %).
 //                   TBT = ADX ≥ Seuil de Force (18) par défaut (volume en option).
@@ -272,8 +275,9 @@ if barstate.islast and main_show
 //   Heishinator : règle VALIDÉE (SHA α 0.42 / 0.44 vs EMA33, cf. PorscheOnArrive).
 //   Tendance    : clôture vs Moyenator 1 (EMA50) — condition des flèches de l'original ;
 //                 EMA50 vs EMA60 réfuté par un screen.
-//   Score       : score qualité de bougie 0-100 (Fort ≥ 50, Moyen ≥ 18, sinon Faible)
-//                 — reprise de notre ancien Signator, HYPOTHÈSE.
+//   Score       : Candle Quality Filter, somme des poids des filtres réussis
+//                 (structure, momentum ATR, volume, gap ; 25 chacun) : Fort ≥ 50,
+//                 Moyen = 25, Faible = 0. Fort retrouvé via les flèches ; Moyen/Faible = hypothèse.
 //   TBT         : « Tick By Tick » = activité du marché. HYPOTHÈSE calée sur 2 cas
 //                 (30/09 10:30, MES OK / NQ Faible) : volume de la dernière bougie
 //                 CLÔTURÉE / SMA20 du volume ≥ seuil (0.75) → ✔ OK, sinon ⛔ Faible.
@@ -313,22 +317,25 @@ sg_trendBull = close > sg_ema50
 // ─── Force : ADX(14,14) ───
 [sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
 
-// ─── Score qualité de bougie (0-100) ───
+// ─── Score = CANDLE QUALITY FILTER de l'original (réglages de la capture) ───
+// Mode scoring : somme des poids (25 chacun) des filtres RÉUSSIS, sur 100.
+// Retrouvé sur l'export 9348b (volume) : toutes les flèches de l'original ont ≥ 2 filtres
+// réussis (score ≥ 50) ; 4 des 5 fausses flèches en avaient 0 ou 1.
+// L'engulfing complet n'est jamais vrai sur bougies HA : sans effet, non compté.
+sg_scoreMin = 50
+sg_atr   = ta.atr(14)
 sg_rng   = high - low
 sg_body  = math.abs(close - open)
-sg_br    = sg_rng > 0 ? sg_body / sg_rng : 0.0
-sg_wick  = sg_heiBull ? (high - close) / math.max(sg_rng, syminfo.mintick) : (close - low) / math.max(sg_rng, syminfo.mintick)
 sg_cpos  = sg_rng > 0 ? (close - low) / sg_rng : 0.5
-sg_atr   = ta.atr(14)
-sg_volR  = ta.sma(volume, 20) > 0 ? volume / ta.sma(volume, 20) : 0.0
-sg_gapA  = sg_atr > 0 ? math.abs(open - close[1]) / sg_atr : 0.0
-sg_sStruct = (math.min(sg_br / 0.5, 1.0) + (1.0 - math.min(sg_wick / 0.35, 1.0)) + (sg_heiBull ? math.min(sg_cpos / 0.67, 1.0) : math.min((1.0 - sg_cpos) / 0.67, 1.0))) / 3.0 * 100.0
-sg_sMom    = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0) * 100.0
-sg_sVol    = math.min(sg_volR / 1.0, 1.0) * 100.0
-sg_sGap    = math.min(sg_gapA / 0.3, 1.0) * 100.0
-sg_score   = (sg_sStruct + sg_sMom + sg_sVol + sg_sGap) / 4.0
-sg_scoreTxt = sg_score >= 50 ? "Fort" : sg_score >= 18 ? "Moyen" : "Faible"
-sg_scoreCol = sg_score >= 50 ? sg_c_ok : sg_score >= 18 ? sg_c_warn : sg_c_dn
+sg_upW   = high - math.max(open, close)
+sg_dnW   = math.min(open, close) - low
+sg_structOK = sg_rng > 0 and sg_body / sg_rng >= 0.5 and (sg_heiBull ? sg_cpos >= 0.67 and sg_upW / sg_rng <= 0.35 : (1 - sg_cpos) >= 0.67 and sg_dnW / sg_rng <= 0.35)
+sg_momOK    = sg_rng >= 0.5 * sg_atr
+sg_volOK    = volume >= ta.sma(volume, 20) * 1.0
+sg_gapOK    = math.abs(open - close[1]) >= 0.3 * sg_atr
+sg_score    = 25 * (sg_structOK ? 1 : 0) + 25 * (sg_momOK ? 1 : 0) + 25 * (sg_volOK ? 1 : 0) + 25 * (sg_gapOK ? 1 : 0)
+sg_scoreTxt = sg_score >= sg_scoreMin ? "Fort" : sg_score >= 25 ? "Moyen" : "Faible"
+sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= 25 ? sg_c_warn : sg_c_dn
 
 // ─── TBT : force suffisante (ADX ≥ Seuil de Force), variante volume en option ───
 sg_volRatioPrev = ta.sma(volume, 20)[1] > 0 ? volume[1] / ta.sma(volume, 20)[1] : 0.0
@@ -338,12 +345,13 @@ sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volR
 // Règle retrouvée sur les flèches de l'original (≈ 500 flèches, rappel 94 %) :
 //   2e bougie du nouvel état Heishinator (la bougie du changement compte 1)
 //   + ADX(14,14) ≥ Seuil de Force (18)
-//   + clôture du bon côté du Moyenator 1 (EMA50).
-// Une 3e condition (probablement le volume) reste à trouver : précision ~79 %.
+//   + clôture du bon côté du Moyenator 1 (EMA50)
+//   + Score CQF ≥ 50 (« Score Fort »).
+// Export 9348b (MES 15m, volume) : 16/16 flèches de l'original, 1 fausse flèche (94 %).
 var int sg_run = 0
 sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
-sg_long  = sg_arrows and sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close > sg_ema50
-sg_short = sg_arrows and not sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close < sg_ema50
+sg_long  = sg_arrows and sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close > sg_ema50 and sg_score >= sg_scoreMin
+sg_short = sg_arrows and not sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close < sg_ema50 and sg_score >= sg_scoreMin
 plotshape(sg_long,  "Signator Long",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
 plotshape(sg_short, "Signator Short", style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.normal)
 alertcondition(sg_long,  "Signator Long",  "Flèche Signator long")
