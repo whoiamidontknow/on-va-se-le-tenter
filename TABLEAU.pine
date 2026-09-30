@@ -1,11 +1,13 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V5 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V6 (2026-09-30)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V6  2026-09-30  Heishinator du Signator = EMA(ohlc4,4) vs EMA(ohlc4,32) : 138/139
+//                   changements de l'original retrouvés (contre 131), toutes TF.
 //   V5  2026-09-30  Score = Candle Quality Filter de l'original en mode scoring
 //                   (somme des poids des filtres réussis, Fort ≥ 50). Les flèches
 //                   exigent Score Fort : 16/16 flèches, 1 fausse (MES 15m 9348b).
@@ -304,10 +306,10 @@ sg_c_warn = color.rgb(240, 180, 41)   // orange
 sg_c_off  = color.rgb(200, 200, 205)  // gris clair
 
 // ─── Heishinator (validé) ───
-sg_alpha = timeframe.in_seconds(timeframe.period) < 30 * 60 ? 0.42 : 0.44
-var float sg_sha = na
-sg_sha := na(sg_sha[1]) ? ohlc4 : sg_alpha * ohlc4 + (1.0 - sg_alpha) * sg_sha[1]
-sg_heiBull = sg_sha > ta.ema(close, 33)
+// Formulation retrouvée sur 139 changements imposés par les flèches de l'original (138/139,
+// toutes TF) : EMA(ohlc4, 4) vs EMA(ohlc4, 32). 0.42/0.44 vs EMA33 n'en était qu'une approximation.
+sg_sha = ta.ema(ohlc4, 4)
+sg_heiBull = sg_sha > ta.ema(ohlc4, 32)
 
 // ─── Tendance : clôture vs Moyenator 1 (EMA50) ───
 // (EMA50 > EMA60 réfuté : l'original affichait Baissière avec EMA50 > EMA60)
