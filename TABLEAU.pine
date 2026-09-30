@@ -1,11 +1,15 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V3 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V4 (2026-09-30)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V4  2026-09-30  Signator : flèches retrouvées sur ~500 flèches de l'original
+//                   (2e bougie Heishinator + ADX ≥ 18 + clôture vs EMA50 ; rappel 94 %).
+//                   TBT = ADX ≥ Seuil de Force (18) par défaut (volume en option).
+//                   Tendance = clôture vs EMA50 (EMA50 vs EMA60 réfuté).
 //   V3  2026-09-30  Signator : TBT = « Tick By Tick » (activité) : ✔ OK / ⛔ Faible
 //                   selon volume de la bougie clôturée / moyenne 20 (seuil 0.75,
 //                   réglable). Ancienne hypothèse (alignement) réfutée par NQ.
@@ -266,8 +270,8 @@ if barstate.islast and main_show
 // ══════════════════════════════════════════════════════════════
 // Aucune source publique trouvée pour ce tableau. Statut des lignes :
 //   Heishinator : règle VALIDÉE (SHA α 0.42 / 0.44 vs EMA33, cf. PorscheOnArrive).
-//   Tendance    : Moyenator 1 (EMA50) vs Moyenator 2 (EMA60) — Moyenator validé,
-//                 lien avec cette ligne = hypothèse.
+//   Tendance    : clôture vs Moyenator 1 (EMA50) — condition des flèches de l'original ;
+//                 EMA50 vs EMA60 réfuté par un screen.
 //   Score       : score qualité de bougie 0-100 (Fort ≥ 50, Moyen ≥ 18, sinon Faible)
 //                 — reprise de notre ancien Signator, HYPOTHÈSE.
 //   TBT         : « Tick By Tick » = activité du marché. HYPOTHÈSE calée sur 2 cas
@@ -279,7 +283,13 @@ grp_sg   = "=== EPHORE SIGNATOR (tableau) ==="
 sg_show  = input.bool(true, "Afficher le tableau Signator", group=grp_sg)
 sg_pos   = input.string("Top Left", "Position", group=grp_sg, options=["Top Left", "Top Right", "Middle Left", "Middle Right", "Bottom Left", "Bottom Right"])
 sg_szS   = input.string("Normal", "Taille Texte", group=grp_sg, options=["Tiny", "Small", "Normal", "Large"])
-sg_tbtTh = input.float(0.75, "TBT : seuil volume / moyenne 20 (bougie clôturée)", group=grp_sg, minval=0.0, step=0.05)
+sg_force = input.int(18, "Seuil de Force (Min) — ADX 14", group=grp_sg, minval=0, maxval=100,
+     tooltip="Réglage de l'original. Retrouvé sur ~500 flèches : aucune flèche de l'original n'a un ADX(14,14) < 18.")
+sg_tbtMode = input.string("ADX ≥ Seuil de Force", "TBT mesuré par", group=grp_sg, options=["ADX ≥ Seuil de Force", "Volume / moyenne 20 (bougie clôturée)"])
+sg_tbtTh = input.float(0.75, "TBT (mode volume) : seuil", group=grp_sg, minval=0.0, step=0.05)
+sg_arrows = input.bool(true, "Afficher les flèches Signator", group=grp_sg)
+sg_arUp  = input.color(#FFFFFF, "Flèche long", group=grp_sg, inline="ar")
+sg_arDn  = input.color(#000000, "Flèche short", group=grp_sg, inline="ar")
 
 sg_c_bg   = color.new(color.gray, 35)
 sg_c_lbl  = color.rgb(235, 235, 240)
@@ -295,8 +305,13 @@ var float sg_sha = na
 sg_sha := na(sg_sha[1]) ? ohlc4 : sg_alpha * ohlc4 + (1.0 - sg_alpha) * sg_sha[1]
 sg_heiBull = sg_sha > ta.ema(close, 33)
 
-// ─── Tendance : Moyenator 1 > Moyenator 2 ───
-sg_trendBull = ta.ema(close, 50) > ta.ema(close, 60)
+// ─── Tendance : clôture vs Moyenator 1 (EMA50) ───
+// (EMA50 > EMA60 réfuté : l'original affichait Baissière avec EMA50 > EMA60)
+sg_ema50 = ta.ema(close, 50)
+sg_trendBull = close > sg_ema50
+
+// ─── Force : ADX(14,14) ───
+[sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
 
 // ─── Score qualité de bougie (0-100) ───
 sg_rng   = high - low
@@ -315,9 +330,24 @@ sg_score   = (sg_sStruct + sg_sMom + sg_sVol + sg_sGap) / 4.0
 sg_scoreTxt = sg_score >= 50 ? "Fort" : sg_score >= 18 ? "Moyen" : "Faible"
 sg_scoreCol = sg_score >= 50 ? sg_c_ok : sg_score >= 18 ? sg_c_warn : sg_c_dn
 
-// ─── TBT (hypothèse : activité tick-by-tick = volume de la bougie clôturée vs sa moyenne 20) ───
+// ─── TBT : force suffisante (ADX ≥ Seuil de Force), variante volume en option ───
 sg_volRatioPrev = ta.sma(volume, 20)[1] > 0 ? volume[1] / ta.sma(volume, 20)[1] : 0.0
-sg_tbtOk = sg_volRatioPrev >= sg_tbtTh
+sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volRatioPrev >= sg_tbtTh
+
+// ─── FLÈCHES SIGNATOR ───
+// Règle retrouvée sur les flèches de l'original (≈ 500 flèches, rappel 94 %) :
+//   2e bougie du nouvel état Heishinator (la bougie du changement compte 1)
+//   + ADX(14,14) ≥ Seuil de Force (18)
+//   + clôture du bon côté du Moyenator 1 (EMA50).
+// Une 3e condition (probablement le volume) reste à trouver : précision ~79 %.
+var int sg_run = 0
+sg_run := na(sg_heiBull[1]) ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
+sg_long  = sg_arrows and sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close > sg_ema50
+sg_short = sg_arrows and not sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close < sg_ema50
+plotshape(sg_long,  "Signator Long",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
+plotshape(sg_short, "Signator Short", style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.normal)
+alertcondition(sg_long,  "Signator Long",  "Flèche Signator long")
+alertcondition(sg_short, "Signator Short", "Flèche Signator short")
 
 // ─── Construction ───
 sg_pos_v = sg_pos == "Top Right" ? position.top_right : sg_pos == "Middle Left" ? position.middle_left :
