@@ -1,11 +1,13 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V6 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V7 (2026-09-30)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V7  2026-09-30  Score : position du close ≥ 0.33 (réglage « Position Close (tiers) »)
+//                   au lieu de 0.67 : +2 flèches exactes sur les 14 exports, 0 en trop de plus.
 //   V6  2026-09-30  Heishinator du Signator = EMA(ohlc4,4) vs EMA(ohlc4,32) : 138/139
 //                   changements de l'original retrouvés (contre 131), toutes TF.
 //   V5  2026-09-30  Score = Candle Quality Filter de l'original en mode scoring
@@ -331,7 +333,7 @@ sg_body  = math.abs(close - open)
 sg_cpos  = sg_rng > 0 ? (close - low) / sg_rng : 0.5
 sg_upW   = high - math.max(open, close)
 sg_dnW   = math.min(open, close) - low
-sg_structOK = sg_rng > 0 and sg_body / sg_rng >= 0.5 and (sg_heiBull ? sg_cpos >= 0.67 and sg_upW / sg_rng <= 0.35 : (1 - sg_cpos) >= 0.67 and sg_dnW / sg_rng <= 0.35)
+sg_structOK = sg_rng > 0 and sg_body / sg_rng >= 0.5 and (sg_heiBull ? sg_cpos >= 0.33 and sg_upW / sg_rng <= 0.35 : (1 - sg_cpos) >= 0.33 and sg_dnW / sg_rng <= 0.35)
 sg_momOK    = sg_rng >= 0.5 * sg_atr
 sg_volOK    = volume >= ta.sma(volume, 20) * 1.0
 sg_gapOK    = math.abs(open - close[1]) >= 0.3 * sg_atr
