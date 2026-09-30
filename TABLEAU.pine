@@ -1,17 +1,18 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V1 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V2 (2026-09-30)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V2  2026-09-30  + Tableau Signator (ancienne version) : Heishinator (validé),
+//                   TBT, Tendance, Score, TF. TBT / Score / Tendance = hypothèses.
 //   V1  2026-09-30  Tableau principal = réplique de l'original (logique du script
 //                   public « SuperTrader Trend Analysis and Trade Study Dashboard »
 //                   de Midgar-). Vérifié MES 15m : RSI 60.67, CCI 134.23,
 //                   YoYo 0.08 %, Bull 0/3, Bear 1/3.
-//                   À venir : INDICATOR|SIGNAL, TIMEFRAME|TREND|STRENGTH,
-//                   Dashator, Signator.
+//                   Vérifié par Jeremy dans TradingView : tout coïncide.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Tableaux", overlay=true)
 
@@ -255,3 +256,78 @@ if barstate.islast and main_show
     f_st_row(2, 6, "TF3 PA",       st_pa3, st_pa3s, sz)
     f_st_row(2, 7, "Vix Vol",      st_vixLvl, st_vixLvlSem, sz)
     f_st_row(2, 8, "Ticker 2 Vol", st_lvl2, st_volSem(st_lvl2), sz)
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU SIGNATOR (ancienne version de l'original)
+// Heishinator | TBT | Tendance | Score | TF
+// ══════════════════════════════════════════════════════════════
+// Aucune source publique trouvée pour ce tableau. Statut des lignes :
+//   Heishinator : règle VALIDÉE (SHA α 0.42 / 0.44 vs EMA33, cf. PorscheOnArrive).
+//   Tendance    : Moyenator 1 (EMA50) vs Moyenator 2 (EMA60) — Moyenator validé,
+//                 lien avec cette ligne = hypothèse.
+//   Score       : score qualité de bougie 0-100 (Fort ≥ 50, Moyen ≥ 18, sinon Faible)
+//                 — reprise de notre ancien Signator, HYPOTHÈSE.
+//   TBT         : HYPOTHÈSE — « OK » quand Heishinator et Tendance vont dans le même sens.
+//   TF          : « Actuel » (unité de temps du graphique).
+grp_sg   = "=== EPHORE SIGNATOR (tableau) ==="
+sg_show  = input.bool(true, "Afficher le tableau Signator", group=grp_sg)
+sg_pos   = input.string("Top Left", "Position", group=grp_sg, options=["Top Left", "Top Right", "Middle Left", "Middle Right", "Bottom Left", "Bottom Right"])
+sg_szS   = input.string("Normal", "Taille Texte", group=grp_sg, options=["Tiny", "Small", "Normal", "Large"])
+
+sg_c_bg   = color.new(color.gray, 35)
+sg_c_lbl  = color.rgb(235, 235, 240)
+sg_c_up   = color.rgb(91, 91, 245)    // bleu Ephore
+sg_c_dn   = color.rgb(224, 86, 80)    // rouge Ephore
+sg_c_ok   = color.rgb(76, 175, 80)    // vert
+sg_c_warn = color.rgb(240, 180, 41)   // orange
+sg_c_off  = color.rgb(200, 200, 205)  // gris clair
+
+// ─── Heishinator (validé) ───
+sg_alpha = timeframe.in_seconds(timeframe.period) < 30 * 60 ? 0.42 : 0.44
+var float sg_sha = na
+sg_sha := na(sg_sha[1]) ? ohlc4 : sg_alpha * ohlc4 + (1.0 - sg_alpha) * sg_sha[1]
+sg_heiBull = sg_sha > ta.ema(close, 33)
+
+// ─── Tendance : Moyenator 1 > Moyenator 2 ───
+sg_trendBull = ta.ema(close, 50) > ta.ema(close, 60)
+
+// ─── Score qualité de bougie (0-100) ───
+sg_rng   = high - low
+sg_body  = math.abs(close - open)
+sg_br    = sg_rng > 0 ? sg_body / sg_rng : 0.0
+sg_wick  = sg_heiBull ? (high - close) / math.max(sg_rng, syminfo.mintick) : (close - low) / math.max(sg_rng, syminfo.mintick)
+sg_cpos  = sg_rng > 0 ? (close - low) / sg_rng : 0.5
+sg_atr   = ta.atr(14)
+sg_volR  = ta.sma(volume, 20) > 0 ? volume / ta.sma(volume, 20) : 0.0
+sg_gapA  = sg_atr > 0 ? math.abs(open - close[1]) / sg_atr : 0.0
+sg_sStruct = (math.min(sg_br / 0.5, 1.0) + (1.0 - math.min(sg_wick / 0.35, 1.0)) + (sg_heiBull ? math.min(sg_cpos / 0.67, 1.0) : math.min((1.0 - sg_cpos) / 0.67, 1.0))) / 3.0 * 100.0
+sg_sMom    = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0) * 100.0
+sg_sVol    = math.min(sg_volR / 1.0, 1.0) * 100.0
+sg_sGap    = math.min(sg_gapA / 0.3, 1.0) * 100.0
+sg_score   = (sg_sStruct + sg_sMom + sg_sVol + sg_sGap) / 4.0
+sg_scoreTxt = sg_score >= 50 ? "Fort" : sg_score >= 18 ? "Moyen" : "Faible"
+sg_scoreCol = sg_score >= 50 ? sg_c_ok : sg_score >= 18 ? sg_c_warn : sg_c_dn
+
+// ─── TBT (hypothèse) ───
+sg_tbtOk = sg_heiBull == sg_trendBull
+
+// ─── Construction ───
+sg_pos_v = sg_pos == "Top Right" ? position.top_right : sg_pos == "Middle Left" ? position.middle_left :
+     sg_pos == "Middle Right" ? position.middle_right : sg_pos == "Bottom Left" ? position.bottom_left :
+     sg_pos == "Bottom Right" ? position.bottom_right : position.top_left
+sg_sz = sg_szS == "Tiny" ? size.tiny : sg_szS == "Small" ? size.small : sg_szS == "Large" ? size.large : size.normal
+
+var table sg_tbl = table.new(position.top_left, 2, 5, bgcolor=sg_c_bg, border_width=0)
+
+if barstate.islast and sg_show
+    table.set_position(sg_tbl, sg_pos_v)
+    table.cell(sg_tbl, 0, 0, "Heishinator", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 0, sg_heiBull ? "⬆ Haussier" : "⬇ Baissier", text_color=sg_heiBull ? sg_c_up : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 1, "TBT", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 1, sg_tbtOk ? "✔ OK" : "✖ NON", text_color=sg_tbtOk ? sg_c_ok : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 2, "Tendance", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 2, sg_trendBull ? "⬆ Haussière" : "⬇ Baissière", text_color=sg_trendBull ? sg_c_up : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 3, "Score", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 3, sg_scoreTxt, text_color=sg_scoreCol, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 4, "TF", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 4, "Actuel", text_color=sg_c_off, text_size=sg_sz, text_halign=text.align_left)
