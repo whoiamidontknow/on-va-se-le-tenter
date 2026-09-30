@@ -17,9 +17,13 @@
 // Par bougie (résistance ; support = miroir) :
 //   a) pivot haut confirmé → devient l'ANCRE s'il n'y en a pas, s'il est
 //      plus haut que l'ancre, ou si l'ancre a plus de X barres ;
-//   b) sinon, s'il est plus bas que l'ancre : droite candidate ancre → pivot ;
-//   c) candidate validée si aucune mèche ne dépasse la droite (+ tampon)
-//      de l'ancre à la bougie courante, et au moins N touches (± tampon) ;
+//   b) sinon, s'il est plus bas que l'ancre : il devient le « dernier pivot »,
+//      droite candidate ancre → dernier pivot ;
+//   c) À CHAQUE BOUGIE (tant que le haut reste sous l'ancre), la candidate
+//      est revérifiée : validée si aucune mèche ne dépasse la droite
+//      (+ tampon) de l'ancre à la bougie courante, et au moins N touches
+//      (± tampon). Les touches APRÈS le 2e point comptent donc aussi
+//      (cas NQ 4h : 30627 → 30109 validée par 2 touches ultérieures) ;
 //   d) une droite validée remplace la précédente ; elle reste affichée,
 //      même cassée, jusqu'à la prochaine droite validée.
 indicator("Ephore TL Lab", overlay=true, max_lines_count=20, max_labels_count=50, max_bars_back=5000)
@@ -36,6 +40,9 @@ newH   = input.int(100,   "Nouvelle ancre après X barres (Look for New Pivot Hi
 grp_d = "=== DIAGNOSTIC : variantes à tester ==="
 p2Mode  = input.string("Pivot confirmé (Ephore)", "2e point de la droite", group=grp_d,
      options=["Pivot confirmé (Ephore)", "Bougie courante (script public)"])
+valMode = input.string("À chaque bougie (Ephore)", "Vérification de la droite", group=grp_d,
+     options=["À chaque bougie (Ephore)", "Une seule fois, à la confirmation"],
+     tooltip="Avec « Pivot confirmé » seulement. « À chaque bougie » : 38/38 (MES + NQ, 1m à 4h). « Une seule fois » : rate la résistance NQ 4h.")
 brkSrc  = input.string("Clôture", "Cassure (points) mesurée sur", group=grp_d, options=["Clôture", "Mèche + tampon"])
 showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=grp_d)
 showSup = input.bool(true, "Afficher le support (trend haussière)",   group=grp_d)
@@ -53,6 +60,7 @@ boDnCol = input.color(color.red,  "", group=grp_s, inline="b")
 
 buf    = bufPct / 100.0
 usePiv = p2Mode == "Pivot confirmé (Ephore)"
+everyB = valMode == "À chaque bougie (Ephore)"
 
 f_val(x1, y1, x2, y2, x) =>
     y1 + (y2 - y1) / (x2 - x1) * (x - x1)
@@ -71,22 +79,31 @@ var float rY2 = na
 var int   rTouch = 0
 var int   rValidAt = na
 var bool  rActive = false
+var float rLastH = na
+var int   rLastB = na
 bool rNewAnchor = false
+bool rNewPiv = false
 
-// a) ancre
+// a) ancre, ou dernier pivot plus bas que l'ancre
 if not na(ph) and (na(rAncH) or ph > rAncH or bar_index - rAncB > newH)
     rAncH := ph
     rAncB := bar_index - bars
+    rLastH := na
+    rLastB := na
     rNewAnchor := true
+else if not na(ph) and bar_index - bars > rAncB and ph < rAncH
+    rLastH := ph
+    rLastB := bar_index - bars
+    rNewPiv := true
 
 // b) candidate
 float rCH = na
 int   rCB = na
 if not na(rAncH)
     if usePiv
-        if not na(ph) and bar_index - bars > rAncB and ph < rAncH
-            rCH := ph
-            rCB := bar_index - bars
+        if not na(rLastB) and (everyB ? high < rAncH : rNewPiv)
+            rCH := rLastH
+            rCB := rLastB
     else
         if high < rAncH and bar_index > rAncB
             rCH := high
@@ -104,7 +121,7 @@ if not na(rCB) and bar_index - rAncB < 4900
         if high[i] >= p * (1 - buf)
             tc += 1
     // d) remplacement
-    if ok and tc >= nT
+    if ok and tc >= nT and (na(rX1) or rX1 != float(rAncB) or rX2 != float(rCB))
         rX1 := float(rAncB)
         rY1 := rAncH
         rX2 := float(rCB)
@@ -127,20 +144,29 @@ var float sY2 = na
 var int   sTouch = 0
 var int   sValidAt = na
 var bool  sActive = false
+var float sLastL = na
+var int   sLastB = na
 bool sNewAnchor = false
+bool sNewPiv = false
 
 if not na(pl) and (na(sAncL) or pl < sAncL or bar_index - sAncB > newH)
     sAncL := pl
     sAncB := bar_index - bars
+    sLastL := na
+    sLastB := na
     sNewAnchor := true
+else if not na(pl) and bar_index - bars > sAncB and pl > sAncL
+    sLastL := pl
+    sLastB := bar_index - bars
+    sNewPiv := true
 
 float sCL = na
 int   sCB = na
 if not na(sAncL)
     if usePiv
-        if not na(pl) and bar_index - bars > sAncB and pl > sAncL
-            sCL := pl
-            sCB := bar_index - bars
+        if not na(sLastB) and (everyB ? low > sAncL : sNewPiv)
+            sCL := sLastL
+            sCB := sLastB
     else
         if low > sAncL and bar_index > sAncB
             sCL := low
@@ -156,7 +182,7 @@ if not na(sCB) and bar_index - sAncB < 4900
             break
         if low[i] <= p * (1 + buf)
             tc2 += 1
-    if ok2 and tc2 >= nT
+    if ok2 and tc2 >= nT and (na(sX1) or sX1 != float(sAncB) or sX2 != float(sCB))
         sX1 := float(sAncB)
         sY1 := sAncL
         sX2 := float(sCB)
@@ -217,7 +243,7 @@ f_t(x) =>
 if barstate.islast and showTbl
     f_c(0, 0, "Réglages", color.silver)
     f_c(1, 0, str.tostring(bars) + " / " + str.tostring(bufPct) + "% / " + str.tostring(nT) + " / " + str.tostring(newH), color.white)
-    f_c(2, 0, usePiv ? "2e pt = pivot" : "2e pt = bougie", color.white)
+    f_c(2, 0, (usePiv ? "2e pt = pivot" : "2e pt = bougie") + (usePiv ? (everyB ? ", vérif. chaque bougie" : ", vérif. 1 fois") : ""), color.white)
     f_c(1, 1, "RÉSISTANCE", resCol)
     f_c(2, 1, "SUPPORT", supCol)
     f_c(0, 2, "Droite", color.silver)

@@ -20,6 +20,7 @@ réglages visibles de l'original, sans rien ajuster.
 | Touches minimum | Minimum Number of Touches | 3 |
 | Nouvelle ancre après X barres | Look for New Pivot High after X Bars | 100 |
 | 2e point de la droite | (modifié par Ephore) | Pivot confirmé |
+| Vérification de la droite | (comme le script public) | À chaque bougie |
 | Cassure mesurée sur | (points verts / rouges) | Clôture (HA) |
 
 ## Valeurs attendues (état au 29/09, 22:45 en 15m et 22:00 en 1h)
@@ -33,10 +34,22 @@ mais elles doivent rester **identiques aux droites noires de l'original**.
 | SP500 1h | 7848.5 → 7814.75 | 7710 → 7726 |
 | Nasdaq 1h | 31094.75 → 30999.5 | 29107.25 → 29207.5 |
 
+## Mise à jour du 30/09 : vérification à chaque bougie
+Sur le Nasdaq 4h, l'original affiche la résistance 30627 (17/08 12:00) → 30109 (28/08 16:00).
+Au moment de sa confirmation, elle n'a que 2 touches. Elle gagne ses touches 3 et 4 plus tard
+(03/09 20:00 et 04/09 00:00), avant d'être cassée. L'original revérifie donc la droite
+**à chaque bougie**, comme le fait le script public, et pas une seule fois à la confirmation.
+
+Résultat : **38/38**. Le test couvre les 15 graphiques du dossier Trendlinehelper (MES et NQ,
+de 1m à 4h, résistance et support = 30 droites) et les 8 anciennes références. La simulation
+Python redonne exactement les valeurs du tableau TL_LAB de chacun des 15 screens.
+La seule droite qui change par rapport à la version précédente est la résistance du NQ 4h.
+
 ## Combinaisons à tester (un seul changement à la fois)
 | # | Changement | Ce que ça teste | Résultat simulé /8 |
 |---|---|---|---|
-| 0 | **Aucun (défaut)** | La règle retrouvée | **8** |
+| 0 | **Aucun (défaut)** | La règle retrouvée | **8** (38/38 sur tout le jeu) |
+| 0b | Vérification = Une seule fois | Ancienne version | 8 (rate le NQ 4h) |
 | 1 | 2e point = Bougie courante | Le script public tel quel | 0 |
 | 2 | Tampon 0.2 | Tolérance plus large | 7 |
 | 3 | Tampon 0.05 | Tolérance plus stricte | 5 |
