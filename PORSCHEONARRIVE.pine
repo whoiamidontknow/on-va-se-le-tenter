@@ -1,11 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// PORSCHEONARRIVE — VERSION V4 (2026-09-30)
+// PORSCHEONARRIVE — VERSION V5 (2026-09-30)
 // Fichier de référence : mis à jour à chaque MAJ majeure.
 // Installation : copier tout le fichier dans l'éditeur Pine de TradingView,
 // graphique en Heiken Ashi.
 //
 // JOURNAL DES VERSIONS
+//   V5  2026-09-30  Pivots : + Set 3 Weekly (bleu, alertes P/R1/S1).
+//                   Trendlines : forme, taille et couleur des points de
+//                   cassure réglables (haussier / baissier séparés).
 //   V4  2026-09-30  Points de cassure : déclenchés par la MÈCHE au-delà de la
 //                   trend + tampon 0,1 % (règle de l'original, vérifiée : point
 //                   rouge MES 15m à 07:00 comme l'original).
@@ -120,7 +123,7 @@ fill(p_moy1, p_moy2, color=moy_fill_color, title="Fill Moyenator")
 
 
 // ══════════════════════════════════════════════════════════════
-// PIVATOR DUAL V2 — INPUTS
+// PIVATOR V3 (Annuel + Mensuel + Weekly) — INPUTS
 // ══════════════════════════════════════════════════════════════
 grp_piv      = "=== EPHORE PIVATOR DUAL V2 ==="
 piv_type     = input.string("Traditionnel","Type", group=grp_piv,
@@ -134,6 +137,7 @@ piv_lbl_sz   = input.string("Normal", "Taille labels", group=grp_piv,
      options=["Tiny", "Small", "Normal", "Large", "Huge"])
 piv_s1_lbl_col = input.color(color.red,   "Couleur labels Set 1", group=grp_piv)
 piv_s2_lbl_col = input.color(#000000, "Couleur labels Set 2", group=grp_piv)
+piv_s3_lbl_col = input.color(color.blue, "Couleur labels Set 3", group=grp_piv)
 piv_lbl_bold   = input.bool(false, "Labels en gras", group=grp_piv)
 
 // --- SET 1 (Annuel) ---
@@ -202,6 +206,40 @@ piv_s2_s5_col = input.color(#000000, "S5", group=grp_piv, inline="s2s5")
 piv_s2_s5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
 piv_s2_r5_col = input.color(#000000, "R5", group=grp_piv, inline="s2s5")
 piv_s2_r5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
+
+// --- SET 3 (Hebdomadaire) ---
+piv_s3_enable = input.bool(true, "Enable Set 3",                  group=grp_piv)
+piv_s3_custom = input.bool(false,"Personnaliser Couleurs Set 3",  group=grp_piv)
+piv_s3_tf     = input.string("Hebdomadaire","Set 3 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s3_p_col  = input.color(color.blue, "P",  group=grp_piv, inline="s3p")
+piv_s3_p_on   = input.bool(true, "",            group=grp_piv, inline="s3p")
+
+piv_s3_s1_col = input.color(color.blue, "S1", group=grp_piv, inline="s3s1")
+piv_s3_s1_on  = input.bool(true, "",            group=grp_piv, inline="s3s1")
+piv_s3_r1_col = input.color(color.blue, "R1", group=grp_piv, inline="s3s1")
+piv_s3_r1_on  = input.bool(true, "",            group=grp_piv, inline="s3s1")
+
+piv_s3_s2_col = input.color(color.blue, "S2", group=grp_piv, inline="s3s2")
+piv_s3_s2_on  = input.bool(true, "",            group=grp_piv, inline="s3s2")
+piv_s3_r2_col = input.color(color.blue, "R2", group=grp_piv, inline="s3s2")
+piv_s3_r2_on  = input.bool(true, "",            group=grp_piv, inline="s3s2")
+
+piv_s3_s3_col = input.color(color.blue, "S3", group=grp_piv, inline="s3s3")
+piv_s3_s3_on  = input.bool(true, "",            group=grp_piv, inline="s3s3")
+piv_s3_r3_col = input.color(color.blue, "R3", group=grp_piv, inline="s3s3")
+piv_s3_r3_on  = input.bool(true, "",            group=grp_piv, inline="s3s3")
+
+piv_s3_s4_col = input.color(color.blue, "S4", group=grp_piv, inline="s3s4")
+piv_s3_s4_on  = input.bool(true, "",            group=grp_piv, inline="s3s4")
+piv_s3_r4_col = input.color(color.blue, "R4", group=grp_piv, inline="s3s4")
+piv_s3_r4_on  = input.bool(true, "",            group=grp_piv, inline="s3s4")
+
+piv_s3_s5_col = input.color(color.blue, "S5", group=grp_piv, inline="s3s5")
+piv_s3_s5_on  = input.bool(true, "",            group=grp_piv, inline="s3s5")
+piv_s3_r5_col = input.color(color.blue, "R5", group=grp_piv, inline="s3s5")
+piv_s3_r5_on  = input.bool(true, "",            group=grp_piv, inline="s3s5")
 
 // ══════════════════════════════════════════════════════════════
 // FONCTIONS PIVOTS
@@ -421,6 +459,55 @@ if piv_s2_enable and new_tf2
     rv_s2_r5 := s2_r5,  rv_s2_s5 := s2_s5
 
 // ══════════════════════════════════════════════════════════════
+// SET 3 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf3_str = f_tf_string(piv_s3_tf)
+
+[tf3_h, tf3_l, tf3_c, tf3_o] = request.security(syminfo.tickerid, tf3_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf3 = ta.change(time(tf3_str)) != 0
+
+[s3_p, s3_r1, s3_s1, s3_r2, s3_s2, s3_r3, s3_s3, s3_r4, s3_s4, s3_r5, s3_s5] =
+     f_calc_pivots(tf3_h, tf3_l, tf3_c, tf3_o, piv_type)
+
+var line ln_s3_p  = na, var line ln_s3_r1 = na, var line ln_s3_s1 = na
+var line ln_s3_r2 = na, var line ln_s3_s2 = na, var line ln_s3_r3 = na
+var line ln_s3_s3 = na, var line ln_s3_r4 = na, var line ln_s3_s4 = na
+var line ln_s3_r5 = na, var line ln_s3_s5 = na
+var label lb_s3_p  = na, var label lb_s3_r1 = na, var label lb_s3_s1 = na
+var label lb_s3_r2 = na, var label lb_s3_s2 = na, var label lb_s3_r3 = na
+var label lb_s3_s3 = na, var label lb_s3_r4 = na, var label lb_s3_s4 = na
+var label lb_s3_r5 = na, var label lb_s3_s5 = na
+var float rv_s3_p  = na, var float rv_s3_r1 = na, var float rv_s3_s1 = na
+var float rv_s3_r2 = na, var float rv_s3_s2 = na, var float rv_s3_r3 = na
+var float rv_s3_s3 = na, var float rv_s3_r4 = na, var float rv_s3_s4 = na
+var float rv_s3_r5 = na, var float rv_s3_s5 = na
+var int s3_target_t2 = na
+var int s3_start_bi  = na
+
+if piv_s3_enable and new_tf3
+    line.delete(ln_s3_p),  line.delete(ln_s3_r1), line.delete(ln_s3_s1)
+    line.delete(ln_s3_r2), line.delete(ln_s3_s2), line.delete(ln_s3_r3)
+    line.delete(ln_s3_s3), line.delete(ln_s3_r4), line.delete(ln_s3_s4)
+    line.delete(ln_s3_r5), line.delete(ln_s3_s5)
+    label.delete(lb_s3_p),  label.delete(lb_s3_r1), label.delete(lb_s3_s1)
+    label.delete(lb_s3_r2), label.delete(lb_s3_s2), label.delete(lb_s3_r3)
+    label.delete(lb_s3_s3), label.delete(lb_s3_r4), label.delete(lb_s3_s4)
+    label.delete(lb_s3_r5), label.delete(lb_s3_s5)
+
+    s3_start_bi  := bar_index
+    s3_target_t2 := f_end_time(piv_s3_tf)
+
+    rv_s3_p  := s3_p
+    rv_s3_r1 := s3_r1,  rv_s3_s1 := s3_s1
+    rv_s3_r2 := s3_r2,  rv_s3_s2 := s3_s2
+    rv_s3_r3 := s3_r3,  rv_s3_s3 := s3_s3
+    rv_s3_r4 := s3_r4,  rv_s3_s4 := s3_s4
+    rv_s3_r5 := s3_r5,  rv_s3_s5 := s3_s5
+
+// ══════════════════════════════════════════════════════════════
 // DESSIN SEGMENTS + LABELS — xloc.bar_index (rendu garanti)
 // ══════════════════════════════════════════════════════════════
 // xloc.bar_time ne rend pas les lignes dont l'endpoint est trop
@@ -535,6 +622,57 @@ if barstate.islast
         lb_s2_s4 := piv_s2_s4_on and piv_show_lbl and not na(rv_s2_s4) ? label.new(s2_rgt, rv_s2_s4, f_lbl_text(rv_s2_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
         lb_s2_r5 := piv_s2_r5_on and piv_show_lbl and not na(rv_s2_r5) ? label.new(s2_rgt, rv_s2_r5, f_lbl_text(rv_s2_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
         lb_s2_s5 := piv_s2_s5_on and piv_show_lbl and not na(rv_s2_s5) ? label.new(s2_rgt, rv_s2_s5, f_lbl_text(rv_s2_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+    // — Set 3 Weekly (extension réglable) —
+    if piv_s3_enable and not na(s3_start_bi)
+        s3_end = math.min(bar_index + 30, bar_index + 490)
+        s3_rgt = s3_end
+
+        line.delete(ln_s3_p)
+        line.delete(ln_s3_r1)
+        line.delete(ln_s3_s1)
+        line.delete(ln_s3_r2)
+        line.delete(ln_s3_s2)
+        line.delete(ln_s3_r3)
+        line.delete(ln_s3_s3)
+        line.delete(ln_s3_r4)
+        line.delete(ln_s3_s4)
+        line.delete(ln_s3_r5)
+        line.delete(ln_s3_s5)
+        ln_s3_p  := piv_s3_p_on  and not na(rv_s3_p)  ? line.new(s3_start_bi, rv_s3_p,  s3_end, rv_s3_p,  xloc=xloc.bar_index, color=piv_s3_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r1 := piv_s3_r1_on and not na(rv_s3_r1) ? line.new(s3_start_bi, rv_s3_r1, s3_end, rv_s3_r1, xloc=xloc.bar_index, color=piv_s3_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s1 := piv_s3_s1_on and not na(rv_s3_s1) ? line.new(s3_start_bi, rv_s3_s1, s3_end, rv_s3_s1, xloc=xloc.bar_index, color=piv_s3_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r2 := piv_s3_r2_on and not na(rv_s3_r2) ? line.new(s3_start_bi, rv_s3_r2, s3_end, rv_s3_r2, xloc=xloc.bar_index, color=piv_s3_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s2 := piv_s3_s2_on and not na(rv_s3_s2) ? line.new(s3_start_bi, rv_s3_s2, s3_end, rv_s3_s2, xloc=xloc.bar_index, color=piv_s3_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r3 := piv_s3_r3_on and not na(rv_s3_r3) ? line.new(s3_start_bi, rv_s3_r3, s3_end, rv_s3_r3, xloc=xloc.bar_index, color=piv_s3_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s3 := piv_s3_s3_on and not na(rv_s3_s3) ? line.new(s3_start_bi, rv_s3_s3, s3_end, rv_s3_s3, xloc=xloc.bar_index, color=piv_s3_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r4 := piv_s3_r4_on and not na(rv_s3_r4) ? line.new(s3_start_bi, rv_s3_r4, s3_end, rv_s3_r4, xloc=xloc.bar_index, color=piv_s3_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s4 := piv_s3_s4_on and not na(rv_s3_s4) ? line.new(s3_start_bi, rv_s3_s4, s3_end, rv_s3_s4, xloc=xloc.bar_index, color=piv_s3_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r5 := piv_s3_r5_on and not na(rv_s3_r5) ? line.new(s3_start_bi, rv_s3_r5, s3_end, rv_s3_r5, xloc=xloc.bar_index, color=piv_s3_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s5 := piv_s3_s5_on and not na(rv_s3_s5) ? line.new(s3_start_bi, rv_s3_s5, s3_end, rv_s3_s5, xloc=xloc.bar_index, color=piv_s3_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s3_p)
+        label.delete(lb_s3_r1)
+        label.delete(lb_s3_s1)
+        label.delete(lb_s3_r2)
+        label.delete(lb_s3_s2)
+        label.delete(lb_s3_r3)
+        label.delete(lb_s3_s3)
+        label.delete(lb_s3_r4)
+        label.delete(lb_s3_s4)
+        label.delete(lb_s3_r5)
+        label.delete(lb_s3_s5)
+        lb_s3_p  := piv_s3_p_on  and piv_show_lbl and not na(rv_s3_p)  ? label.new(s3_rgt, rv_s3_p,  f_lbl_text(rv_s3_p,  "P"),  xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r1 := piv_s3_r1_on and piv_show_lbl and not na(rv_s3_r1) ? label.new(s3_rgt, rv_s3_r1, f_lbl_text(rv_s3_r1, "R1"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s1 := piv_s3_s1_on and piv_show_lbl and not na(rv_s3_s1) ? label.new(s3_rgt, rv_s3_s1, f_lbl_text(rv_s3_s1, "S1"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r2 := piv_s3_r2_on and piv_show_lbl and not na(rv_s3_r2) ? label.new(s3_rgt, rv_s3_r2, f_lbl_text(rv_s3_r2, "R2"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s2 := piv_s3_s2_on and piv_show_lbl and not na(rv_s3_s2) ? label.new(s3_rgt, rv_s3_s2, f_lbl_text(rv_s3_s2, "S2"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r3 := piv_s3_r3_on and piv_show_lbl and not na(rv_s3_r3) ? label.new(s3_rgt, rv_s3_r3, f_lbl_text(rv_s3_r3, "R3"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s3 := piv_s3_s3_on and piv_show_lbl and not na(rv_s3_s3) ? label.new(s3_rgt, rv_s3_s3, f_lbl_text(rv_s3_s3, "S3"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r4 := piv_s3_r4_on and piv_show_lbl and not na(rv_s3_r4) ? label.new(s3_rgt, rv_s3_r4, f_lbl_text(rv_s3_r4, "R4"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s4 := piv_s3_s4_on and piv_show_lbl and not na(rv_s3_s4) ? label.new(s3_rgt, rv_s3_s4, f_lbl_text(rv_s3_s4, "S4"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r5 := piv_s3_r5_on and piv_show_lbl and not na(rv_s3_r5) ? label.new(s3_rgt, rv_s3_r5, f_lbl_text(rv_s3_r5, "R5"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s5 := piv_s3_s5_on and piv_show_lbl and not na(rv_s3_s5) ? label.new(s3_rgt, rv_s3_s5, f_lbl_text(rv_s3_s5, "S5"), xloc=xloc.bar_index, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
 
 // ══════════════════════════════════════════════════════════════
 // TABLEAU PRINCIPAL V6
@@ -1039,9 +1177,34 @@ tl_resCol  = input.color(#000000, "Couleur résistance", group=tl_grp_s, inline=
 tl_supCol  = input.color(#000000, "Couleur support",    group=tl_grp_s, inline="c")
 tl_tlW     = input.int(2, "Épaisseur", group=tl_grp_s, minval=1, maxval=5)
 tl_ext     = input.bool(true, "Prolonger les droites (Extend Trendlines)", group=tl_grp_s)
-tl_showBo  = input.bool(true, "Points de cassure", group=tl_grp_s, inline="b")
-tl_boUpCol = input.color(color.lime, "", group=tl_grp_s, inline="b")
-tl_boDnCol = input.color(color.red,  "", group=tl_grp_s, inline="b")
+tl_showBo  = input.bool(true, "Points de cassure", group=tl_grp_s)
+tl_boShapes = ["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"]
+tl_boUpShp = input.string("Cercle", "Cassure haussière : forme", options=tl_boShapes, group=tl_grp_s, inline="bu")
+tl_boUpCol = input.color(color.lime, "couleur", group=tl_grp_s, inline="bu")
+tl_boDnShp = input.string("Cercle", "Cassure baissière : forme", options=tl_boShapes, group=tl_grp_s, inline="bd")
+tl_boDnCol = input.color(color.red,  "couleur", group=tl_grp_s, inline="bd")
+tl_boSzS   = input.string("Minuscule", "Taille des points", options=["Auto", "Minuscule", "Petite", "Normale", "Grande", "Énorme"], group=tl_grp_s)
+
+tl_f_boStyle(x) =>
+    switch x
+        "Triangle haut" => label.style_triangleup
+        "Triangle bas"  => label.style_triangledown
+        "Flèche haut"   => label.style_arrowup
+        "Flèche bas"    => label.style_arrowdown
+        "Losange"       => label.style_diamond
+        "Carré"         => label.style_square
+        "Croix"         => label.style_cross
+        "X"             => label.style_xcross
+        "Drapeau"       => label.style_flag
+        => label.style_circle
+
+tl_boSize = switch tl_boSzS
+    "Auto"   => size.auto
+    "Petite" => size.small
+    "Normale" => size.normal
+    "Grande" => size.large
+    "Énorme" => size.huge
+    => size.tiny
 
 tl_buf    = tl_bufPct / 100.0
 tl_usePiv = true   // 2e point = pivot confirmé (Ephore)
@@ -1197,10 +1360,10 @@ var label tl_boUpLb = na
 var label tl_boDnLb = na
 if tl_showBo and tl_showRes and tl_rBreak
     label.delete(tl_boUpLb)
-    tl_boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=label.style_circle, color=tl_boUpCol, size=size.tiny)
+    tl_boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=tl_f_boStyle(tl_boUpShp), color=tl_boUpCol, size=tl_boSize)
 if tl_showBo and tl_showSup and tl_sBreak
     label.delete(tl_boDnLb)
-    tl_boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=label.style_circle, color=tl_boDnCol, size=size.tiny)
+    tl_boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=tl_f_boStyle(tl_boDnShp), color=tl_boDnCol, size=tl_boSize)
 plotshape(tl_showAnc and tl_showRes and tl_rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(tl_resCol, 40), size=size.tiny, offset=-tl_bars)
 plotshape(tl_showAnc and tl_showSup and tl_sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(tl_supCol, 40), size=size.tiny, offset=-tl_bars)
 
@@ -1270,6 +1433,9 @@ alertcondition(ta.cross(close, s2_r1), "Set2 R1 cross", "Prix croise R1 Set 2")
 alertcondition(ta.cross(close, s2_s1), "Set2 S1 cross", "Prix croise S1 Set 2")
 alertcondition(ta.cross(close, s2_r2), "Set2 R2 cross", "Prix croise R2 Set 2")
 alertcondition(ta.cross(close, s2_s2), "Set2 S2 cross", "Prix croise S2 Set 2")
+alertcondition(ta.cross(close, s3_p),  "Set3 P cross",  "Prix croise Pivot Set 3 (weekly)")
+alertcondition(ta.cross(close, s3_r1), "Set3 R1 cross", "Prix croise R1 Set 3 (weekly)")
+alertcondition(ta.cross(close, s3_s1), "Set3 S1 cross", "Prix croise S1 Set 3 (weekly)")
 alertcondition(bull_ob_alert, "Bullish OB Formed", "Bullish Order Block detected")
 alertcondition(bear_ob_alert, "Bearish OB Formed", "Bearish Order Block detected")
 

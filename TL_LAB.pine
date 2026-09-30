@@ -56,9 +56,34 @@ resCol  = input.color(#FF6D00, "Couleur résistance", group=grp_s, inline="c")
 supCol  = input.color(#2962FF, "Couleur support",    group=grp_s, inline="c")
 tlW     = input.int(2, "Épaisseur", group=grp_s, minval=1, maxval=5)
 ext     = input.bool(true, "Prolonger les droites (Extend Trendlines)", group=grp_s)
-showBo  = input.bool(true, "Points de cassure", group=grp_s, inline="b")
-boUpCol = input.color(color.lime, "", group=grp_s, inline="b")
-boDnCol = input.color(color.red,  "", group=grp_s, inline="b")
+showBo  = input.bool(true, "Points de cassure", group=grp_s)
+boShapes = ["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"]
+boUpShp = input.string("Cercle", "Cassure haussière : forme", options=boShapes, group=grp_s, inline="bu")
+boUpCol = input.color(color.lime, "couleur", group=grp_s, inline="bu")
+boDnShp = input.string("Cercle", "Cassure baissière : forme", options=boShapes, group=grp_s, inline="bd")
+boDnCol = input.color(color.red,  "couleur", group=grp_s, inline="bd")
+boSzS   = input.string("Minuscule", "Taille des points", options=["Auto", "Minuscule", "Petite", "Normale", "Grande", "Énorme"], group=grp_s)
+
+f_boStyle(x) =>
+    switch x
+        "Triangle haut" => label.style_triangleup
+        "Triangle bas"  => label.style_triangledown
+        "Flèche haut"   => label.style_arrowup
+        "Flèche bas"    => label.style_arrowdown
+        "Losange"       => label.style_diamond
+        "Carré"         => label.style_square
+        "Croix"         => label.style_cross
+        "X"             => label.style_xcross
+        "Drapeau"       => label.style_flag
+        => label.style_circle
+
+boSize = switch boSzS
+    "Auto"   => size.auto
+    "Petite" => size.small
+    "Normale" => size.normal
+    "Grande" => size.large
+    "Énorme" => size.huge
+    => size.tiny
 
 buf    = bufPct / 100.0
 usePiv = p2Mode == "Pivot confirmé (Ephore)"
@@ -214,10 +239,10 @@ var label boUpLb = na
 var label boDnLb = na
 if showBo and showRes and rBreak
     label.delete(boUpLb)
-    boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=label.style_circle, color=boUpCol, size=size.tiny)
+    boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=f_boStyle(boUpShp), color=boUpCol, size=boSize)
 if showBo and showSup and sBreak
     label.delete(boDnLb)
-    boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=label.style_circle, color=boDnCol, size=size.tiny)
+    boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=f_boStyle(boDnShp), color=boDnCol, size=boSize)
 plotshape(showAnc and showRes and rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(resCol, 40), size=size.tiny, offset=-bars)
 plotshape(showAnc and showSup and sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(supCol, 40), size=size.tiny, offset=-bars)
 
