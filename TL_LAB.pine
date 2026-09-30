@@ -43,7 +43,9 @@ p2Mode  = input.string("Pivot confirmé (Ephore)", "2e point de la droite", grou
 valMode = input.string("À chaque bougie (Ephore)", "Vérification de la droite", group=grp_d,
      options=["À chaque bougie (Ephore)", "Une seule fois, à la confirmation"],
      tooltip="Avec « Pivot confirmé » seulement. « À chaque bougie » : 38/38 (MES + NQ, 1m à 4h). « Une seule fois » : rate la résistance NQ 4h.")
-brkSrc  = input.string("Clôture", "Cassure (points) mesurée sur", group=grp_d, options=["Clôture", "Mèche + tampon"])
+brkSrc  = input.string("Clôture (corps au-delà)", "Cassure (points) mesurée sur", group=grp_d,
+     options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"],
+     tooltip="Défaut : le corps de la bougie HA dépasse la trend (clôture au-delà). Un seul point haussier et un seul point baissier restent affichés : le dernier de chaque.")
 showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=grp_d)
 showSup = input.bool(true, "Afficher le support (trend haussière)",   group=grp_d)
 showAnc = input.bool(true, "Marquer les ancres (◆)", group=grp_d)
@@ -198,17 +200,24 @@ bool rBreak = false
 bool sBreak = false
 if rActive and not na(rX1) and bar_index > rValidAt
     rv = f_val(rX1, rY1, rX2, rY2, bar_index)
-    if (brkSrc == "Clôture" ? close > rv : high > rv * (1 + buf))
+    if (brkSrc == "Mèche + tampon" ? high > rv * (1 + buf) : brkSrc == "Corps entier au-delà" ? math.min(open, close) > rv : close > rv)
         rBreak := true
         rActive := false
 if sActive and not na(sX1) and bar_index > sValidAt
     sv = f_val(sX1, sY1, sX2, sY2, bar_index)
-    if (brkSrc == "Clôture" ? close < sv : low < sv * (1 - buf))
+    if (brkSrc == "Mèche + tampon" ? low < sv * (1 - buf) : brkSrc == "Corps entier au-delà" ? math.max(open, close) < sv : close < sv)
         sBreak := true
         sActive := false
 
-plotshape(showBo and showRes and rBreak, "Cassure résistance", style=shape.circle, location=location.belowbar, color=boUpCol, size=size.tiny)
-plotshape(showBo and showSup and sBreak, "Cassure support",    style=shape.circle, location=location.abovebar, color=boDnCol, size=size.tiny)
+// Un seul point haussier et un seul point baissier affichés à la fois : le dernier de chaque
+var label boUpLb = na
+var label boDnLb = na
+if showBo and showRes and rBreak
+    label.delete(boUpLb)
+    boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=label.style_circle, color=boUpCol, size=size.tiny)
+if showBo and showSup and sBreak
+    label.delete(boDnLb)
+    boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=label.style_circle, color=boDnCol, size=size.tiny)
 plotshape(showAnc and showRes and rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(resCol, 40), size=size.tiny, offset=-bars)
 plotshape(showAnc and showSup and sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(supCol, 40), size=size.tiny, offset=-bars)
 

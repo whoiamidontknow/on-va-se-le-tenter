@@ -1,11 +1,15 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// PORSCHEONARRIVE — VERSION V2 (2026-09-30)
+// PORSCHEONARRIVE — VERSION V3 (2026-09-30)
 // Fichier de référence : mis à jour à chaque MAJ majeure.
 // Installation : copier tout le fichier dans l'éditeur Pine de TradingView,
 // graphique en Heiken Ashi.
 //
 // JOURNAL DES VERSIONS
+//   V3  2026-09-30  Trendlines : un seul point de cassure haussier + un seul
+//                   baissier affichés à la fois (le dernier de chaque) ; cassure
+//                   = corps HA au-delà de la trend (clôture), options corps
+//                   entier / mèche.
 //   V2  2026-09-30  + EPHORE TRENDLINES V2 : réplique des trendlines de l'original
 //                   (1 résistance + 1 support, points de cassure sur clôture HA,
 //                   alertes). Validé 38/38 en simulation (MES + NQ, 1m à 4h) et
@@ -1019,7 +1023,9 @@ tl_nT     = input.int(3,     "Touches minimum (Minimum Number of Touches)", grou
 tl_newH   = input.int(100,   "Nouvelle ancre après X barres (Look for New Pivot High after X Bars)", group=tl_grp, minval=1, maxval=1000)
 
 tl_grp_d = "=== TRENDLINES : affichage ==="
-tl_brkSrc  = input.string("Clôture", "Cassure (points) mesurée sur", group=tl_grp_d, options=["Clôture", "Mèche + tampon"])
+tl_brkSrc  = input.string("Clôture (corps au-delà)", "Cassure (points) mesurée sur", group=tl_grp_d,
+     options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"],
+     tooltip="Défaut : le corps de la bougie HA dépasse la trend (clôture au-delà). Un seul point haussier et un seul point baissier restent affichés : le dernier de chaque.")
 tl_showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=tl_grp_d)
 tl_showSup = input.bool(true, "Afficher le support (trend haussière)",   group=tl_grp_d)
 tl_showAnc = input.bool(false, "Marquer les ancres (◆)", group=tl_grp_d)
@@ -1174,17 +1180,24 @@ bool tl_rBreak = false
 bool tl_sBreak = false
 if tl_rActive and not na(tl_rX1) and bar_index > tl_rValidAt
     tl_rv = tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index)
-    if (tl_brkSrc == "Clôture" ? close > tl_rv : high > tl_rv * (1 + tl_buf))
+    if (tl_brkSrc == "Mèche + tampon" ? high > tl_rv * (1 + tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.min(open, close) > tl_rv : close > tl_rv)
         tl_rBreak := true
         tl_rActive := false
 if tl_sActive and not na(tl_sX1) and bar_index > tl_sValidAt
     tl_sv = tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index)
-    if (tl_brkSrc == "Clôture" ? close < tl_sv : low < tl_sv * (1 - tl_buf))
+    if (tl_brkSrc == "Mèche + tampon" ? low < tl_sv * (1 - tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.max(open, close) < tl_sv : close < tl_sv)
         tl_sBreak := true
         tl_sActive := false
 
-plotshape(tl_showBo and tl_showRes and tl_rBreak, "Cassure résistance", style=shape.circle, location=location.belowbar, color=tl_boUpCol, size=size.tiny)
-plotshape(tl_showBo and tl_showSup and tl_sBreak, "Cassure support",    style=shape.circle, location=location.abovebar, color=tl_boDnCol, size=size.tiny)
+// Un seul point haussier et un seul point baissier affichés à la fois : le dernier de chaque
+var label tl_boUpLb = na
+var label tl_boDnLb = na
+if tl_showBo and tl_showRes and tl_rBreak
+    label.delete(tl_boUpLb)
+    tl_boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=label.style_circle, color=tl_boUpCol, size=size.tiny)
+if tl_showBo and tl_showSup and tl_sBreak
+    label.delete(tl_boDnLb)
+    tl_boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=label.style_circle, color=tl_boDnCol, size=size.tiny)
 plotshape(tl_showAnc and tl_showRes and tl_rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(tl_resCol, 40), size=size.tiny, offset=-tl_bars)
 plotshape(tl_showAnc and tl_showSup and tl_sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(tl_supCol, 40), size=size.tiny, offset=-tl_bars)
 
