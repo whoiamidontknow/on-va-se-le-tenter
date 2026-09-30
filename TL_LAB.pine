@@ -1,0 +1,243 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Logique dérivée de « Trendlines » © Amphibiantrading (MPL 2.0),
+// https://www.tradingview.com/script/RQ1D3gHZ-Trendlines/
+//
+//@version=6
+// ════════════════════════════════════════════════════════════
+// EPHORE TL LAB — trendlines de l'original + diagnostic
+// ════════════════════════════════════════════════════════════
+// Le module trendlines d'Ephore reprend le script public « Trendlines »
+// (mêmes réglages, mêmes libellés) avec deux changements :
+//   1. le 2e point de la droite est un PIVOT confirmé (le script public
+//      prend la bougie courante) ;
+//   2. un support ascendant en miroir sur les bas.
+// Règle retrouvée sur 8 droites de référence (MES + NQ, 15m + 1h, HA) :
+// 8/8 avec les réglages visibles de l'original (10 ; 0,1 % ; 3 ; 100 ; 1).
+//
+// Par bougie (résistance ; support = miroir) :
+//   a) pivot haut confirmé → devient l'ANCRE s'il n'y en a pas, s'il est
+//      plus haut que l'ancre, ou si l'ancre a plus de X barres ;
+//   b) sinon, s'il est plus bas que l'ancre : droite candidate ancre → pivot ;
+//   c) candidate validée si aucune mèche ne dépasse la droite (+ tampon)
+//      de l'ancre à la bougie courante, et au moins N touches (± tampon) ;
+//   d) une droite validée remplace la précédente ; elle reste affichée,
+//      même cassée, jusqu'à la prochaine droite validée.
+indicator("Ephore TL Lab", overlay=true, max_lines_count=20, max_labels_count=50, max_bars_back=5000)
+
+// ══════════════════════════════════════════════════════════════
+// RÉGLAGES (noms de l'original entre parenthèses)
+// ══════════════════════════════════════════════════════════════
+grp = "=== TRENDLINES (réglages de l'original) ==="
+bars   = input.int(10,    "Pivot : barres de chaque côté (Pivot High Bars Required for Anchor)", group=grp, minval=1, maxval=50)
+bufPct = input.float(0.1, "Tampon % (Price Buffer %)", group=grp, minval=0.0, step=0.05)
+nT     = input.int(3,     "Touches minimum (Minimum Number of Touches)", group=grp, minval=1, maxval=10)
+newH   = input.int(100,   "Nouvelle ancre après X barres (Look for New Pivot High after X Bars)", group=grp, minval=1, maxval=1000)
+
+grp_d = "=== DIAGNOSTIC : variantes à tester ==="
+p2Mode  = input.string("Pivot confirmé (Ephore)", "2e point de la droite", group=grp_d,
+     options=["Pivot confirmé (Ephore)", "Bougie courante (script public)"])
+brkSrc  = input.string("Clôture", "Cassure (points) mesurée sur", group=grp_d, options=["Clôture", "Mèche + tampon"])
+showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=grp_d)
+showSup = input.bool(true, "Afficher le support (trend haussière)",   group=grp_d)
+showAnc = input.bool(true, "Marquer les ancres (◆)", group=grp_d)
+showTbl = input.bool(true, "Tableau de diagnostic", group=grp_d)
+
+grp_s = "=== STYLE ==="
+resCol  = input.color(#FF6D00, "Couleur résistance", group=grp_s, inline="c")
+supCol  = input.color(#2962FF, "Couleur support",    group=grp_s, inline="c")
+tlW     = input.int(2, "Épaisseur", group=grp_s, minval=1, maxval=5)
+ext     = input.bool(true, "Prolonger les droites (Extend Trendlines)", group=grp_s)
+showBo  = input.bool(true, "Points de cassure", group=grp_s, inline="b")
+boUpCol = input.color(color.lime, "", group=grp_s, inline="b")
+boDnCol = input.color(color.red,  "", group=grp_s, inline="b")
+
+buf    = bufPct / 100.0
+usePiv = p2Mode == "Pivot confirmé (Ephore)"
+
+f_val(x1, y1, x2, y2, x) =>
+    y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+
+// ══════════════════════════════════════════════════════════════
+// RÉSISTANCE DESCENDANTE (pivots hauts)
+// ══════════════════════════════════════════════════════════════
+ph = ta.pivothigh(high, bars, bars)
+
+var float rAncH = na
+var int   rAncB = na
+var float rX1 = na
+var float rY1 = na
+var float rX2 = na
+var float rY2 = na
+var int   rTouch = 0
+var int   rValidAt = na
+var bool  rActive = false
+bool rNewAnchor = false
+
+// a) ancre
+if not na(ph) and (na(rAncH) or ph > rAncH or bar_index - rAncB > newH)
+    rAncH := ph
+    rAncB := bar_index - bars
+    rNewAnchor := true
+
+// b) candidate
+float rCH = na
+int   rCB = na
+if not na(rAncH)
+    if usePiv
+        if not na(ph) and bar_index - bars > rAncB and ph < rAncH
+            rCH := ph
+            rCB := bar_index - bars
+    else
+        if high < rAncH and bar_index > rAncB
+            rCH := high
+            rCB := bar_index
+
+// c) validation : de la bougie courante (i = 0) jusqu'à l'ancre
+if not na(rCB) and bar_index - rAncB < 4900
+    int  tc = 0
+    bool ok = true
+    for i = 0 to bar_index - rAncB
+        p = f_val(float(rAncB), rAncH, float(rCB), rCH, float(bar_index - i))
+        if high[i] > p * (1 + buf)
+            ok := false
+            break
+        if high[i] >= p * (1 - buf)
+            tc += 1
+    // d) remplacement
+    if ok and tc >= nT
+        rX1 := float(rAncB)
+        rY1 := rAncH
+        rX2 := float(rCB)
+        rY2 := rCH
+        rTouch := tc
+        rValidAt := bar_index
+        rActive := true
+
+// ══════════════════════════════════════════════════════════════
+// SUPPORT ASCENDANT (pivots bas) — miroir exact
+// ══════════════════════════════════════════════════════════════
+pl = ta.pivotlow(low, bars, bars)
+
+var float sAncL = na
+var int   sAncB = na
+var float sX1 = na
+var float sY1 = na
+var float sX2 = na
+var float sY2 = na
+var int   sTouch = 0
+var int   sValidAt = na
+var bool  sActive = false
+bool sNewAnchor = false
+
+if not na(pl) and (na(sAncL) or pl < sAncL or bar_index - sAncB > newH)
+    sAncL := pl
+    sAncB := bar_index - bars
+    sNewAnchor := true
+
+float sCL = na
+int   sCB = na
+if not na(sAncL)
+    if usePiv
+        if not na(pl) and bar_index - bars > sAncB and pl > sAncL
+            sCL := pl
+            sCB := bar_index - bars
+    else
+        if low > sAncL and bar_index > sAncB
+            sCL := low
+            sCB := bar_index
+
+if not na(sCB) and bar_index - sAncB < 4900
+    int  tc2 = 0
+    bool ok2 = true
+    for i = 0 to bar_index - sAncB
+        p = f_val(float(sAncB), sAncL, float(sCB), sCL, float(bar_index - i))
+        if low[i] < p * (1 - buf)
+            ok2 := false
+            break
+        if low[i] <= p * (1 + buf)
+            tc2 += 1
+    if ok2 and tc2 >= nT
+        sX1 := float(sAncB)
+        sY1 := sAncL
+        sX2 := float(sCB)
+        sY2 := sCL
+        sTouch := tc2
+        sValidAt := bar_index
+        sActive := true
+
+// ══════════════════════════════════════════════════════════════
+// CASSURES (points) — la droite reste affichée, seul l'état change
+// ══════════════════════════════════════════════════════════════
+bool rBreak = false
+bool sBreak = false
+if rActive and not na(rX1) and bar_index > rValidAt
+    rv = f_val(rX1, rY1, rX2, rY2, bar_index)
+    if (brkSrc == "Clôture" ? close > rv : high > rv * (1 + buf))
+        rBreak := true
+        rActive := false
+if sActive and not na(sX1) and bar_index > sValidAt
+    sv = f_val(sX1, sY1, sX2, sY2, bar_index)
+    if (brkSrc == "Clôture" ? close < sv : low < sv * (1 - buf))
+        sBreak := true
+        sActive := false
+
+plotshape(showBo and showRes and rBreak, "Cassure résistance", style=shape.circle, location=location.belowbar, color=boUpCol, size=size.tiny)
+plotshape(showBo and showSup and sBreak, "Cassure support",    style=shape.circle, location=location.abovebar, color=boDnCol, size=size.tiny)
+plotshape(showAnc and showRes and rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(resCol, 40), size=size.tiny, offset=-bars)
+plotshape(showAnc and showSup and sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(supCol, 40), size=size.tiny, offset=-bars)
+
+// ══════════════════════════════════════════════════════════════
+// DESSIN
+// ══════════════════════════════════════════════════════════════
+var line rLn = na
+var line sLn = na
+
+if barstate.islast
+    line.delete(rLn)
+    line.delete(sLn)
+    xe = bar_index + 1
+    if showRes and not na(rX1)
+        rLn := line.new(int(rX1), rY1, xe, f_val(rX1, rY1, rX2, rY2, xe), xloc=xloc.bar_index,
+             extend=ext ? extend.right : extend.none, color=resCol, width=tlW)
+    if showSup and not na(sX1)
+        sLn := line.new(int(sX1), sY1, xe, f_val(sX1, sY1, sX2, sY2, xe), xloc=xloc.bar_index,
+             extend=ext ? extend.right : extend.none, color=supCol, width=tlW)
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU DE DIAGNOSTIC
+// ══════════════════════════════════════════════════════════════
+var table tb = table.new(position.top_left, 3, 8, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.gray)
+
+f_c(c, r, txt, col) =>
+    table.cell(tb, c, r, txt, text_color=col, text_size=size.small)
+
+f_t(x) =>
+    str.format_time(time[bar_index - int(x)], "dd/MM HH:mm", syminfo.timezone)
+
+if barstate.islast and showTbl
+    f_c(0, 0, "Réglages", color.silver)
+    f_c(1, 0, str.tostring(bars) + " / " + str.tostring(bufPct) + "% / " + str.tostring(nT) + " / " + str.tostring(newH), color.white)
+    f_c(2, 0, usePiv ? "2e pt = pivot" : "2e pt = bougie", color.white)
+    f_c(1, 1, "RÉSISTANCE", resCol)
+    f_c(2, 1, "SUPPORT", supCol)
+    f_c(0, 2, "Droite", color.silver)
+    f_c(1, 2, na(rX1) ? "AUCUNE" : str.tostring(rY1, format.mintick) + " → " + str.tostring(rY2, format.mintick), resCol)
+    f_c(2, 2, na(sX1) ? "AUCUNE" : str.tostring(sY1, format.mintick) + " → " + str.tostring(sY2, format.mintick), supCol)
+    f_c(0, 3, "Points (heure)", color.silver)
+    f_c(1, 3, na(rX1) ? "—" : f_t(rX1) + " → " + f_t(rX2), resCol)
+    f_c(2, 3, na(sX1) ? "—" : f_t(sX1) + " → " + f_t(sX2), supCol)
+    f_c(0, 4, "Touches / état", color.silver)
+    f_c(1, 4, na(rX1) ? "—" : str.tostring(rTouch) + " / " + (rActive ? "active" : "cassée"), resCol)
+    f_c(2, 4, na(sX1) ? "—" : str.tostring(sTouch) + " / " + (sActive ? "active" : "cassée"), supCol)
+    f_c(0, 5, "Ancre actuelle", color.silver)
+    f_c(1, 5, na(rAncH) ? "—" : str.tostring(rAncH, format.mintick) + " (" + f_t(rAncB) + ")", resCol)
+    f_c(2, 5, na(sAncL) ? "—" : str.tostring(sAncL, format.mintick) + " (" + f_t(sAncB) + ")", supCol)
+    f_c(0, 6, "Ancre : âge / max", color.silver)
+    f_c(1, 6, na(rAncB) ? "—" : str.tostring(bar_index - rAncB) + " / " + str.tostring(newH) + " b", resCol)
+    f_c(2, 6, na(sAncB) ? "—" : str.tostring(bar_index - sAncB) + " / " + str.tostring(newH) + " b", supCol)
+    f_c(0, 7, "Écart au prix", color.silver)
+    f_c(1, 7, na(rX1) ? "—" : str.tostring(f_val(rX1, rY1, rX2, rY2, bar_index) - close, format.mintick) + " pts", resCol)
+    f_c(2, 7, na(sX1) ? "—" : str.tostring(f_val(sX1, sY1, sX2, sY2, bar_index) - close, format.mintick) + " pts", supCol)
+
+alertcondition(rBreak, "Cassure résistance", "Cassure haussière de la trendline baissière")
+alertcondition(sBreak, "Cassure support",    "Cassure baissière du support ascendant")
