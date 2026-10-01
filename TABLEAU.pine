@@ -1,11 +1,16 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE TABLEAUX — VERSION V7 (2026-09-30)
+// EPHORE TABLEAUX — VERSION V8 (2026-10-01)
 // Indicateur séparé pour reproduire les tableaux de l'original.
 // Fichier de référence des tableaux : mis à jour à chaque MAJ majeure.
 // Graphique en Heiken Ashi (les valeurs de l'original sont calculées sur les bougies HA).
 //
 // JOURNAL DES VERSIONS
+//   V8  2026-10-01  Signator refondu sur 20 exports (Singal + Filtres) :
+//                   score = moyenne de 5 filtres continus (Fort ≥ 50 / Moyen ≥ 18) ;
+//                   flèches = 2e bougie + ADX ≥ 18 + EMA50 + conviction (≥ 0.3 ATR
+//                   hors bande EMA50/60 ou volume ≥ SMA20) ; filtre = pas de signal
+//                   aux annonces 14:30 / 16:00 ; flèches MOYEN. 112/113 et 65/65.
 //   V7  2026-09-30  Score : position du close ≥ 0.33 (réglage « Position Close (tiers) »)
 //                   au lieu de 0.67 : +2 flèches exactes sur les 14 exports, 0 en trop de plus.
 //   V6  2026-09-30  Heishinator du Signator = EMA(ohlc4,4) vs EMA(ohlc4,32) : 138/139
@@ -275,18 +280,20 @@ if barstate.islast and main_show
 // TABLEAU SIGNATOR (ancienne version de l'original)
 // Heishinator | TBT | Tendance | Score | TF
 // ══════════════════════════════════════════════════════════════
-// Aucune source publique trouvée pour ce tableau. Statut des lignes :
-//   Heishinator : règle VALIDÉE (SHA α 0.42 / 0.44 vs EMA33, cf. PorscheOnArrive).
-//   Tendance    : clôture vs Moyenator 1 (EMA50) — condition des flèches de l'original ;
-//                 EMA50 vs EMA60 réfuté par un screen.
-//   Score       : Candle Quality Filter, somme des poids des filtres réussis
-//                 (structure, momentum ATR, volume, gap ; 25 chacun) : Fort ≥ 50,
-//                 Moyen = 25, Faible = 0. Fort retrouvé via les flèches ; Moyen/Faible = hypothèse.
-//   TBT         : « Tick By Tick » = activité du marché. HYPOTHÈSE calée sur 2 cas
-//                 (30/09 10:30, MES OK / NQ Faible) : volume de la dernière bougie
-//                 CLÔTURÉE / SMA20 du volume ≥ seuil (0.75) → ✔ OK, sinon ⛔ Faible.
-//                 (MES 0.89 → OK, NQ 0.65 → Faible). Seuil à affiner.
-//   TF          : « Actuel » (unité de temps du graphique).
+// Règles retrouvées sur données (exports Singal = filtre décoché, Filtres = filtre coché) :
+//   Heishinator : EMA(ohlc4,4) vs EMA(ohlc4,32) (138/139 changements de l'original).
+//   Tendance    : clôture vs Moyenator 1 (EMA50).
+//   Score       : Candle Quality Filter = moyenne des 5 filtres continus (structure,
+//                 momentum, volume, engulfing, gap) x 100 ; l'engulfing vaut 0 en HA,
+//                 donc max 80. Fort ≥ 50, Moyen ≥ 18 (Seuil de Force), Faible < 18.
+//                 Classe Fort/Moyen de l'original retrouvée sur 177/178 flèches.
+//   TBT         : ADX(14,14) ≥ Seuil de Force (18) — seule règle compatible avec les
+//                 2 cas observés (MES OK / NQ Faible), à confirmer.
+//   Flèches     : 2e bougie Heishinator + ADX ≥ 18 + clôture du bon côté de l'EMA50
+//                 + conviction (clôture ≥ 0.3 ATR au-delà de la bande EMA50/EMA60
+//                 OU volume ≥ SMA20). Filtre coché = pas de flèche sur les bougies
+//                 d'annonces 14:30 / 16:00 (Paris).
+//                 Sans filtre : 112/113 flèches, 5 en trop ; avec filtre : 65/65, 5 en trop.
 grp_sg   = "=== EPHORE SIGNATOR (tableau) ==="
 sg_show  = input.bool(true, "Afficher le tableau Signator", group=grp_sg)
 sg_pos   = input.string("Top Left", "Position", group=grp_sg, options=["Top Left", "Top Right", "Middle Left", "Middle Right", "Bottom Left", "Bottom Right"])
@@ -296,6 +303,11 @@ sg_force = input.int(18, "Seuil de Force (Min) — ADX 14", group=grp_sg, minval
 sg_tbtMode = input.string("ADX ≥ Seuil de Force", "TBT mesuré par", group=grp_sg, options=["ADX ≥ Seuil de Force", "Volume / moyenne 20 (bougie clôturée)"])
 sg_tbtTh = input.float(0.75, "TBT (mode volume) : seuil", group=grp_sg, minval=0.0, step=0.05)
 sg_arrows = input.bool(true, "Afficher les flèches Signator", group=grp_sg)
+sg_showM  = input.bool(true, "Afficher flèches MOYEN", group=grp_sg)
+sg_filter = input.bool(true, "Activer Filtre (pas de signal sur les annonces)", group=grp_sg,
+     tooltip="Comme l'original : avec le filtre, aucune flèche sur les bougies qui contiennent 14:30 ou 16:00 (heure de Paris = annonces US 8:30 / 10:00 New York).")
+sg_news   = input.string("1430,1600", "Heures d'annonces bloquées (HHMM, Paris)", group=grp_sg)
+sg_newsTz = input.string("Europe/Paris", "Fuseau des annonces", group=grp_sg)
 sg_arUp  = input.color(#FFFFFF, "Flèche long", group=grp_sg, inline="ar")
 sg_arDn  = input.color(#000000, "Flèche short", group=grp_sg, inline="ar")
 
@@ -321,45 +333,63 @@ sg_trendBull = close > sg_ema50
 // ─── Force : ADX(14,14) ───
 [sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
 
-// ─── Score = CANDLE QUALITY FILTER de l'original (réglages de la capture) ───
-// Mode scoring : somme des poids (25 chacun) des filtres RÉUSSIS, sur 100.
-// Retrouvé sur l'export 9348b (volume) : toutes les flèches de l'original ont ≥ 2 filtres
-// réussis (score ≥ 50) ; 4 des 5 fausses flèches en avaient 0 ou 1.
-// L'engulfing complet n'est jamais vrai sur bougies HA : sans effet, non compté.
+// ─── Score = CANDLE QUALITY FILTER de l'original (moyenne de 5 filtres continus) ───
 sg_scoreMin = 50
 sg_atr   = ta.atr(14)
 sg_rng   = high - low
-sg_body  = math.abs(close - open)
-sg_cpos  = sg_rng > 0 ? (close - low) / sg_rng : 0.5
-sg_upW   = high - math.max(open, close)
-sg_dnW   = math.min(open, close) - low
-sg_structOK = sg_rng > 0 and sg_body / sg_rng >= 0.5 and (sg_heiBull ? sg_cpos >= 0.33 and sg_upW / sg_rng <= 0.35 : (1 - sg_cpos) >= 0.33 and sg_dnW / sg_rng <= 0.35)
-sg_momOK    = sg_rng >= 0.5 * sg_atr
-sg_volOK    = volume >= ta.sma(volume, 20) * 1.0
-sg_gapOK    = math.abs(open - close[1]) >= 0.3 * sg_atr
-sg_score    = 25 * (sg_structOK ? 1 : 0) + 25 * (sg_momOK ? 1 : 0) + 25 * (sg_volOK ? 1 : 0) + 25 * (sg_gapOK ? 1 : 0)
-sg_scoreTxt = sg_score >= sg_scoreMin ? "Fort" : sg_score >= 25 ? "Moyen" : "Faible"
-sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= 25 ? sg_c_warn : sg_c_dn
+sg_rngS  = math.max(sg_rng, syminfo.mintick)
+sg_br    = math.min(math.abs(close - open) / sg_rngS / 0.5, 1.0)
+sg_cpos  = sg_heiBull ? (close - low) / sg_rngS : (high - close) / sg_rngS
+sg_awick = sg_heiBull ? (high - close) / sg_rngS : (close - low) / sg_rngS
+sg_sStr  = (sg_br + (1.0 - math.min(sg_awick / 0.35, 1.0)) + math.min(sg_cpos / 0.67, 1.0)) / 3.0
+sg_sMom  = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0)
+sg_volMa = ta.sma(volume, 20)
+sg_sVol  = sg_volMa > 0 ? math.min(volume / sg_volMa, 1.0) : 0.0
+sg_sGap  = math.min(math.abs(open - close[1]) / math.max(0.3 * sg_atr, syminfo.mintick), 1.0)
+sg_eng   = (sg_heiBull ? close > open[1] and open < close[1] : open > close[1] and close < open[1]) and high > high[1] and low < low[1]
+sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap + (sg_eng ? 1.0 : 0.0)) / 5.0 * 100.0
+sg_scoreTxt = sg_score >= sg_scoreMin ? "Fort" : sg_score >= sg_force ? "Moyen" : "Faible"
+sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= sg_force ? sg_c_warn : sg_c_dn
 
 // ─── TBT : force suffisante (ADX ≥ Seuil de Force), variante volume en option ───
 sg_volRatioPrev = ta.sma(volume, 20)[1] > 0 ? volume[1] / ta.sma(volume, 20)[1] : 0.0
 sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volRatioPrev >= sg_tbtTh
 
+// ─── Filtre annonces : la bougie contient-elle une heure bloquée ? ───
+f_sg_news() =>
+    bool hit = false
+    if timeframe.isintraday
+        tfMs = timeframe.in_seconds(timeframe.period) * 1000
+        parts = str.split(sg_news, ",")
+        for p in parts
+            hhmm = str.tonumber(str.trim(p))
+            if not na(hhmm)
+                hh = int(math.floor(hhmm / 100))
+                mm = int(hhmm - hh * 100)
+                tN = timestamp(sg_newsTz, year(time, sg_newsTz), month(time, sg_newsTz), dayofmonth(time, sg_newsTz), hh, mm, 0)
+                if tN >= time and tN < time + tfMs
+                    hit := true
+    hit
+sg_newsBar = sg_filter and f_sg_news()
+
 // ─── FLÈCHES SIGNATOR ───
-// Règle retrouvée sur les flèches de l'original (≈ 500 flèches, rappel 94 %) :
-//   2e bougie du nouvel état Heishinator (la bougie du changement compte 1)
-//   + ADX(14,14) ≥ Seuil de Force (18)
-//   + clôture du bon côté du Moyenator 1 (EMA50)
-//   + Score CQF ≥ 50 (« Score Fort »).
-// Export 9348b (MES 15m, volume) : 16/16 flèches de l'original, 1 fausse flèche (94 %).
 var int sg_run = 0
 sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
-sg_long  = sg_arrows and sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close > sg_ema50 and sg_score >= sg_scoreMin
-sg_short = sg_arrows and not sg_heiBull and sg_run == 2 and sg_adx >= sg_force and close < sg_ema50 and sg_score >= sg_scoreMin
-plotshape(sg_long,  "Signator Long",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
-plotshape(sg_short, "Signator Short", style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.normal)
-alertcondition(sg_long,  "Signator Long",  "Flèche Signator long")
-alertcondition(sg_short, "Signator Short", "Flèche Signator short")
+sg_ema60  = ta.ema(close, 60)
+sg_dBand  = sg_heiBull ? (close - math.max(sg_ema50, sg_ema60)) / sg_atr : (math.min(sg_ema50, sg_ema60) - close) / sg_atr
+sg_conv   = sg_dBand >= 0.3 or volume >= sg_volMa
+sg_base   = sg_arrows and sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and not sg_newsBar
+sg_isFort = sg_score >= sg_scoreMin
+sg_long   = sg_base and sg_heiBull and sg_isFort
+sg_short  = sg_base and not sg_heiBull and sg_isFort
+sg_longM  = sg_base and sg_showM and sg_heiBull and not sg_isFort and sg_score >= sg_force
+sg_shortM = sg_base and sg_showM and not sg_heiBull and not sg_isFort and sg_score >= sg_force
+plotshape(sg_long,   "Signator Long",        style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
+plotshape(sg_short,  "Signator Short",       style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.normal)
+plotshape(sg_longM,  "Signator Long Moyen",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.small)
+plotshape(sg_shortM, "Signator Short Moyen", style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.small)
+alertcondition(sg_long or sg_longM,   "Signator Long",  "Flèche Signator long")
+alertcondition(sg_short or sg_shortM, "Signator Short", "Flèche Signator short")
 
 // ─── Construction ───
 sg_pos_v = sg_pos == "Top Right" ? position.top_right : sg_pos == "Middle Left" ? position.middle_left :
