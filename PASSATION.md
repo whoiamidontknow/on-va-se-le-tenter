@@ -177,3 +177,96 @@ le commiter dans `tools/`, et **ne plus jamais laisser un script décisif dans l
 5. Demander à Jeremy ce qu'il veut attaquer : **TBT** (il manque 3-4 screens du tableau de
    l'original au moment où TBT change, + le CSV au même instant) ou les **tableaux manquants**
    (INDICATOR|SIGNAL, TIMEFRAME|TREND|STRENGTH, Dashator).
+
+## 9. Agents — ce qui existe, ce qu'il faut créer
+
+### 9.1 Verdict sur les 9 agents existants
+
+Analysés par un agent qui a lu leurs prompts en entier. Ils dorment tous (§2).
+
+| Agent | Verdict | Raison |
+|---|---|---|
+| `pine-logic-simulator` | **garder, à généraliser** | Le plus proche de la méthode §4. Mais ses hypothèses H1→H6 sont codées en dur sur la coloration des bougies, problème **déjà résolu** (2600/2600 via l'API). À transformer en « entrée = un CSV + une colonne de vérité, sortie = un score ». |
+| `visual-chart-decoder` | **garder comme patron** | Son prompt ne parle que d'EMA50/60 et de bougies bleu/rouge — périmé. Son intérêt résiduel (lire des **screens de tableaux**) est repris par `tableau-screen-reader`. |
+| `parallel-dispatcher` | **garder** | Seul agent générique vraiment pertinent : §3 demande explicitement des agents en parallèle. |
+| `indicator-decoder-lead` | laisser dormir | Structure fan-out + synthèse correcte, mais prompt figé sur « HEISHINATOR V4 — COLORING RULE ». Un chef d'orchestre qui repart à froid coûte plus qu'il rapporte : le modèle principal a `MEMOIRE_PROJET.md` en tête. |
+| `planner` | marginal | Les chantiers §6 sont des énigmes, pas des implémentations à séquencer : le plan tombe dès la première hypothèse réfutée. |
+| `debugger` | **inapplicable** | Exige « l'erreur exacte + un cas reproductible », donc une exécution locale. Le seul runtime est TradingView chez Jeremy. |
+| `code-reviewer` | **inapplicable** | Écrit pour du code applicatif. Aucune connaissance de Pine v6 ni des pièges §8. Remplacé par `pine-v6-linter`. |
+| `tdd-developer` | **inapplicable** | « Pas d'implémentation sans test qui échoue d'abord » : aucun test ne peut échouer, Pine ne s'exécute pas ici. |
+| `branch-finisher` | **inapplicable** | Sa porte d'entrée est « toute la suite de tests passe ». Et §3 impose commit + push continu, sans cérémonie de fin de branche. |
+
+Bilan : 2 utiles tels quels, 2 à regénéraliser, **5 génériques hérités de superpowers dont 3
+inapplicables par construction** au Pine non exécutable.
+
+### 9.2 Les 5 nouveaux agents proposés
+
+Définitions complètes, prêtes à l'emploi, dans **`agents-proposes/`**. Elles ne sont pas dans
+`agents/` exprès : **à relire avec Jeremy avant activation**, puis à déplacer.
+
+| Rang | Agent | Chantier §6 débloqué | Valeur | Effort |
+|---|---|---|---|---|
+| **1** | `ephore-web-prospector` | §6.1 TBT + §6.3 tableaux | très haute | faible |
+| **2** | `api-oracle-harvester` | §6.4 (Climator, Detector, Rangeator, Breakator) + §6.2 | haute, quasi certaine | moyen |
+| **3** | `pine-v6-linter` | §6.3 (code neuf à écrire) | moyenne mais à **chaque** livraison | très faible |
+| **4** | `tableau-screen-reader` | §6.1 + §6.3 | haute mais **bloquée en amont** | moyen |
+| **5** | `tradingview-source-hunter` | §6.3 + §6.4 | rendement **décroissant** | faible |
+
+**Rang 1 — `ephore-web-prospector`.** À écrire en premier. Constat vérifié le 02/10 :
+`https://app.ephore-market.com/` renvoie ~678 Ko de HTML avec JS et CSS **en ligne, non
+minifiés, commentés en français et datés** par l'auteur. Et l'API renvoie du texte métier déjà
+composé (`"infobulle": "Feu de Confluence : 20 long / 5 short / 4 neutres sur 29…"`,
+`"niveau": "FORT"`). Si la logique des tableaux est côté client, elle est **lisible**. Un run
+d'une heure sous budget réseau strict (25 requêtes, pause 1 s, une seule tentative par URL)
+peut fermer les deux chantiers les plus durs sans un seul screenshot. Même négatif, il ferme
+définitivement une piste.
+
+**Rang 2 — `api-oracle-harvester`.** La vérité terrain des 4 modules jamais traités est **déjà
+sur le disque et inexploitée**. Effectifs vérifiés dans `api_vitrine_instantane.json` (15m / 2m) :
+
+| Préfixe | Module | 15m | 2m |
+|---|---|---:|---:|
+| `clx_` | **Climax / Climator** (`sens` buy/sell, `niveau` HIGH/PREMIUM) | 86 | 96 |
+| `det_` | **Detector** (order blocks, boîtes) | 5 | 5 |
+| `rng_` / `rnl_` / `rnq_` | **Rangeator** | 12 | 58 |
+| `piv_` | Pivator | 33 | 33 |
+| `trl_res` / `trl_sup` | Trendlines (avec `pente_par_barre`, `cassee`) | 4 | 4 |
+
+Avec 1500 bougies HA + volume par unité de temps. C'est exactement le dispositif qui a donné
+**100 %** sur le Heishinator (§9 de la mémoire). Les modules de §6.4 sont donc techniquement
+les chantiers **les plus faciles qui restent** — ils ne sont simplement pas faits. Parallélisable
+par module, donc un bon client pour `parallel-dispatcher`.
+
+**Rang 3 — `pine-v6-linter`.** Le goulot du projet n'est pas le raisonnement, c'est
+l'aller-retour « barre rouge » : Jeremy → TradingView → recopie de l'erreur → correction.
+Un passage mécanique de la liste §8 sur un diff de 400 lignes supprime la majorité de ces
+cycles. Rentable dès le premier usage, et il reste utile **après** la réparation du MCP (§1) :
+il couvre la sémantique v6, les limites de plateforme et les conventions §3, qu'un vérificateur
+de syntaxe ne voit pas. Son prompt lui ordonne d'appeler `check_syntax` d'abord si disponible.
+
+**Rang 4 — `tableau-screen-reader`.** Bloqué en amont : **il n'y a aucune capture d'écran sur
+le disque** (vérifié). Le pipeline vision n'existe pas encore. Sa valeur dépend aussi du rang 1 :
+si le prospector trouve TBT dans les sources, cet agent perd son chantier principal. Son apport
+propre est la discipline : **double lecture de chaque cellule** (un `60.67` lu `60.07` empoisonne
+une calibration en silence) et les 4 pièges de jointure déjà payés (couper le CSV à l'heure du
+screen, fuseau Paris vs Chicago, chauffe des EMA, ancrage sur `Moyenator 1/2`).
+
+**Rang 5 — `tradingview-source-hunter`.** La méthode §4.1 est prouvée (elle a livré
+Amphibiantrading et Midgar-) mais ~1 600 scripts ont déjà été balayés en vain pour ces
+tableaux : rendement décroissant. Il ne redevient intéressant qu'avec des **libellés neufs**,
+donc après le rang 1 ou le rang 4. Son apport immédiat est le **registre**
+(`tools/source_hunt_registre.md`) : empêcher de refaire le balayage.
+
+### 9.3 Propositions écartées, et pourquoi
+
+- **`export-batch-auditor`** (inventorier les CSV par version/TF/volume) : besoin réel, mais
+  c'est un script Python de 40 lignes lancé une fois. À faire, pas à agentifier.
+- **`signator-v9-tuner`** (chasser les ~5 flèches en trop) : ~25 variantes déjà testées sans
+  règle robuste (§10). Un agent ne produirait que les variantes 26 à 50, avec un vrai risque de
+  surapprentissage sur 7 flèches. Ce chantier a besoin de **données neuves**, pas de recherche.
+- **`pine-code-writer`** : un agent à froid écrirait du Pine sans connaître les 1498 lignes de
+  `PORSCHEONARRIVE.pine` ni les conventions §3 — qui interdisent justement d'y toucher sans
+  accord. C'est au modèle principal d'écrire ; au linter de relire.
+- **Adapter `tdd-developer` en « simulation-driven »** : séduisant, mais c'est une réécriture
+  complète, et le résultat est déjà couvert par `api-oracle-harvester` (valider) +
+  `pine-v6-linter` (relire).
