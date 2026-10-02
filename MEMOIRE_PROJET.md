@@ -191,3 +191,16 @@ EMA50 et EMA60 du close (+ remplissage).
 - **Annonces** : sur le terminal web, les bandes rouges couvrent 09:00, 14:30, 15:30 et 16:00 (Paris),
   à ±2 min en 2m. Sur TradingView (exports Filtres), l'original garde ses flèches de 09:00 et de 15:30 :
   le filtre TradingView ne bloque que **14:30 et 16:00** (c'est ce que fait la V8).
+
+## 10. Versions de l'original (constat du 02/10)
+- **Ephore a changé de version le 30/09 entre 11:04 et 11:37.** Les exports d'avant ont les mêmes OHLC
+  que ceux d'après, mais les flèches diffèrent. Exports **ancienne version** : racine (dont 9348b, 3eac1),
+  Trendlinehelper. Exports **nouvelle version** : Singal (11:37), Filtres (23:31).
+- La nouvelle version retire 3 flèches (MES15 09-28 16:15 S, MES60 09-25 09:00 L, NQ15 09-29 18:00 S).
+  Elle ajoute 2 flèches Moyen (NQ240 07-16 08:00, NQ60 09-17 00:00). L'ancienne n'affichait aucune
+  Moyen (761 Fort, 0 Moyen).
+- Reste chez nous (V8) : ces 3 flèches + 4 autres en trop et 1 manquée (NQ240 07-31 08:00, où la conviction
+  échoue de peu). Aucune règle robuste ne les supprime : ~25 variantes testées (détail dans le
+  scratchpad signator_v9/NOTES.md de la session du 02/10).
+- Pour aller plus loin : des exports de la **nouvelle** version sur des périodes déjà couvertes par
+  d'anciens exports (pour avoir plus de flèches retirées), ou le journal des changements d'Ephore.
