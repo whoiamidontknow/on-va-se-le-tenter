@@ -142,8 +142,13 @@ EMA50 et EMA60 du close (+ remplissage).
 - `Trendlinehelper/` : 15 exports HA (trendlines), MES + NQ, de 1 à 240 min.
 - Racine : nombreux exports `CME_MINI_*.csv`. `15_9348b` = MES 15m avec volume, 1053 bougies.
   Les 4 gros MES1! 15m de juillet n'ont pas de volume.
-- `formation_txt/` : textes de la formation. `facecode_transcripts/`, `Hugo tournier facecode/` :
-  transcriptions (pas encore exploitées — la recherche par agent a planté).
+- `formation_txt/` : textes de la formation. `formation_txt/videos/` : transcriptions (02/10, whisper,
+  horodatées) des 3 vidéos de `Formation/` : installation de l'indicateur, réglage du Climator, capture.
+  Elles n'expliquent aucun calcul (ni TBT, ni score). Elles confirment seulement : graphique **Heiken Ashi**,
+  15m + 2m (scalping Nasdaq, MNQ1!), et les 5 alertes de l'original : Signal Long Fort, Short Fort,
+  Long Moyen, Short Moyen, Trendline Breakout.
+  Outil : `~/whisper-env/bin/python` (mlx_whisper + ffmpeg inclus).
+- `facecode_transcripts/`, `Hugo tournier facecode/` : SANS RAPPORT avec Ephore (formation sur l'apparence).
 - Colonnes utiles des exports : `Signal Long/Short Fort|Moyen` (flèches de l'original : prendre la
   **dernière** paire non vide), `Moyenator 1/2` (EMA50/60 exactes), `Climax BUY/SELL`,
   `Signator Long/Short` (nos flèches), `Volume`.
