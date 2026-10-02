@@ -1,6 +1,6 @@
 # Mémoire du projet — réplique d'Ephore Market Ultimate
 
-> **À lire en premier à chaque nouvelle session.** Ce fichier résume ce qui a été fait, ce qui est
+> **À lire en premier à chaque nouvelle session.** (MAJ 02/10 : voir aussi section 9) Ce fichier résume ce qui a été fait, ce qui est
 > validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-01.
 
 ## 1. L'objectif
@@ -164,3 +164,30 @@ EMA50 et EMA60 du close (+ remplissage).
 - Heures : les CSV sont en heure de Paris ; le tableau TL_LAB affiche l'heure de la bourse (Chicago, −7 h).
 - Les agents en arrière-plan peuvent se bloquer (watchdog 600 s) : vérifier qu'ils ont produit
   quelque chose, sinon reprendre à la main.
+
+## 9. Source de vérité indépendante : l'API publique du terminal web d'Ephore (trouvée le 02/10)
+- `https://app.ephore-market.com/api/vitrine/instantane` : page de démonstration publique, sans connexion.
+  Elle renvoie, pour XYZ100 (Nasdaq) en 15m et 2m, 1500 bougies. Chaque bougie contient :
+  - o/h/l/c en **Heiken Ashi** ;
+  - cr/hr/lr, les valeurs réelles ;
+  - le volume.
+
+  Elle renvoie aussi les objets des indicateurs :
+  - état du Heishinator par bougie ;
+  - flèches Signator `sig_lf` / `sig_sf` avec leur niveau (FORT…), signaux v7a « ALLUMAGE » et
+    v7c « CONTINUATION » (nouvelle version) ;
+  - trendlines `trl_res` / `trl_sup` (pente par barre, cassée oui/non) ;
+  - climax (HIGH / PREMIUM), Moyenator, Detector, Rangeator, Pivator, fib_75 ;
+  - **bandes rouges d'annonces** ;
+  - « Feu de Confluence » : 29 votes, seuil 60 %.
+- Une copie (02/10) est dans `tools/ephore_api/api_vitrine_instantane.json`, avec le script de test `sig_api.py`.
+  **Ne pas interroger l'API en boucle** : une copie de temps en temps suffit.
+- Ce qu'elle a confirmé :
+  - **Heishinator = EMA(ohlc4,4) > EMA(ohlc4,32) : 2600/2600 bougies (100 %)**, en 15m et 2m ;
+    l'ancienne formule 0.42/0.44 vs EMA33 fait 99.5 % ;
+  - Moyenator 1 = EMA50 du close HA (écart 0.005) ;
+  - Signator V8 : 15m 22/22 flèches, 7 en trop ; 2m 19/20, 0 en trop ;
+  - aucune vraie flèche dans les bandes d'annonces.
+- **Annonces** : sur le terminal web, les bandes rouges couvrent 09:00, 14:30, 15:30 et 16:00 (Paris),
+  à ±2 min en 2m. Sur TradingView (exports Filtres), l'original garde ses flèches de 09:00 et de 15:30 :
+  le filtre TradingView ne bloque que **14:30 et 16:00** (c'est ce que fait la V8).
