@@ -1,7 +1,14 @@
 # Mémoire du projet — réplique d'Ephore Market Ultimate
 
-> **À lire en premier à chaque nouvelle session.** (MAJ 02/10 : voir aussi section 9) Ce fichier résume ce qui a été fait, ce qui est
-> validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-01.
+> **À lire en premier à chaque nouvelle session.** Ce fichier résume ce qui a été fait, ce qui est
+> validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-02
+> (sections 9 et 10 ajoutées ce jour-là).
+>
+> **Nouvelle session sur un nouveau compte ?** Lis ce fichier, puis **`PASSATION.md`** : il
+> contient l'état de l'ENVIRONNEMENT (un vérificateur de syntaxe Pine installé mais non branché,
+> aucun plugin actif, 8 agents maison qui dorment), ce qui survit au changement de compte, le
+> travail de scratchpad définitivement perdu, et 5 nouveaux agents proposés dans
+> `agents-proposes/`.
 
 ## 1. L'objectif
 Reproduire en Pine Script, « à notre sauce mais identique à l'œil et en chiffres », l'indicateur
