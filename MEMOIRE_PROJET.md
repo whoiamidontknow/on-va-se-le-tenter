@@ -137,6 +137,20 @@ EMA50 et EMA60 du close (+ remplissage).
 | API 15m (bandes d'annonces appliquées) | 23 | 2 | 0 | 100 % | **92.0 %** |
 | API 2m | 19 | 0 | 1 | 95.0 % | **100 %** |
 
+**CORRECTION DU 10/10 (export neuf « Base 10:10 ») :** les 3 flèches présentées jusqu'ici comme
+« retirées par la nouvelle version, donc différence de version » sont en réalité **de vrais faux
+positifs de notre règle**. Preuve directe : le réexport MES 60m du 10/10, qui couvre le
+2026-09-25 09:00, contient bien la barre et l'original n'y met **aucune flèche**
+(`Signal Long Fort = 0`, `Signal Short Fort = 0`). Comme on se compare à la version actuelle,
+l'argument « différence de version » n'excuse rien.
+
+**Aucun correctif par seuil n'existe** (analysé sur 203 détections, 188 vraies / 15 fausses) :
+les faux positifs n'ont pas de signature commune — `dBand` de −0.01 à 2.59, volume de 0.18 à
+8.28. Dans la zone où ils se concentrent (`dBand` 0.3–0.5 porté sans volume) on compte
+**19 vraies pour 7 fausses** : relever le seuil détruirait presque 3 fois plus de bonnes flèches
+qu'il n'en supprimerait de mauvaises. L'ingrédient manquant n'est pas un réglage des variables
+actuelles, c'est une variable absente.
+
 **Les erreurs résiduelles sont expliquées, pas mystérieuses :**
 - Côté CSV, **3 des 5 « en trop » sont les flèches que la nouvelle version d'Ephore a retirées**
   (MES15 09-28 16:15, MES60 09-25 09:00, NQ15 09-29 18:00, cf. §10). Ce sont des différences de
