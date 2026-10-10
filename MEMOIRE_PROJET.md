@@ -151,12 +151,26 @@ Résultats du 10/10, qui reproduisent la V8 :
   warmup de 300 à 120 barres — soit ~40 flèches évaluables en plus sur des fichiers de 557 barres.
 
 ## 6. Ce qui RESTE à faire / incertain
-1. **TBT** : règle actuelle = ADX ≥ 18 (✔ OK / ⛔ Faible). Elle n'est calée que sur 2 cas (30/09 10:30 :
+1. **TBT** — piste web MORTE (10/10) : **0 occurrence** de « TBT » dans les 2,4 Mo de sources
+   du terminal, 0 dans l'API, **0 post sur le forum public** ; « Seuil de Force » introuvable
+   aussi. Le terme n'existe que dans nos propres fichiers : libellé interne jamais commenté, ou
+   mal lu à l'origine. Ne plus chercher côté web. Règle actuelle = ADX ≥ 18 (✔ OK / ⛔ Faible),
+   calée sur 2 cas seulement (30/09 10:30 :
    MES OK, NQ Faible). « TBT » = probablement « Tick By Tick », mais le sens exact est inconnu.
    → Il faut 3 ou 4 screens du tableau de l'original au moment où TBT change, + le CSV au même instant.
 2. **Signator** : il reste ~5 flèches en trop par jeu de données. Il n'y a jamais eu de screen de la ligne
    « Score » de l'original pour confirmer Moyen/Faible.
-3. **Tableaux non faits** (pas de source publique trouvée sur ~1 600 scripts) :
+3. **Tableaux — PERCÉE DU 10/10**, voir `tools/ephore_api/NOTES_TABLEAUX.md`. Le Feu de
+   Confluence les décompose exactement : `GROUPES_FEU` du terminal web donne « Colonne temps
+   6 voix + Bloc SuperTrader 10 + Colonne SIGNAL 7 + Tendances multi-unités 6 » = **29**, soit
+   les 29 votes de l'API. Donc `feux.votes` est une **cible numérique** pour valider nos
+   répliques. Le contenu des 3 tableaux est lu sur captures (valeurs, vocabulaire d'états,
+   échelle de couleurs, paliers de 25 % du STRENGTH). Attention : `INDICATOR | SIGNAL` dépend
+   de **l'unité de temps du graphique** (Lin Regress = Bull en 15m et Bear en 2m sur la même
+   capture) — à caler par TF. Et **la source de données qui manquait existe** : la catégorie
+   publique `le-mur-des-victoires` du forum (~490 sujets) contient des centaines de captures
+   horodatées, téléchargeables sans compte, dont beaucoup citent le Feu en clair (« feu à 82 %
+   long »). Détail des tableaux :
    - INDICATOR | SIGNAL (SuperTrend, Moving Avg, VWAP, Lin Regress, CPR, ORB 15min, PDH/PDL) ;
    - TIMEFRAME | TREND | STRENGTH (STRENGTH = « pression acheteuse » 0-100 % par paliers de 25 %,
      selon la formation) ;

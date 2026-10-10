@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<title>Page introuvable · Ephore Market</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/logo-32-clair.png">
+<link rel="apple-touch-icon" href="/img/logo-180-clair.png">
+<meta name="theme-color" content="#F7F6F3">
+<!--
+  PAGE 404 DU HUB (posee le 10/08/2026).
+
+  POURQUOI ELLE EXISTE. Sans fichier 404.html a la racine du repertoire publie,
+  Cloudflare Pages applique son repli « application a page unique » : il rend
+  public/index.html en HTTP 200 pour TOUTE adresse inconnue. Mesure du jour, avant
+  correctif : /ceci-nexiste-pas-<aleatoire>.html rendait 200 et les 158 573 octets de
+  la coquille du hub, exactement comme /outil/old/<n-importe-quoi> et comme
+  /api/inexistant. Deux degats : Google peut indexer des adresses fantomes, et surtout
+  AUCUN outil ne pouvait distinguer une page absente d'une page presente. C'est ce
+  soft-404 qui a produit une fausse alerte pendant l'audit, et c'est la meme cause qui
+  avait masque 21 liens de blog morts le 07/08 (lecon « sur un domaine a repli SPA, le
+  discriminant est le content-type, jamais le code HTTP »).
+
+  CE QUI NE CHANGE PAS. La presence de ce fichier ne modifie le sort d'AUCUNE adresse
+  legitime :
+   - le routage de l'application est ENTIEREMENT par fragment (#formation, #outil,
+     #forum, #cours/<slug>, #actu/<handle>). Un fragment n'est jamais envoye au
+     serveur : ces adresses sont des requetes sur « / », qui sert index.html ;
+   - les routes serveur (/api/, /auth/, /sso/, /fichiers-forum/, /fichiers-cours/,
+     /img-cours/, /media-cours/, /admin/) sont des Functions, evaluees AVANT les
+     fichiers statiques. Elles gardent leurs propres reponses, 401 et 403 compris ;
+   - les fichiers reellement presents (/img/..., /manifest.webmanifest, /sw.js,
+     /outil/outil) continuent d'etre servis a l'identique ;
+   - /outil, adresse mise en avant publiquement (CTA de la video mode d'emploi et des
+     reels), est preservee par une regle de _redirects vers /#outil.
+
+  Ce qui bascule en 404, et c'est le but : les adresses qui n'existent pas, dont les
+  anciennes versions retirees de public/ le 10/08 (/outil/old/...).
+-->
+<style>
+/* BASCULE DU 12/09/2026 (ordre d'Elio) : le CLAIR est l'identité principale, donc c'est
+   lui qui occupe le :root nu. Le noir et or passe sous [data-theme="dark"], et le clair
+   garde son propre sélecteur pour que le script puisse le remettre explicitement.
+   AVANT, le :root nu était le sombre : une page 404 arrivait en noir chez un visiteur
+   sans préférence, alors que le hub est clair. */
+:root{
+  color-scheme:only light;
+  --bg:#F7F6F3;--surface:#FFFFFF;--border:#E5E2DA;
+  --gold:#7A5E15;--gold-deep:#5E470F;
+  --text:#141416;--muted:#5C5C63;--glow:rgba(122,94,21,.07);
+}
+:root[data-theme="light"]{
+  --bg:#F7F6F3;--surface:#FFFFFF;--border:#E5E2DA;
+  --gold:#7A5E15;--gold-deep:#5E470F;
+  --text:#141416;--muted:#5C5C63;--glow:rgba(122,94,21,.07);
+}
+:root[data-theme="dark"], :root[data-theme="momentum"]{
+  --bg:#09090B;--surface:#121215;--border:#1A1A1D;
+  --gold:#D4A84B;--gold-deep:#B8923F;
+  --text:#F5F5F5;--muted:#9A9AA0;--glow:rgba(212,168,75,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 20px;text-align:center;line-height:1.55;
+}
+a{color:var(--gold);text-decoration:none}
+a:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+.logo{display:flex;align-items:center;gap:.3rem;margin-bottom:28px;color:var(--text)}
+/* L'E de la confluence, meme SVG inline que le hub et les pages de vente :
+   structure sur --text, mediane sur --gold. La 404 ne connait que sombre et clair
+   (choix du 10/08) : en momentum memorise, elle rend le sombre, mediane or. */
+.logo__icone{width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center}
+.logo__icone svg{width:100%;height:100%;display:block}
+.eph-s{fill:var(--text)}
+.eph-m{fill:var(--gold)}
+.logo__nom{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
+.carte{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:34px 26px;max-width:520px;width:100%;
+}
+.code{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+h1{font-size:1.5rem;line-height:1.25;letter-spacing:-.02em;margin-bottom:12px}
+p{color:var(--muted);font-size:.95rem;margin-bottom:10px}
+.adresse{
+  display:block;margin:16px 0 22px;padding:10px 12px;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
+  color:var(--muted);word-break:break-all;
+}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.bouton{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:12px 20px;border-radius:10px;font-weight:600;font-size:.92rem;
+  background:linear-gradient(145deg,var(--gold),var(--gold-deep));color:var(--bg);
+}
+.bouton--doux{background:none;border:1px solid var(--border);color:var(--text)}
+</style>
+</head>
+<body>
+  <div class="logo">
+    <span class="logo__icone" aria-hidden="true"><svg viewBox="14 18 68 60" focusable="false"><rect class="eph-m" x="14" y="41.5" width="68" height="13" rx="3.5"/><rect class="eph-s" x="14" y="18" width="13" height="60" rx="3.5"/><rect class="eph-s" x="14" y="18" width="42" height="13" rx="3.5"/><rect class="eph-s" x="14" y="65" width="42" height="13" rx="3.5"/></svg></span>
+    <span class="logo__nom">Ephore Market</span>
+  </div>
+
+  <main class="carte">
+    <p class="code">Erreur 404</p>
+    <h1>Cette page n'existe pas</h1>
+    <p>L'adresse demandée ne correspond à aucune page de la plateforme. Elle a peut-être été
+      déplacée, ou le lien qui t'a amené ici comporte une faute.</p>
+    <code class="adresse" id="adresse"></code>
+    <div class="actions">
+      <a class="bouton" href="/">Retour à la plateforme</a>
+      <a class="bouton bouton--doux" href="/#outil">Outil prop firms</a>
+    </div>
+  </main>
+
+<script>
+// Meme reglage de theme que la plateforme (cle « ephore-theme »), pour qu'un membre en
+// theme clair ne recoive pas une page sombre en pleine figure.
+(function(){
+  try {
+    // Depuis le 12/09/2026 le clair est le défaut de la feuille : c'est donc le choix
+    // SOMBRE ou MOMENTUM d'un membre qu'il faut poser explicitement.
+    var t = localStorage.getItem("ephore-theme");
+    if (t === "dark" || t === "momentum") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch(e){}
+  // L'adresse fautive est affichee en TEXTE (textContent), jamais en HTML : une adresse
+  // est une entree non fiable, elle ne doit pas pouvoir injecter de balise dans la page.
+  try {
+    document.getElementById("adresse").textContent = location.pathname + location.search;
+  } catch(e){}
+})();
+</script>
+</body>
+</html>
