@@ -137,6 +137,34 @@ EMA50 et EMA60 du close (+ remplissage).
 | API 15m (bandes d'annonces appliquées) | 23 | 2 | 0 | 100 % | **92.0 %** |
 | API 2m | 19 | 0 | 1 | 95.0 % | **100 %** |
 
+**LE DÉCLENCHEMENT DES FLÈCHES EST RÉSOLU (10/10).** Mesuré sur le groupe 4 des 14 exports
+« Ajustements », **sans distinguer Fort et Moyen** : **153 exactes, 6 en trop, 2 manquées** sur
+155 flèches — rappel 98.7 %, précision 96.2 %. Vérifié deux fois.
+
+Et les paramètres de la V8 sont **l'optimum exact** d'une grille de 111 combinaisons :
+
+| seuil ADX | en trop | manquées |
+|---:|---:|---:|
+| 16 | 35 | 2 |
+| 17 | 20 | 2 |
+| **18** | **6** | **2** |
+| 19 | 4 | 9 |
+| 20 | 3 | 29 |
+
+La conviction (`dBand >= 0.3` OU `volume >= SMA20`) supprime **37 faux positifs pour 2 manquées**.
+La « 2e bougie du nouvel état » est la seule valeur possible : la 1re et la 3e donnent 0 exacte.
+
+**Ce qui reste n'est PAS le déclenchement, c'est la frontière Fort/Moyen**, donc le score CQF :
+au niveau Fort on tombe à 142/5/8. Et le problème est concentré sur **NQ 1D, où la colonne
+Volume est vide** — le score y est donc faussé par construction. Hors 1D, le niveau Fort donne
+**134 exactes / 2 en trop / 6 manquées** (précision 98.5 %).
+Seuils de score comparés : 42 → 11 erreurs, 46 → 12, 50 → 13. L'écart porte sur 11 cas : trop
+peu pour trancher sans surajuster. Le groupe 4 ne contient que **6 flèches Moyen sur 176**.
+
+Autre fait mesuré : **le groupe 4 n'applique PAS le filtre annonces.** L'appliquer dégrade le
+résultat (138/6/17 contre 153/6/2) car 15 de ses flèches tombent sur 14:30 ou 16:00. C'est le
+groupe 2 qui filtre.
+
 **RENVERSEMENT DU 10/10 (lot « Base 10:10/Ajustements ») — à lire avant tout le reste de
 cette section.** Jeremy a **4 versions d'Ephore sur son graphique**, donc chaque export contient
 **4 jeux** de colonnes `Signal Long/Short Fort|Moyen`. Les groupes 1 et 3 sont vides ; le
