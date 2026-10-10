@@ -5,6 +5,43 @@
 > et de la REPRISE. La substance du projet (ce qui est validé, les formules, les
 > données) est dans **`MEMOIRE_PROJET.md`** — ce fichier ne la recopie pas.
 
+## 0bis. ÉTAT DES INSTALLATIONS — fait le 2026-10-10
+
+Le compte a changé le 10/10. **La mémoire auto a survécu** et a bien amené la session
+suivante jusqu'ici : c'est la seule chose qui a traversé. Tout le reste a été installé ce
+jour-là. Les sections 1 et 2 ci-dessous décrivent le problème *tel qu'il était* ; voici ce
+qui est désormais vrai :
+
+| Élément | État au 10/10 |
+|---|---|
+| `pinescript-mcp` | ✅ enregistré (portée utilisateur), ✔ Connected |
+| `pinescript-syntax-checker` | ✅ **réparé et connecté** — voir le piège ci-dessous |
+| Plugin `superpowers` | ✅ installé depuis le marketplace officiel, **v6.4.1** (la copie du dépôt est en 5.0.4) |
+| Agents actifs dans `~/.claude/agents/` | ✅ 9 : les 4 utiles du dépôt + les 5 de `agents-proposes/` |
+| Clé morte `mcpServers` | ✅ retirée de `settings.json` (sauvegarde `.bak-20261010`) |
+| Node | ❌ **toujours v20.20.2**, requis ≥ 22 — seul point ouvert |
+| Connecteurs claude.ai | ⚠️ tombés de 4 à 1 (Claude Docs). Gmail/Drive/Calendar étaient liés à l'ancien compte. |
+
+**Le piège du vérificateur de syntaxe, et sa solution.** Le paquet PyPI
+`pinescript-syntax-checker` v0.1.0 est écrit pour `mcp` **1.x** (`from mcp.server.fastmcp
+import FastMCP`). `uv` résout `mcp` 2.x, où `FastMCP` a été renommé `MCPServer` : l'import
+échoue. Il faut épingler la v1. La commande qui marche, déjà enregistrée :
+
+```bash
+claude mcp add --scope user pinescript-syntax-checker -- \
+  /Users/jeremk/.local/bin/uvx --with 'mcp<2' pinescript-syntax-checker
+```
+
+Vérifié par handshake JSON-RPC : serveur `pinescript-syntax-checker` **v1.30.0**, puis
+`claude mcp list` → ✔ Connected. `uv` 0.13.0 a été installé dans `~/.local/bin` (il télécharge
+son propre Python 3.10, ce qui contourne le 3.9.6 du système).
+
+**Conséquence pour la méthode de travail :** la consigne « on ne peut pas compiler le Pine
+ici, demander le message rouge à Jeremy » (§5) est **périmée**. L'outil `check_syntax` interroge
+l'API officielle de TradingView et renvoie les erreurs avec ligne et colonne. À utiliser
+systématiquement avant d'envoyer du Pine — c'est aussi ce que l'agent `pine-v6-linter` fait en
+premier.
+
 ## 0. Ordre de lecture, dans cet ordre exact
 
 1. **`MEMOIRE_PROJET.md`** (206 lignes) — l'état du projet. Rien ne se comprend sans lui.
@@ -270,3 +307,30 @@ donc après le rang 1 ou le rang 4. Son apport immédiat est le **registre**
 - **Adapter `tdd-developer` en « simulation-driven »** : séduisant, mais c'est une réécriture
   complète, et le résultat est déjà couvert par `api-oracle-harvester` (valider) +
   `pine-v6-linter` (relire).
+
+## 10. Outils externes évalués
+
+### REA — « Reverse Engineer Anything » (github.com/morluto/rea)
+Proposé par Jeremy le 10/10. Serveur MCP de rétro-ingénierie, 53,4k étoiles, MIT,
+TypeScript. Installation : `npx rea-agents setup` (paquet `rea-agents` ; attention, le paquet
+npm nommé `rea` est un homonyme sans rapport, publié en 2011).
+
+**Verdict : utile sur un seul angle, et bloqué aujourd'hui.**
+
+- **Bloqué** : REA exige Node **22.19+ / 24.11+ / 26+**. La machine est en **v20.20.2**.
+  Rien à tenter avant la mise à jour de Node (qui est de toute façon nécessaire pour
+  Claude Code lui-même).
+- **Hors de portée pour l'essentiel** : ses cibles sont les binaires natifs/ELF, le bytecode
+  EVM, .NET, les APK, les firmwares, Electron. **Pine Script n'est pas une cible**, et surtout
+  le Pine d'un script protégé n'est **jamais envoyé au navigateur** : TradingView le compile
+  côté serveur. Aucun outil côté client ne peut donc récupérer le source d'Ephore. Ce n'est pas
+  une limite de REA, c'est la nature de la cible.
+- **Le seul angle réellement utile** : ses modes **« Websites »** et **« Network captures
+  (HAR) »**, appliqués à `app.ephore-market.com` — le terminal web d'Ephore, qui sert son JS
+  **non minifié**. C'est exactement la cible de l'agent `ephore-web-prospector` (§9.2, rang 1).
+  Une capture HAR cartographierait proprement les endpoints appelés par le terminal, ce qui est
+  l'étape 3 de cet agent, faite mieux qu'avec `curl` + `grep`.
+
+**Recommandation :** ne pas l'installer maintenant. Lancer d'abord `ephore-web-prospector`,
+qui ne demande rien de plus. Si et seulement si le JS du terminal se révèle trop touffu pour
+une lecture à la main, alors mettre Node à jour et reprendre avec REA sur ce seul fichier.
