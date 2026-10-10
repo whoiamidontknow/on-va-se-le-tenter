@@ -128,6 +128,28 @@ EMA50 et EMA60 du close (+ remplissage).
   - Tendance = clôture vs EMA50.
   - TF = « Actuel ».
 
+### Simulateur Signator — RECONSTRUIT le 10/10 : `tools/signator_sim.py`
+Les scripts d'origine (`signator_final/*.py`, `signator_v9/NOTES.md`) vivaient dans un
+scratchpad `/tmp` et sont **perdus**. Le simulateur a été réécrit depuis `TABLEAU.pine` V8 et
+committé — **ne plus jamais laisser ce code hors du dépôt**.
+```bash
+python3 tools/signator_sim.py          ~/Ephore/Singal    # filtre OFF
+python3 tools/signator_sim.py --filtre ~/Ephore/Filtres   # filtre ON
+```
+Résultats du 10/10, qui reproduisent la V8 :
+- Singal (filtre OFF) : **118/119 = 99.2 % de rappel**, 5 en trop, 1 manquée, 1 écart de classe.
+- Filtres (filtre ON) : **70/70 = 100 % de rappel**, 5 en trop.
+- **Preuve nouvelle** : sur les mêmes fichiers *sans* le filtre, les faux positifs passent de
+  **5 à 10**. Le filtre « pas de flèche sur une bougie contenant 14:30 ou 16:00 (Paris) » n'est
+  donc plus une hypothèse, il est mesuré.
+- Les écarts résiduels sont **exactement** ceux de §10 : les 3 flèches retirées par la nouvelle
+  version d'Ephore (MES15 09-28 16:15, MES60 09-25 09:00, NQ15 09-29 18:00) et la manquée
+  NQ240 07-31 08:00. Inutile de les rechercher : ce sont des différences de version, pas des
+  défauts de règle.
+- Détail qui fait gagner du temps : les colonnes `Moyenator 1/2` de l'original sont utilisées
+  comme EMA50/60 exactes (§4.4), ce qui supprime toute chauffe d'EMA et permet de descendre le
+  warmup de 300 à 120 barres — soit ~40 flèches évaluables en plus sur des fichiers de 557 barres.
+
 ## 6. Ce qui RESTE à faire / incertain
 1. **TBT** : règle actuelle = ADX ≥ 18 (✔ OK / ⛔ Faible). Elle n'est calée que sur 2 cas (30/09 10:30 :
    MES OK, NQ Faible). « TBT » = probablement « Tick By Tick », mais le sens exact est inconnu.
