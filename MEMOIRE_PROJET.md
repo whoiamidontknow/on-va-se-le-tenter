@@ -137,7 +137,31 @@ EMA50 et EMA60 du close (+ remplissage).
 | API 15m (bandes d'annonces appliquées) | 23 | 2 | 0 | 100 % | **92.0 %** |
 | API 2m | 19 | 0 | 1 | 95.0 % | **100 %** |
 
-**CORRECTION DU 10/10 (export neuf « Base 10:10 ») :** les 3 flèches présentées jusqu'ici comme
+**RENVERSEMENT DU 10/10 (lot « Base 10:10/Ajustements ») — à lire avant tout le reste de
+cette section.** Jeremy a **4 versions d'Ephore sur son graphique**, donc chaque export contient
+**4 jeux** de colonnes `Signal Long/Short Fort|Moyen`. Les groupes 1 et 3 sont vides ; le
+**groupe 2** et le **groupe 4** portent les flèches. Mesuré sur 14 fichiers (MES + NQ, 7 unités,
+données jusqu'au 09/10) :
+
+- le **groupe 4 émet 176 flèches**, le **groupe 2 en émet 161**, et le groupe 2 est un
+  **sous-ensemble strict** du groupe 4 (aucune flèche en propre, 161/176 = 91.5 % d'accord) ;
+- **11 des 15 flèches que le groupe 2 retire (73 %) tombent sur une heure d'annonce**, contre
+  26 % des 161 conservées — enrichissement d'un facteur 3. C'est donc une différence de
+  **réglage du filtre**, pas de code ;
+- notre règle V8 confrontée à chaque version séparément :
+
+| version | exactes | en trop | manquées | rappel | précision |
+|---|---:|---:|---:|---:|---:|
+| groupe 2 | 130 | 18 | 7 | 94.9 % | 87.8 % |
+| **groupe 4** | **144** | **4** | **7** | **95.4 %** | **97.3 %** |
+
+→ **Notre V8 reproduit la version du groupe 4**, avec 4 faux positifs au lieu de 18.
+Les « faux positifs » traqués jusqu'ici (25/09 09:00 MES60, 29/09 18:00 NQ15, 23/09 16:00 MES60)
+figurent **parmi les 15 flèches que le groupe 2 retire** : ce ne sont pas des erreurs de notre
+règle, c'était une comparaison à la mauvaise version. **Toujours préciser à quel groupe de
+colonnes on se compare.**
+
+**Correction précédente du 10/10 (lot « Base 10:10/base »), désormais dépassée :** les 3 flèches présentées jusqu'ici comme
 « retirées par la nouvelle version, donc différence de version » sont en réalité **de vrais faux
 positifs de notre règle**. Preuve directe : le réexport MES 60m du 10/10, qui couvre le
 2026-09-25 09:00, contient bien la barre et l'original n'y met **aucune flèche**
