@@ -39,6 +39,12 @@
 //   V1  2026-10-10  Première consolidation. Base = PORSCHEONARRIVE V8, dont
 //                   le tableau principal V6 est remplacé par celui, validé,
 //                   de TABLEAU.pine V8. Ajout du Signator V8 et du Climax.
+//                   Vérifié par l'API TradingView : 0 erreur. Relu par agent :
+//                   fusion fidèle, aucune perte, aucune variable orpheline,
+//                   aucune collision. Deux garde-fous ajoutés après relecture :
+//                   Climax validé à la clôture (il a été calibré sur bougies
+//                   fermées) et avertissement visible si le graphique n'est pas
+//                   en Heiken Ashi.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -1676,6 +1682,8 @@ if barstate.islast and sg_show
 
 grp_clx = "=== EPHORE CLIMAX ==="
 clx_on       = input.bool(true,  "Afficher les climax", group=grp_clx)
+clx_confirm  = input.bool(true,  "Valider seulement à la clôture de la barre", group=grp_clx,
+     tooltip="La règle a été calibrée sur des bougies FERMÉES (exports CSV et marqueurs « confirmed » de l'API). En temps réel, le volume et le corps bougent : sans cette option un triangle peut apparaître puis disparaître avant la clôture. Laisser coché pour reproduire l'original.")
 clx_buyBody  = input.float(0.55, "Buy — corps minimum (|c-o| / range)",  group=grp_clx, minval=0.0, maxval=1.0, step=0.05)
 clx_buyVol   = input.float(1.5,  "Buy — volume minimum (× SMA20)",       group=grp_clx, minval=0.0, maxval=10.0, step=0.1)
 clx_selBody  = input.float(0.65, "Sell — corps minimum (|c-o| / range)", group=grp_clx, minval=0.0, maxval=1.0, step=0.05)
@@ -1694,9 +1702,14 @@ clx_body = clx_rg > 0 ? (close - open) / clx_rg : 0.0
 clx_vma  = ta.sma(volume, 20)
 clx_vr   = clx_vma > 0 ? volume / clx_vma : 0.0
 
-clx_buy  = clx_on and clx_rg > 0 and clx_vma > 0 and (open - low) <= clx_eps
+// La regle repose sur « bougie HA sans meche du cote du sens ». Sur des bougies
+// NORMALES, open == low est frequent et le module produirait des signaux faux en
+// silence. On exige donc explicitement un graphique Heiken Ashi.
+clx_ok   = clx_on and chart.is_heikinashi and (not clx_confirm or barstate.isconfirmed)
+
+clx_buy  = clx_ok and clx_rg > 0 and clx_vma > 0 and (open - low) <= clx_eps
              and clx_body >= clx_buyBody and clx_vr >= clx_buyVol
-clx_sell = clx_on and clx_rg > 0 and clx_vma > 0 and (high - open) <= clx_eps
+clx_sell = clx_ok and clx_rg > 0 and clx_vma > 0 and (high - open) <= clx_eps
              and -clx_body >= clx_selBody and clx_vr >= clx_selVol
 
 clx_prem = clx_buy and clx_vr >= clx_pVol and clx_body >= clx_pBody
@@ -1715,3 +1728,16 @@ plotshape(clx_sell,                 "Climax SELL (HIGH)",    style=shape.triangl
 
 alertcondition(clx_buy,  "Climax BUY",  "Climax acheteur Ephore")
 alertcondition(clx_sell, "Climax SELL", "Climax vendeur Ephore")
+
+// ══════════════════════════════════════════════════════════════
+// GARDE-FOU : graphique en Heiken Ashi
+// ══════════════════════════════════════════════════════════════
+// TOUT cet indicateur a été calibré sur des bougies Heiken Ashi (Heishinator,
+// Signator, Climax, tableaux). Sur des bougies normales les valeurs sont
+// fausses sans que rien ne le signale. D'où cet avertissement visible.
+if barstate.islast and not chart.is_heikinashi
+    var label ha_warn = na
+    label.delete(ha_warn)
+    ha_warn := label.new(bar_index, high, "⚠ Ephore : passe le graphique en Heiken Ashi\n(tous les calculs sont calibrés dessus)",
+         style=label.style_label_down, color=color.new(color.red, 10),
+         textcolor=color.white, size=size.normal)
