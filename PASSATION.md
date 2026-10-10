@@ -19,7 +19,7 @@ qui est désormais vrai :
 | Plugin `superpowers` | ✅ installé depuis le marketplace officiel, **v6.4.1** (la copie du dépôt est en 5.0.4) |
 | Agents actifs dans `~/.claude/agents/` | ✅ 9 : les 4 utiles du dépôt + les 5 de `agents-proposes/` |
 | Clé morte `mcpServers` | ✅ retirée de `settings.json` (sauvegarde `.bak-20261010`) |
-| Node | ❌ **toujours v20.20.2**, requis ≥ 22 — seul point ouvert |
+| Node | ✅ **v22.23.3** (défaut nvm), Claude Code **2.1.296** |
 | Connecteurs claude.ai | ⚠️ tombés de 4 à 1 (Claude Docs). Gmail/Drive/Calendar étaient liés à l'ancien compte. |
 
 **Le piège du vérificateur de syntaxe, et sa solution.** Le paquet PyPI
@@ -35,6 +35,22 @@ claude mcp add --scope user pinescript-syntax-checker -- \
 Vérifié par handshake JSON-RPC : serveur `pinescript-syntax-checker` **v1.30.0**, puis
 `claude mcp list` → ✔ Connected. `uv` 0.13.0 a été installé dans `~/.local/bin` (il télécharge
 son propre Python 3.10, ce qui contourne le 3.9.6 du système).
+
+**Chemins node et nvm.** `pinescript-mcp` a été réenregistré sur les chemins de **v22.23.3**
+après la mise à jour, et son module réinstallé sous cette version (les globaux npm ne sont pas
+partagés entre versions de node). Si tu changes encore de version de node, il faudra refaire
+ces deux gestes :
+
+```bash
+npm install -g pinescript-mcp-server
+claude mcp remove --scope user pinescript-mcp
+claude mcp add --scope user pinescript-mcp -- \
+  "$(which node)" "$(npm root -g)/pinescript-mcp-server/dist/index.js"
+```
+
+À savoir : dans un shell **non interactif** (celui qu'utilise l'outil Bash), nvm n'est pas
+chargé, donc `node -v` peut encore renvoyer une ancienne version alors que ton shell
+interactif est à jour. Ce n'est pas un bug : ne pas s'y fier pour diagnostiquer.
 
 **Conséquence pour la méthode de travail :** la consigne « on ne peut pas compiler le Pine
 ici, demander le message rouge à Jeremy » (§5) est **périmée**. L'outil `check_syntax` interroge
