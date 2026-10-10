@@ -128,6 +128,34 @@ EMA50 et EMA60 du close (+ remplissage).
   - Tendance = clôture vs EMA50.
   - TF = « Actuel ».
 
+### Flèches Signator — où on en est vraiment (mesuré le 10/10)
+
+| source de vérité | exactes | en trop | manquées | rappel | précision |
+|---|---:|---:|---:|---:|---:|
+| CSV Singal (filtre OFF) | 118 | 5 | 1 | 99.2 % | 95.9 % |
+| CSV Filtres (filtre ON) | 70 | 5 | 0 | 100 % | 93.3 % |
+| API 15m (bandes d'annonces appliquées) | 23 | 2 | 0 | 100 % | **92.0 %** |
+| API 2m | 19 | 0 | 1 | 95.0 % | **100 %** |
+
+**Les erreurs résiduelles sont expliquées, pas mystérieuses :**
+- Côté CSV, **3 des 5 « en trop » sont les flèches que la nouvelle version d'Ephore a retirées**
+  (MES15 09-28 16:15, MES60 09-25 09:00, NQ15 09-29 18:00, cf. §10). Ce sont des différences de
+  version, pas des défauts de règle.
+- Côté API, **4 des 6 « en trop » tombent exactement dans les bandes d'annonces** du terminal web
+  (09-24 16:00, 09-25 15:30, 09-28 14:30, 09-29 09:00). En appliquant les `bande_verticale` de
+  l'API, la précision 15m passe de **79.3 % à 92.0 %** sans perdre un seul rappel.
+  → Confirme §9 par la mesure : le terminal web bloque **4 horaires** (09:00, 14:30, 15:30,
+  16:00) alors que TradingView n'en bloque que **2** (14:30, 16:00). Notre V8 implémente la
+  version TradingView, ce qui est correct pour les flèches de Jeremy.
+- **Hypothèse testée et ÉCARTÉE** : les faux positifs ne sont pas des marqueurs d'un autre type.
+  L'API émet aussi `v7a:ALLUMAGE` (21 en 15m) et `v7c:CONTINUATION` (3), mais **un seul** de nos
+  faux tombe sur un ALLUMAGE ; les autres ne correspondent à rien.
+
+**Il ne reste donc que 2 vrais faux en 15m** (09-25 18:45 score 46.2 ; 09-29 18:00 score 55.1)
+**et 1 manquée en 2m**. Le module est à ~96 %. Pour aller plus loin il faut des **données
+neuves** (exports de la nouvelle version sur des périodes déjà couvertes), pas plus de recherche :
+~25 variantes ont déjà échoué (§10).
+
 ### Simulateur Signator — RECONSTRUIT le 10/10 : `tools/signator_sim.py`
 Les scripts d'origine (`signator_final/*.py`, `signator_v9/NOTES.md`) vivaient dans un
 scratchpad `/tmp` et sont **perdus**. Le simulateur a été réécrit depuis `TABLEAU.pine` V8 et
