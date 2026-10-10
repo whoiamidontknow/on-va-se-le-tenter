@@ -162,7 +162,12 @@ Résultats du 10/10, qui reproduisent la V8 :
      selon la formation) ;
    - colonne **Dashator** (1m…1D bleu/rouge, logique différente du tableau TIMEFRAME).
    Il faut des exports multi-TF + screens au même instant.
-4. Autres modules jamais traités ici : Climator / Climax, Detector (order blocks), Rangeator, Breakator.
+4. Autres modules : **Climator / Climax PREMIÈREMENT CALÉ le 10/10** (91 % rappel / 90 %
+   précision en 15m, 98 % / 92 % en 2m ; règle, pistes épuisées et prochaine étape dans
+   `tools/ephore_api/NOTES_CLIMAX.md`). Piste n°1 pour progresser : **5 des 14 faux positifs
+   sont de simples erreurs de calage temporel** (un climax de l'original est à ±3 barres), donc
+   une règle de déduplication sur la fenêtre de 3 barres en supprimerait ~35 % sans nouvelle
+   donnée. Restent jamais traités : Detector (order blocks), Rangeator, Breakator.
 5. Jeremy utilise la **dernière version d'Ephore** depuis le 30/09 au soir : certaines valeurs ont pu bouger.
 
 ## 7. Où sont les données (dossier `~/Ephore/`)
