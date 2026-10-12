@@ -59,5 +59,8 @@ g2 = {key(r) for r in rows if r["groupe"] == 2}
 g4 = {key(r) for r in rows if r["groupe"] == 4}
 print("g2=%d  g4=%d  g2\\g4=%d  g4\\g2=%d" % (len(g2), len(g4), len(g2 - g4), len(g4 - g2)))
 # bornes temporelles
-ts = sorted(parse_t(r["t"]) for r in rows)
-print("période des flèches :", ts[0].isoformat(), "->", ts[-1].isoformat())
+ts = sorted(r["t"][:10] for r in rows)
+print("période des flèches :", ts[0], "->", ts[-1])
+cnt = Counter((r["tf"], r["groupe"]) for r in rows)
+print("effectifs par unité de temps (tf, groupe) :",
+      {k: v for k, v in sorted(cnt.items(), key=lambda x: (x[0][1], x[0][0]))})

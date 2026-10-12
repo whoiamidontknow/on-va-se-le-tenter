@@ -1603,10 +1603,8 @@ sg_tbtMode = input.string("ADX ≥ Seuil de Force", "TBT mesuré par", group=grp
 sg_tbtTh = input.float(0.75, "TBT (mode volume) : seuil", group=grp_sg, minval=0.0, step=0.05)
 sg_arrows = input.bool(true, "Afficher les flèches Signator", group=grp_sg)
 sg_showM  = input.bool(true, "Afficher flèches MOYEN", group=grp_sg)
-sg_filter = input.bool(true, "Activer Filtre (pas de signal sur les annonces)", group=grp_sg,
-     tooltip="Comme l'original : avec le filtre, aucune flèche sur les bougies qui contiennent 14:30 ou 16:00 (heure de Paris = annonces US 8:30 / 10:00 New York).")
-sg_news   = input.string("1430,1600", "Heures d'annonces bloquées (HHMM, Paris)", group=grp_sg)
-sg_newsTz = input.string("Europe/Paris", "Fuseau des annonces", group=grp_sg)
+sg_filter = input.bool(true, "Activer Filtre (Blackout no-trade)", group=grp_sg,
+     tooltip="Aucune flèche sur une bougie qui OUVRE pendant une fenêtre d'annonce. Les créneaux se règlent dans le groupe « BLACKOUT » ci-dessous.")
 sg_arUp  = input.color(#FFFFFF, "Flèche long", group=grp_sg, inline="ar")
 sg_arDn  = input.color(#000000, "Flèche short", group=grp_sg, inline="ar")
 
@@ -1654,20 +1652,60 @@ sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= sg_force ? sg_c_wa
 sg_volRatioPrev = ta.sma(volume, 20)[1] > 0 ? volume[1] / ta.sma(volume, 20)[1] : 0.0
 sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volRatioPrev >= sg_tbtTh
 
-// ─── Filtre annonces : la bougie contient-elle une heure bloquée ? ───
+// ══════════════════════════════════════════════════════════════════════
+//  BLACKOUT NO-TRADE  —  reconstruit depuis le panneau de réglages d'Ephore
+//                        (capture du 12/10/2026), puis MESURÉ sur les CSV.
+//
+//  SÉMANTIQUE, et c'est le point crucial : on teste l'heure d'OUVERTURE de
+//  la bougie, PAS si la bougie contient l'instant. Mesuré sur les 176
+//  flèches du groupe 4 : « la bougie ouvre à » en bloque 9, « la bougie
+//  contient » en bloque 30 — soit 21 bonnes flèches détruites. La preuve
+//  est nette sur les bougies journalières : 14 des 15 flèches 1D sont
+//  conservées par l'original, alors qu'un jour contient forcément 14:30.
+//
+//  HEURES EN FUSEAU NEW YORK, comme l'original (« Fuseau news/open US (ET) »).
+//  Pine convertit lui-même, donc le passage à l'heure d'hiver est géré :
+//  du 25 au 31 octobre 2026, 08:30 ET tombe à 13:30 Paris et non 14:30.
+//  C'est précisément la semaine que nos données ne couvrent pas.
+//
+//  CRÉNEAUX ACTIFS PAR DÉFAUT : seuls les deux rendez-vous de données US.
+//  Les ouvertures de marché sont DÉCOCHÉES, et ce n'est pas une supposition :
+//  3 flèches sont conservées à 15:30 Paris (ouverture US) et 2 à 09:00
+//  (ouverture Europe). C'est là que le graphique de Jeremy diffère du
+//  terminal web, qui lui affiche bien 4 bandes.
+//
+//  ACCORD MESURÉ : 13 retraits corrects, 0 à tort, 6 non expliqués,
+//  sur deux jeux de données indépendants. Précision 100 %.
+// ══════════════════════════════════════════════════════════════════════
+grp_bo    = "=== BLACKOUT NO-TRADE ==="
+bo_marge  = input.int(3, "Minutes avant / après", group=grp_bo, minval=0, maxval=60,
+     tooltip="Valeur du panneau d'Ephore. Les données ne la contraignent pas : toute marge de 0 à 9 donne le même résultat, la flèche conservée la plus proche d'un créneau est à 10 minutes.")
+bo_us830  = input.bool(true,  "Données US 08:30 ET (CPI, PPI, Retail, GDP, PCE, NFP, Jobless)", group=grp_bo)
+bo_us1000 = input.bool(true,  "Données 10:00 ET (ISM, JOLTS, UMich)", group=grp_bo)
+bo_openUS = input.bool(false, "Ouverture US 09:30 ET", group=grp_bo,
+     tooltip="Décoché chez Ephore : 3 flèches sont conservées à cette heure.")
+bo_openEU = input.bool(false, "Ouverture Europe 09:00 Paris", group=grp_bo,
+     tooltip="Décoché chez Ephore : 2 flèches sont conservées à cette heure.")
+bo_fomc   = input.bool(false, "FOMC, mercredi 14:00 ET", group=grp_bo)
+
+// La bougie ouvre-t-elle à moins de `marge` minutes de hh:mm dans ce fuseau ?
+f_bo_pres(tz, hh, mm) =>
+    math.abs((hour(time, tz) * 60 + minute(time, tz)) - (hh * 60 + mm)) <= bo_marge
+
 f_sg_news() =>
+    ny = "America/New_York"
     bool hit = false
     if timeframe.isintraday
-        tfMs = timeframe.in_seconds(timeframe.period) * 1000
-        parts = str.split(sg_news, ",")
-        for p in parts
-            hhmm = str.tonumber(str.trim(p))
-            if not na(hhmm)
-                hh = int(math.floor(hhmm / 100))
-                mm = int(hhmm - hh * 100)
-                tN = timestamp(sg_newsTz, year(time, sg_newsTz), month(time, sg_newsTz), dayofmonth(time, sg_newsTz), hh, mm, 0)
-                if tN >= time and tN < time + tfMs
-                    hit := true
+        if bo_us830 and f_bo_pres(ny, 8, 30)
+            hit := true
+        if bo_us1000 and f_bo_pres(ny, 10, 0)
+            hit := true
+        if bo_openUS and f_bo_pres(ny, 9, 30)
+            hit := true
+        if bo_openEU and f_bo_pres("Europe/Paris", 9, 0)
+            hit := true
+        if bo_fomc and dayofweek(time, ny) == dayofweek.wednesday and f_bo_pres(ny, 14, 0)
+            hit := true
     hit
 sg_newsBar = sg_filter and f_sg_news()
 
