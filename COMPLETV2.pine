@@ -1114,18 +1114,36 @@ remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
 // d'un seuil « distance < k × ATR » avec k petit. La non grisée la plus proche
 // était à 2.09 ATR : k est entre 0 et 2. « Prix dedans » est la règle minimale,
 // sans paramètre. L'input ci-dessous permet d'élargir si besoin.
-grp_det = "=== EPHORE DETECTOR — GRISAGE ==="
-det_gris_on  = input.bool(true, "Griser les zones atteintes par le prix", group=grp_det)
-det_gris_tol = input.float(0.0, "Tolérance (× ATR14, 0 = prix strictement dedans)",
-     group=grp_det, minval=0.0, maxval=5.0, step=0.1,
-     tooltip="0 reproduit la règle mesurée. Au-delà, une zone proche mais non atteinte est grisée aussi — non validé.")
-det_gris_col = input.color(color.new(#787B86, 80), "Couleur des zones grisées", group=grp_det)
-det_atr14    = ta.atr(14)
+// STRUCTURE DU VRAI RÉGLAGE, lue sur le panneau d'Ephore (12/10) :
+//   [case]  atténuation activée            → det_gris_on
+//   liste   « Griser » / (autre mode)      → Ephore propose aussi de masquer
+//   nombre  1.5                            → det_gris_val
+//   liste   « % fixe » / (× ATR)           → det_gris_mode
+//   nombre  0.1                            → la valeur de l'autre unité
+//
+// ATTENTION, LE PANNEAU ET LES DONNÉES SE CONTREDISENT. Avec « 1.5 % fixe »
+// comme distance au prix, 16 des 19 boîtes observées sur l'API devraient être
+// grisées ; une seule l'est. Donc soit le terminal web est réglé autrement que
+// la version de Jeremy, soit « 1.5 % » mesure autre chose que la distance.
+// La seule règle VÉRIFIÉE sur les 19 observations est « le prix est dans la
+// boîte » (distance nulle) — c'est donc le défaut. Les réglages ci-dessous
+// permettent d'élargir si tu constates que l'original grise plus large.
+grp_det = "=== EPHORE DETECTOR — ATTÉNUATION DES ZONES ==="
+det_gris_on   = input.bool(true, "Atténuer les zones", group=grp_det)
+det_gris_mode = input.string("Prix dans la zone", "Critère", group=grp_det,
+     options=["Prix dans la zone", "% fixe", "× ATR"],
+     tooltip="« Prix dans la zone » est la seule règle vérifiée (19 boîtes sur 2 copies de l'API à 10 jours d'écart). Les deux autres reproduisent la structure du réglage d'Ephore, non validée.")
+det_gris_pct  = input.float(1.5, "Distance max (% du prix)", group=grp_det, minval=0.0, maxval=10.0, step=0.1)
+det_gris_atr  = input.float(0.1, "Distance max (× ATR14)",   group=grp_det, minval=0.0, maxval=10.0, step=0.1)
+det_gris_col  = input.color(color.new(#787B86, 80), "Couleur des zones atténuées", group=grp_det)
+det_atr14     = ta.atr(14)
 
-// Le prix est-il dans la boîte (à la tolérance près) ?
+// Distance du prix à la zone : nulle s'il est dedans.
 f_det_grise(top, btm) =>
-    tol = det_gris_tol * det_atr14
-    close >= btm - tol and close <= top + tol
+    dist = close > top ? close - top : close < btm ? btm - close : 0.0
+    det_gris_mode == "Prix dans la zone" ? dist <= 0.0 :
+     det_gris_mode == "% fixe"           ? dist <= close * det_gris_pct / 100.0 :
+                                           dist <= det_gris_atr * det_atr14
 
 set_order_blocks(ob_top, ob_btm, ob_left, ob_avg, ext_last, bg_css, border_css, lvl_css)=>
     var ob_box = array.new_box(0)
