@@ -168,6 +168,12 @@ variables de contexte, l'autre sur la forme de la conviction (~186 500 combinais
 p = 3.2e-10. Validation croisée MES↔NQ et par groupes d'unités de temps : le seuil 0.50
 ressort indépendamment à chaque découpage.
 
+**Effet au niveau Fort, mesuré après coup** (l'agent ne l'avait pas fait) : V8 140/3/10
+(précision 97.9 %) → V9 **140/2/10** (précision 98.6 %). Aucune régression, un faux positif de
+moins. La V9 est donc sûre aux deux niveaux. Le chantier du Score reste entier : les
+10 manquées sont des cas de frontière Fort/Moyen, et le groupe 4 ne contient que 6 flèches
+Moyen sur 176 — trop peu pour caler ce seuil.
+
 **Les 2 manquées restantes** sont des échecs de conviction de peu, sans rapport avec la V9 :
 MES 5m 08/10 07:05 (dBand 0.28 contre 0.30, volume 0.89 contre 1.00) et NQ 240 31/07 08:00
 (dBand 0.20, volume 0.69).
