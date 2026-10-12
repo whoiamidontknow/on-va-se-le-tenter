@@ -1,0 +1,2012 @@
+//@version=6
+// ══════════════════════════════════════════════════════════════
+// EPHORE COMPLET V2 — VERSION V1 (2026-10-12)
+// Indicateur unique regroupant TOUT ce qui est validé sur données.
+// PORSCHEONARRIVE.pine et TABLEAU.pine restent inchangés : ce fichier
+// les consolide, il ne les remplace pas tant que Jeremy n'a pas tranché.
+// Graphique en Heiken Ashi obligatoire.
+//
+// CE QU'IL CONTIENT, ET LE NIVEAU DE PREUVE DE CHAQUE MODULE
+//   Heishinator V4      couleur des bougies, validée à l'œil par Jeremy
+//   Moyenator V5        EMA50/EMA60 du close, exact
+//   Pivator V3          3 sets Annuel/Mensuel/Weekly, validé par Jeremy
+//   Detector            order blocks (LuxAlgo), repris de PorscheOnArrive
+//   Trendlines V2       règle Amphibiantrading, 38/38 en simulation,
+//                       validé par Jeremy sur toutes les unités de temps
+//   Tableau principal   réplique du dashboard Midgar-, « tout coïncide »
+//                       (remplace l'ancien TABLEAU PRINCIPAL V6 de Porsche)
+//   Signator V8         flèches + score. 153 exactes / 6 en trop / 2 manquées
+//                       sur 155 flèches (déclenchement, 14 exports MES+NQ,
+//                       7 unités de temps). Paramètres = optimum exact d'une
+//                       grille de 111 combinaisons. Au niveau Fort : 140/3/10.
+//
+//   Climax              DÉLIBÉRÉMENT ABSENT : il vit dans CLIMATOR.pine, un
+//                       indicateur séparé. Demande explicite de Jeremy.
+//   Detector grisé      NOUVEAU 12/10. Une zone est grisée quand le prix est
+//                       dedans. Prédiction vérifiée sur 2 copies de l'API à
+//                       10 jours d'écart, 19 boîtes.
+//   3 tableaux          NOUVEAU 12/10. INDICATOR|SIGNAL (7 lignes vérifiées),
+//                       TIMEFRAME|TREND|STRENGTH (TREND vérifié 5/5, STRENGTH
+//                       de structure certaine mais formule non démontrée),
+//                       Dashator (6/6 sur une capture, 5/6 sur l'autre).
+//   Feu de Confluence   NOUVEAU 12/10. 25 voix câblées sur les 29 de l'original.
+//   4 dispositions      Séparés / Fusionné / Groupé par couleur / Feu seul.
+//
+// CE QU'IL NE CONTIENT PAS, ET POURQUOI
+//   TBT                 le libellé n'existe nulle part chez Ephore ; 2 cas
+//                       observés seulement. Rien de fiable à coder.
+//   INDICATOR | SIGNAL, TIMEFRAME | TREND | STRENGTH, Dashator
+//                       structure connue (les 29 voix du Feu se décomposent
+//                       en 6+10+7+6) mais aucune donnée de calibration.
+//   Filtre d'annonces configurable
+//                       l'original a un module à 15 paramètres (fuseaux,
+//                       créneaux, marge, plage de séance). Ici le filtre
+//                       reste sur 14:30 / 16:00 Paris, en option.
+//   ALLUMAGE / CONTINUATION
+//                       exposés par l'API du terminal web, jamais répliqués.
+//
+// JOURNAL DES VERSIONS
+//   V1  2026-10-10  Première consolidation. Base = PORSCHEONARRIVE V8, dont
+//                   le tableau principal V6 est remplacé par celui, validé,
+//                   de TABLEAU.pine V8. Ajout du Signator V8 et du Climax.
+//                   Vérifié par l'API TradingView : 0 erreur. Relu par agent :
+//                   fusion fidèle, aucune perte, aucune variable orpheline,
+//                   aucune collision. Deux garde-fous ajoutés après relecture :
+//                   avertissement visible si le graphique n'est pas en
+//                   Heiken Ashi.
+//
+//   >>> CE FICHIER EST « EPHORE COMPLET V2 ». Il ajoute à EPHORE_COMPLET.pine :
+//       le grisage des zones Detector, les 3 tableaux manquants, le Feu de
+//       Confluence et 4 dispositions d'affichage. Le Climax reste DEHORS
+//       (CLIMATOR.pine). PORSCHEONARRIVE.pine et TABLEAU.pine sont intacts.
+//
+//   V2  2026-10-12  Signator V9 : la conviction exige en plus que la bougie
+//                   SATURE un terme du Candle Quality Filter (range >= 0.5×ATR
+//                   OU cpos >= 0.67). Les deux constantes existaient déjà dans
+//                   le score. Résultat : 153 exactes / 0 en trop / 2 manquées,
+//                   soit une PRÉCISION DE 100 % contre 96.2 %, sans perdre une
+//                   seule vraie flèche. Réversible par input.
+// ══════════════════════════════════════════════════════════════
+indicator("Ephore Complet V2", overlay=true, max_lines_count=500,
+     max_labels_count=500, max_boxes_count=500)
+
+// HEISHINATOR V4 — Replica (Ephore Market Ultimate)
+// ══════════════════════════════════════════════════════════════
+// Reverse-engineered via HA_DIAGNOSTIC v13→v16 :
+//   col_bull = SHA_close > EMA(close, 33)
+//   SHA_close = EMA récursif de ohlc4 avec alpha adaptatif :
+//     - TF < 30min  → α = 0.42  (validé 2m, 15m)
+//     - TF ≥ 30min  → α = 0.44  (validé 1h, 4h)
+// SHA_close_t = α * ohlc4_t + (1 − α) * SHA_close_{t-1}
+// Utiliser sur chart Heiken Ashi (open/close = HA natifs).
+
+// ── COULEURS ──────────────────────────────────────────────────
+grp_hei_col = "=== HEISHINATOR COULEURS ==="
+hei_use_custom = input.bool(false,          "Personnaliser couleurs", group=grp_hei_col)
+hei_bull_col   = input.color(#2196F3,       "Couleur haussière",      group=grp_hei_col)
+hei_bear_col   = input.color(#F44336,       "Couleur baissière",      group=grp_hei_col)
+hei_bull_final = hei_use_custom ? hei_bull_col : color.new(#2196F3, 0)
+hei_bear_final = hei_use_custom ? hei_bear_col : color.new(#F44336, 0)
+
+// ── ALPHA SELON TF (fixe, non modifiable) ─────────────────────
+hei_tf_seconds = timeframe.in_seconds(timeframe.period)
+hei_is_low_tf  = hei_tf_seconds < 30 * 60
+hei_alpha      = hei_is_low_tf ? 0.42 : 0.44
+
+// ── SHA CLOSE (EMA récursif sur ohlc4 avec alpha dynamique) ───
+hei_ohlc4_src = (open + high + low + close) / 4
+var float hei_sha_close = na
+hei_sha_close := na(hei_sha_close[1])
+     ? hei_ohlc4_src
+     : hei_alpha * hei_ohlc4_src + (1.0 - hei_alpha) * hei_sha_close[1]
+
+// ── EMA SUR CLOSE ─────────────────────────────────────────────
+hei_ema_base = ta.ema(close, 33)
+
+// ── RÈGLE DE COLORATION ───────────────────────────────────────
+hei_col_bull = hei_sha_close > hei_ema_base
+col_bull     = hei_col_bull
+
+// ── APPLICATION ───────────────────────────────────────────────
+barcolor(col_bull ? hei_bull_final : hei_bear_final)
+
+// ── PLOTS DIAGNOSTIC (masqués par défaut) ─────────────────────
+plot(hei_sha_close, "SHA close", color=color.new(color.orange, 0), linewidth=1, display=display.none)
+plot(hei_ema_base,  "EMA33",     color=color.new(color.black,  0), linewidth=2, display=display.none)
+
+// ── TRANSITIONS (masqués par défaut) ──────────────────────────
+hei_bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+hei_bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+plotshape(hei_bull_flip, "Flip ▲", style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.tiny, display=display.none)
+plotshape(hei_bear_flip, "Flip ▼", style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.tiny, display=display.none)
+
+// ══════════════════════════════════════════════════════════════
+// MOYENATOR V5
+// ══════════════════════════════════════════════════════════════
+grp_moy       = "=== EPHORE MOYENATOR V5 ==="
+moy_custom    = input.bool(false,  "Personnaliser Couleurs",                              group=grp_moy)
+moy_show1     = input.bool(true,   "Afficher Moyenator 1",                                group=grp_moy)
+moy_col1      = input.color(color.black, "Couleur ligne Moyenator 1",                     group=grp_moy)
+moy_w1        = input.int(2,       "Epaisseur Moyenator 1",                               group=grp_moy, minval=1, maxval=5)
+moy_show2     = input.bool(true,   "Afficher Moyenator 2",                                group=grp_moy)
+moy_col2      = input.color(color.black, "Couleur ligne Moyenator 2",                     group=grp_moy)
+moy_w2        = input.int(1,       "Epaisseur Moyenator 2",                               group=grp_moy, minval=1, maxval=5)
+moy_fill_on   = input.bool(true,   "Afficher le remplissage",                             group=grp_moy)
+moy_fill_bull = input.color(#00BCD4,"Couleur haussiere (Moyenator 1 > Moyenator 2)",      group=grp_moy)
+moy_fill_bear = input.color(#F44336,"Couleur baissiere (Moyenator 1 < Moyenator 2)",      group=grp_moy)
+moy_fill_opa  = input.int(0,       "Opacite du remplissage (0=opaque, 100=transparent)",   group=grp_moy, minval=0, maxval=100)
+moy_no_fill_eq= input.bool(true,   "Pas de couleur si Moyenator 1 = Moyenator 2",         group=grp_moy)
+
+ema_m1 = ta.ema(close, 50)
+ema_m2 = ta.ema(close, 60)
+
+// Détection changement de tendance
+var bool moy_was_bull = false
+moy_is_bull_now = hei_col_bull and low  > ema_m1
+moy_is_bear_now = not hei_col_bull and high < ema_m1
+moy_change_bull = moy_is_bull_now and not moy_was_bull
+moy_change_bear = moy_is_bear_now and     moy_was_bull
+if moy_is_bull_now
+    moy_was_bull := true
+else if moy_is_bear_now
+    moy_was_bull := false
+
+// Tracé EMA
+p_moy1 = plot(moy_show1 ? ema_m1 : na, "Moyenator 1", color=moy_col1, linewidth=moy_w1)
+p_moy2 = plot(moy_show2 ? ema_m2 : na, "Moyenator 2", color=moy_col2, linewidth=moy_w2)
+
+// Remplissage avec gestion opacité et égalité
+moy_are_equal  = math.abs(ema_m1 - ema_m2) < syminfo.mintick
+moy_fill_color = not moy_fill_on ? na :
+     (moy_no_fill_eq and moy_are_equal) ? na :
+     ema_m1 > ema_m2 ? color.new(moy_fill_bull, moy_fill_opa) :
+     ema_m1 < ema_m2 ? color.new(moy_fill_bear, moy_fill_opa) : na
+fill(p_moy1, p_moy2, color=moy_fill_color, title="Fill Moyenator")
+
+
+
+// ══════════════════════════════════════════════════════════════
+// PIVATOR V3 (Annuel + Mensuel + Weekly) — INPUTS
+// ══════════════════════════════════════════════════════════════
+grp_piv      = "=== EPHORE PIVATOR DUAL V2 ==="
+piv_type     = input.string("Traditionnel","Type", group=grp_piv,
+     options=["Traditionnel","Fibonacci","Woodie","Camarilla","DeMark"])
+piv_lookback = input.int(1, "Nombre de pivots en arriere", group=grp_piv, minval=1, maxval=5)
+piv_daily    = input.bool(true, "Utiliser des valeurs a base journaliere", group=grp_piv)
+piv_show_lbl = input.bool(true, "Afficher les etiquettes",     group=grp_piv)
+piv_show_px  = input.bool(true, "Afficher les prix",           group=grp_piv)
+piv_line_w   = input.int(2,     "Largeur de la ligne",         group=grp_piv, minval=1, maxval=5)
+piv_lbl_sz   = input.string("Normal", "Taille labels", group=grp_piv,
+     options=["Tiny", "Small", "Normal", "Large", "Huge"])
+piv_s1_lbl_col = input.color(color.red,   "Couleur labels Set 1", group=grp_piv)
+piv_s2_lbl_col = input.color(#000000, "Couleur labels Set 2", group=grp_piv)
+piv_s3_lbl_col = input.color(color.blue, "Couleur labels Set 3", group=grp_piv)
+piv_lbl_bold   = input.bool(false, "Labels en gras", group=grp_piv)
+piv_tz         = input.string("Europe/Paris", "Fuseau horaire des débuts/fins de période", group=grp_piv,
+     tooltip="Weekly : lundi 00:00 → lundi suivant 00:00. Mensuel : jusqu'au 1er du mois suivant 11:00. Annuel : jusqu'au 4 janvier de l'année suivante.")
+piv_lbl_pos    = input.string("Près du prix", "Position des étiquettes (mensuel, weekly)", group=grp_piv, options=["Près du prix", "Fin de la ligne"])
+piv_lbl_pos1   = input.string("Fin de la ligne", "Position des étiquettes (annuel)", group=grp_piv, options=["Fin de la ligne", "Près du prix"])
+
+// --- SET 1 (Annuel) ---
+piv_s1_custom = input.bool(false,"Personnaliser Couleurs Set 1", group=grp_piv)
+piv_s1_tf     = input.string("Annuel","Set 1 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s1_p_col  = input.color(color.red, "P",  group=grp_piv, inline="s1p")
+piv_s1_p_on   = input.bool(true, "",          group=grp_piv, inline="s1p")
+
+piv_s1_s1_col = input.color(color.red, "S1", group=grp_piv, inline="s1s1")
+piv_s1_s1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
+piv_s1_r1_col = input.color(color.red, "R1", group=grp_piv, inline="s1s1")
+piv_s1_r1_on  = input.bool(true, "",          group=grp_piv, inline="s1s1")
+
+piv_s1_s2_col = input.color(color.red, "S2", group=grp_piv, inline="s1s2")
+piv_s1_s2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
+piv_s1_r2_col = input.color(color.red, "R2", group=grp_piv, inline="s1s2")
+piv_s1_r2_on  = input.bool(true, "",          group=grp_piv, inline="s1s2")
+
+piv_s1_s3_col = input.color(color.red, "S3", group=grp_piv, inline="s1s3")
+piv_s1_s3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
+piv_s1_r3_col = input.color(color.red, "R3", group=grp_piv, inline="s1s3")
+piv_s1_r3_on  = input.bool(true, "",          group=grp_piv, inline="s1s3")
+
+piv_s1_s4_col = input.color(color.red, "S4", group=grp_piv, inline="s1s4")
+piv_s1_s4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
+piv_s1_r4_col = input.color(color.red, "R4", group=grp_piv, inline="s1s4")
+piv_s1_r4_on  = input.bool(true, "",          group=grp_piv, inline="s1s4")
+
+piv_s1_s5_col = input.color(color.red, "S5", group=grp_piv, inline="s1s5")
+piv_s1_s5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
+piv_s1_r5_col = input.color(color.red, "R5", group=grp_piv, inline="s1s5")
+piv_s1_r5_on  = input.bool(true, "",          group=grp_piv, inline="s1s5")
+
+// --- SET 2 (Mensuel) ---
+piv_s2_enable = input.bool(true, "Enable Set 2",                  group=grp_piv)
+piv_s2_custom = input.bool(false,"Personnaliser Couleurs Set 2",  group=grp_piv)
+piv_s2_tf     = input.string("Mensuel","Set 2 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s2_p_col  = input.color(#000000, "P",  group=grp_piv, inline="s2p")
+piv_s2_p_on   = input.bool(true, "",            group=grp_piv, inline="s2p")
+
+piv_s2_s1_col = input.color(#000000, "S1", group=grp_piv, inline="s2s1")
+piv_s2_s1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
+piv_s2_r1_col = input.color(#000000, "R1", group=grp_piv, inline="s2s1")
+piv_s2_r1_on  = input.bool(true, "",            group=grp_piv, inline="s2s1")
+
+piv_s2_s2_col = input.color(#000000, "S2", group=grp_piv, inline="s2s2")
+piv_s2_s2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
+piv_s2_r2_col = input.color(#000000, "R2", group=grp_piv, inline="s2s2")
+piv_s2_r2_on  = input.bool(true, "",            group=grp_piv, inline="s2s2")
+
+piv_s2_s3_col = input.color(#000000, "S3", group=grp_piv, inline="s2s3")
+piv_s2_s3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
+piv_s2_r3_col = input.color(#000000, "R3", group=grp_piv, inline="s2s3")
+piv_s2_r3_on  = input.bool(true, "",            group=grp_piv, inline="s2s3")
+
+piv_s2_s4_col = input.color(#000000, "S4", group=grp_piv, inline="s2s4")
+piv_s2_s4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
+piv_s2_r4_col = input.color(#000000, "R4", group=grp_piv, inline="s2s4")
+piv_s2_r4_on  = input.bool(true, "",            group=grp_piv, inline="s2s4")
+
+piv_s2_s5_col = input.color(#000000, "S5", group=grp_piv, inline="s2s5")
+piv_s2_s5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
+piv_s2_r5_col = input.color(#000000, "R5", group=grp_piv, inline="s2s5")
+piv_s2_r5_on  = input.bool(true, "",            group=grp_piv, inline="s2s5")
+
+// --- SET 3 (Hebdomadaire) ---
+piv_s3_enable = input.bool(true, "Enable Set 3",                  group=grp_piv)
+piv_s3_custom = input.bool(false,"Personnaliser Couleurs Set 3",  group=grp_piv)
+piv_s3_tf     = input.string("Hebdomadaire","Set 3 Timeframe", group=grp_piv,
+     options=["Journalier","Hebdomadaire","Mensuel","Trimestriel","Semestriel","Annuel"])
+
+piv_s3_p_col  = input.color(color.blue, "P",  group=grp_piv, inline="s3p")
+piv_s3_p_on   = input.bool(true, "",            group=grp_piv, inline="s3p")
+
+piv_s3_s1_col = input.color(color.blue, "S1", group=grp_piv, inline="s3s1")
+piv_s3_s1_on  = input.bool(true, "",            group=grp_piv, inline="s3s1")
+piv_s3_r1_col = input.color(color.blue, "R1", group=grp_piv, inline="s3s1")
+piv_s3_r1_on  = input.bool(true, "",            group=grp_piv, inline="s3s1")
+
+piv_s3_s2_col = input.color(color.blue, "S2", group=grp_piv, inline="s3s2")
+piv_s3_s2_on  = input.bool(true, "",            group=grp_piv, inline="s3s2")
+piv_s3_r2_col = input.color(color.blue, "R2", group=grp_piv, inline="s3s2")
+piv_s3_r2_on  = input.bool(true, "",            group=grp_piv, inline="s3s2")
+
+piv_s3_s3_col = input.color(color.blue, "S3", group=grp_piv, inline="s3s3")
+piv_s3_s3_on  = input.bool(true, "",            group=grp_piv, inline="s3s3")
+piv_s3_r3_col = input.color(color.blue, "R3", group=grp_piv, inline="s3s3")
+piv_s3_r3_on  = input.bool(true, "",            group=grp_piv, inline="s3s3")
+
+piv_s3_s4_col = input.color(color.blue, "S4", group=grp_piv, inline="s3s4")
+piv_s3_s4_on  = input.bool(true, "",            group=grp_piv, inline="s3s4")
+piv_s3_r4_col = input.color(color.blue, "R4", group=grp_piv, inline="s3s4")
+piv_s3_r4_on  = input.bool(true, "",            group=grp_piv, inline="s3s4")
+
+piv_s3_s5_col = input.color(color.blue, "S5", group=grp_piv, inline="s3s5")
+piv_s3_s5_on  = input.bool(true, "",            group=grp_piv, inline="s3s5")
+piv_s3_r5_col = input.color(color.blue, "R5", group=grp_piv, inline="s3s5")
+piv_s3_r5_on  = input.bool(true, "",            group=grp_piv, inline="s3s5")
+
+// ══════════════════════════════════════════════════════════════
+// FONCTIONS PIVOTS
+// ══════════════════════════════════════════════════════════════
+f_tf_string(s) =>
+    s == "Journalier"   ? "D"   :
+     s == "Hebdomadaire" ? "W"   :
+     s == "Mensuel"      ? "M"   :
+     s == "Trimestriel"  ? "3M"  :
+     s == "Semestriel"   ? "6M"  : "12M"
+
+f_calc_pivots(h, l, c, o, typ) =>
+    float p  = na, float r1 = na, float s1 = na
+    float r2 = na, float s2 = na, float r3 = na, float s3 = na
+    float r4 = na, float s4 = na, float r5 = na, float s5 = na
+
+    if typ == "Fibonacci"
+        p  := (h + l + c) / 3
+        rng = h - l
+        r1 := p + 0.382 * rng
+        s1 := p - 0.382 * rng
+        r2 := p + 0.618 * rng
+        s2 := p - 0.618 * rng
+        r3 := p + 1.000 * rng
+        s3 := p - 1.000 * rng
+        r4 := p + 1.382 * rng
+        s4 := p - 1.382 * rng
+        r5 := p + 1.618 * rng
+        s5 := p - 1.618 * rng
+    else if typ == "Woodie"
+        p  := (h + l + 2 * c) / 4
+        r1 := 2 * p - l
+        s1 := 2 * p - h
+        r2 := p + (h - l)
+        s2 := p - (h - l)
+        r3 := h + 2 * (p - l)
+        s3 := l - 2 * (h - p)
+        r4 := r3 + (h - l)
+        s4 := s3 - (h - l)
+        r5 := r4 + (h - l)
+        s5 := s4 - (h - l)
+    else if typ == "Camarilla"
+        p   := (h + l + c) / 3
+        rng  = h - l
+        r1  := c + rng * 1.1 / 12
+        s1  := c - rng * 1.1 / 12
+        r2  := c + rng * 1.1 / 6
+        s2  := c - rng * 1.1 / 6
+        r3  := c + rng * 1.1 / 4
+        s3  := c - rng * 1.1 / 4
+        r4  := c + rng * 1.1 / 2
+        s4  := c - rng * 1.1 / 2
+        r5  := c + rng * 1.1 * 5 / 6
+        s5  := c - rng * 1.1 * 5 / 6
+    else if typ == "DeMark"
+        x    = c < o ? h + 2 * l + c : c > o ? 2 * h + l + c : h + l + 2 * c
+        p   := x / 4
+        r1  := x / 2 - l
+        s1  := x / 2 - h
+        r2  := r1
+        s2  := s1
+        r3  := r1
+        s3  := s1
+        r4  := r1
+        s4  := s1
+        r5  := r1
+        s5  := s1
+    else // Traditionnel
+        p  := (h + l + c) / 3
+        r1 := 2 * p - l
+        s1 := 2 * p - h
+        r2 := p + (h - l)
+        s2 := p - (h - l)
+        r3 := h + 2 * (p - l)
+        s3 := l - 2 * (h - p)
+        r4 := r3 + (p - l)
+        s4 := s3 - (h - p)
+        r5 := r4 + (p - l)
+        s5 := s4 - (h - p)
+    [p, r1, s1, r2, s2, r3, s3, r4, s4, r5, s5]
+
+f_lbl_text(v, n) => piv_show_px ? n + " (" + str.tostring(v, format.mintick) + ")" : n
+
+piv_sz = piv_lbl_sz == "Tiny" ? size.tiny : piv_lbl_sz == "Small" ? size.small : piv_lbl_sz == "Normal" ? size.normal : piv_lbl_sz == "Large" ? size.large : size.huge
+piv_font = piv_lbl_bold ? font.family_monospace : font.family_default
+
+// ══════════════════════════════════════════════════════════════
+// TIMESTAMP FIN DE PERIODE (1er du mois/année à 10h)
+// ══════════════════════════════════════════════════════════════
+f_end_time(tf_name) =>
+    int result = na
+    if tf_name == "Mensuel"
+        y = year
+        m = month + 1
+        if m > 12
+            m := 1
+            y += 1
+        result := timestamp(y, m, 1, 10, 0, 0)
+    else if tf_name == "Annuel"
+        result := timestamp(year + 1, 1, 1, 10, 0, 0)
+    else if tf_name == "Semestriel"
+        nm = month + 6
+        ny = year
+        if nm > 12
+            nm -= 12
+            ny += 1
+        result := timestamp(ny, nm, 1, 10, 0, 0)
+    else if tf_name == "Trimestriel"
+        nm = month + 3
+        ny = year
+        if nm > 12
+            nm -= 12
+            ny += 1
+        result := timestamp(ny, nm, 1, 10, 0, 0)
+    else if tf_name == "Hebdomadaire"
+        result := time + 8 * 86400 * 1000
+    else // Journalier
+        result := time + 2 * 86400 * 1000
+    result
+
+// Fin d'affichage d'une période, calculée en heure (fuseau piv_tz) à partir
+// du début de la période. Les lignes sont tracées en xloc.bar_time.
+f_period_end(tf_name, st) =>
+    int r = na
+    y = year(st, piv_tz)
+    m = month(st, piv_tz)
+    if tf_name == "Hebdomadaire"
+        t2 = st + 7 * 86400000 + 12 * 3600000
+        r := timestamp(piv_tz, year(t2, piv_tz), month(t2, piv_tz), dayofmonth(t2, piv_tz), 0, 0, 0)
+    else if tf_name == "Mensuel"
+        r := timestamp(piv_tz, m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1, 11, 0, 0)
+    else if tf_name == "Trimestriel"
+        r := timestamp(piv_tz, m + 3 > 12 ? y + 1 : y, m + 3 > 12 ? m - 9 : m + 3, 1, 11, 0, 0)
+    else if tf_name == "Semestriel"
+        r := timestamp(piv_tz, m + 6 > 12 ? y + 1 : y, m + 6 > 12 ? m - 6 : m + 6, 1, 11, 0, 0)
+    else if tf_name == "Annuel"
+        r := timestamp(piv_tz, y + 1, 1, 4, 0, 0, 0)
+    else // Journalier
+        t2 = st + 86400000 + 12 * 3600000
+        r := timestamp(piv_tz, year(t2, piv_tz), month(t2, piv_tz), dayofmonth(t2, piv_tz), 0, 0, 0)
+    r
+
+// Début d'affichage : l'annuel part toujours du 2 janvier 00:00 (fuseau piv_tz),
+// même si janvier n'est pas chargé sur le graphique (ex. 15m) ; les autres
+// périodes partent de la première bougie de la période.
+f_period_start(tf_name, t) =>
+    tf_name == "Annuel" ? timestamp(piv_tz, year(t, piv_tz), 1, 2, 0, 0, 0) : t
+
+// Étiquettes « près du prix » : ~30 bougies à droite de la dernière
+f_lbl_x(end_t, pos) =>
+    near = time_close + 30 * timeframe.in_seconds(timeframe.period) * 1000
+    pos == "Fin de la ligne" ? end_t : math.min(near, end_t)
+
+// ══════════════════════════════════════════════════════════════
+// SET 1 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf1_str = f_tf_string(piv_s1_tf)
+
+[tf1_h, tf1_l, tf1_c, tf1_o] = request.security(syminfo.tickerid, tf1_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf1 = ta.change(time(tf1_str)) != 0
+
+[s1_p, s1_r1, s1_s1, s1_r2, s1_s2, s1_r3, s1_s3, s1_r4, s1_s4, s1_r5, s1_s5] =
+     f_calc_pivots(tf1_h, tf1_l, tf1_c, tf1_o, piv_type)
+
+var line ln_s1_p  = na, var line ln_s1_r1 = na, var line ln_s1_s1 = na
+var line ln_s1_r2 = na, var line ln_s1_s2 = na, var line ln_s1_r3 = na
+var line ln_s1_s3 = na, var line ln_s1_r4 = na, var line ln_s1_s4 = na
+var line ln_s1_r5 = na, var line ln_s1_s5 = na
+var label lb_s1_p  = na, var label lb_s1_r1 = na, var label lb_s1_s1 = na
+var label lb_s1_r2 = na, var label lb_s1_s2 = na, var label lb_s1_r3 = na
+var label lb_s1_s3 = na, var label lb_s1_r4 = na, var label lb_s1_s4 = na
+var label lb_s1_r5 = na, var label lb_s1_s5 = na
+var float rv_s1_p  = na, var float rv_s1_r1 = na, var float rv_s1_s1 = na
+var float rv_s1_r2 = na, var float rv_s1_s2 = na, var float rv_s1_r3 = na
+var float rv_s1_s3 = na, var float rv_s1_r4 = na, var float rv_s1_s4 = na
+var float rv_s1_r5 = na, var float rv_s1_s5 = na
+var int s1_target_t2 = na
+var int s1_start_bi  = na
+var int s1_start_t   = na
+
+if (new_tf1 or na(s1_start_bi)) and not na(s1_p)
+    line.delete(ln_s1_p),  line.delete(ln_s1_r1), line.delete(ln_s1_s1)
+    line.delete(ln_s1_r2), line.delete(ln_s1_s2), line.delete(ln_s1_r3)
+    line.delete(ln_s1_s3), line.delete(ln_s1_r4), line.delete(ln_s1_s4)
+    line.delete(ln_s1_r5), line.delete(ln_s1_s5)
+    label.delete(lb_s1_p),  label.delete(lb_s1_r1), label.delete(lb_s1_s1)
+    label.delete(lb_s1_r2), label.delete(lb_s1_s2), label.delete(lb_s1_r3)
+    label.delete(lb_s1_s3), label.delete(lb_s1_r4), label.delete(lb_s1_s4)
+    label.delete(lb_s1_r5), label.delete(lb_s1_s5)
+
+    s1_start_bi  := bar_index
+    s1_start_t   := f_period_start(piv_s1_tf, time)
+    s1_target_t2 := f_period_end(piv_s1_tf, s1_start_t)
+
+    rv_s1_p  := s1_p
+    rv_s1_r1 := s1_r1,  rv_s1_s1 := s1_s1
+    rv_s1_r2 := s1_r2,  rv_s1_s2 := s1_s2
+    rv_s1_r3 := s1_r3,  rv_s1_s3 := s1_s3
+    rv_s1_r4 := s1_r4,  rv_s1_s4 := s1_s4
+    rv_s1_r5 := s1_r5,  rv_s1_s5 := s1_s5
+
+// ══════════════════════════════════════════════════════════════
+// SET 2 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf2_str = f_tf_string(piv_s2_tf)
+
+[tf2_h, tf2_l, tf2_c, tf2_o] = request.security(syminfo.tickerid, tf2_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf2 = ta.change(time(tf2_str)) != 0
+
+[s2_p, s2_r1, s2_s1, s2_r2, s2_s2, s2_r3, s2_s3, s2_r4, s2_s4, s2_r5, s2_s5] =
+     f_calc_pivots(tf2_h, tf2_l, tf2_c, tf2_o, piv_type)
+
+var line ln_s2_p  = na, var line ln_s2_r1 = na, var line ln_s2_s1 = na
+var line ln_s2_r2 = na, var line ln_s2_s2 = na, var line ln_s2_r3 = na
+var line ln_s2_s3 = na, var line ln_s2_r4 = na, var line ln_s2_s4 = na
+var line ln_s2_r5 = na, var line ln_s2_s5 = na
+var label lb_s2_p  = na, var label lb_s2_r1 = na, var label lb_s2_s1 = na
+var label lb_s2_r2 = na, var label lb_s2_s2 = na, var label lb_s2_r3 = na
+var label lb_s2_s3 = na, var label lb_s2_r4 = na, var label lb_s2_s4 = na
+var label lb_s2_r5 = na, var label lb_s2_s5 = na
+var float rv_s2_p  = na, var float rv_s2_r1 = na, var float rv_s2_s1 = na
+var float rv_s2_r2 = na, var float rv_s2_s2 = na, var float rv_s2_r3 = na
+var float rv_s2_s3 = na, var float rv_s2_r4 = na, var float rv_s2_s4 = na
+var float rv_s2_r5 = na, var float rv_s2_s5 = na
+var int s2_target_t2 = na
+var int s2_start_bi  = na
+var int s2_start_t   = na
+
+if piv_s2_enable and (new_tf2 or na(s2_start_bi)) and not na(s2_p)
+    line.delete(ln_s2_p),  line.delete(ln_s2_r1), line.delete(ln_s2_s1)
+    line.delete(ln_s2_r2), line.delete(ln_s2_s2), line.delete(ln_s2_r3)
+    line.delete(ln_s2_s3), line.delete(ln_s2_r4), line.delete(ln_s2_s4)
+    line.delete(ln_s2_r5), line.delete(ln_s2_s5)
+    label.delete(lb_s2_p),  label.delete(lb_s2_r1), label.delete(lb_s2_s1)
+    label.delete(lb_s2_r2), label.delete(lb_s2_s2), label.delete(lb_s2_r3)
+    label.delete(lb_s2_s3), label.delete(lb_s2_r4), label.delete(lb_s2_s4)
+    label.delete(lb_s2_r5), label.delete(lb_s2_s5)
+
+    s2_start_bi  := bar_index
+    s2_start_t   := f_period_start(piv_s2_tf, time)
+    s2_target_t2 := f_period_end(piv_s2_tf, s2_start_t)
+
+    rv_s2_p  := s2_p
+    rv_s2_r1 := s2_r1,  rv_s2_s1 := s2_s1
+    rv_s2_r2 := s2_r2,  rv_s2_s2 := s2_s2
+    rv_s2_r3 := s2_r3,  rv_s2_s3 := s2_s3
+    rv_s2_r4 := s2_r4,  rv_s2_s4 := s2_s4
+    rv_s2_r5 := s2_r5,  rv_s2_s5 := s2_s5
+
+// ══════════════════════════════════════════════════════════════
+// SET 3 — DONNEES & DESSIN
+// ══════════════════════════════════════════════════════════════
+tf3_str = f_tf_string(piv_s3_tf)
+
+[tf3_h, tf3_l, tf3_c, tf3_o] = request.security(syminfo.tickerid, tf3_str,
+     [high[piv_lookback], low[piv_lookback], close[piv_lookback], open[piv_lookback]],
+     lookahead=barmerge.lookahead_on)
+
+new_tf3 = ta.change(time(tf3_str)) != 0
+
+[s3_p, s3_r1, s3_s1, s3_r2, s3_s2, s3_r3, s3_s3, s3_r4, s3_s4, s3_r5, s3_s5] =
+     f_calc_pivots(tf3_h, tf3_l, tf3_c, tf3_o, piv_type)
+
+var line ln_s3_p  = na, var line ln_s3_r1 = na, var line ln_s3_s1 = na
+var line ln_s3_r2 = na, var line ln_s3_s2 = na, var line ln_s3_r3 = na
+var line ln_s3_s3 = na, var line ln_s3_r4 = na, var line ln_s3_s4 = na
+var line ln_s3_r5 = na, var line ln_s3_s5 = na
+var label lb_s3_p  = na, var label lb_s3_r1 = na, var label lb_s3_s1 = na
+var label lb_s3_r2 = na, var label lb_s3_s2 = na, var label lb_s3_r3 = na
+var label lb_s3_s3 = na, var label lb_s3_r4 = na, var label lb_s3_s4 = na
+var label lb_s3_r5 = na, var label lb_s3_s5 = na
+var float rv_s3_p  = na, var float rv_s3_r1 = na, var float rv_s3_s1 = na
+var float rv_s3_r2 = na, var float rv_s3_s2 = na, var float rv_s3_r3 = na
+var float rv_s3_s3 = na, var float rv_s3_r4 = na, var float rv_s3_s4 = na
+var float rv_s3_r5 = na, var float rv_s3_s5 = na
+var int s3_target_t2 = na
+var int s3_start_bi  = na
+var int s3_start_t   = na
+
+if piv_s3_enable and (new_tf3 or na(s3_start_bi)) and not na(s3_p)
+    line.delete(ln_s3_p),  line.delete(ln_s3_r1), line.delete(ln_s3_s1)
+    line.delete(ln_s3_r2), line.delete(ln_s3_s2), line.delete(ln_s3_r3)
+    line.delete(ln_s3_s3), line.delete(ln_s3_r4), line.delete(ln_s3_s4)
+    line.delete(ln_s3_r5), line.delete(ln_s3_s5)
+    label.delete(lb_s3_p),  label.delete(lb_s3_r1), label.delete(lb_s3_s1)
+    label.delete(lb_s3_r2), label.delete(lb_s3_s2), label.delete(lb_s3_r3)
+    label.delete(lb_s3_s3), label.delete(lb_s3_r4), label.delete(lb_s3_s4)
+    label.delete(lb_s3_r5), label.delete(lb_s3_s5)
+
+    s3_start_bi  := bar_index
+    s3_start_t   := f_period_start(piv_s3_tf, time)
+    s3_target_t2 := f_period_end(piv_s3_tf, s3_start_t)
+
+    rv_s3_p  := s3_p
+    rv_s3_r1 := s3_r1,  rv_s3_s1 := s3_s1
+    rv_s3_r2 := s3_r2,  rv_s3_s2 := s3_s2
+    rv_s3_r3 := s3_r3,  rv_s3_s3 := s3_s3
+    rv_s3_r4 := s3_r4,  rv_s3_s4 := s3_s4
+    rv_s3_r5 := s3_r5,  rv_s3_s5 := s3_s5
+
+// ══════════════════════════════════════════════════════════════
+// DESSIN SEGMENTS + LABELS — xloc.bar_index (rendu garanti)
+// ══════════════════════════════════════════════════════════════
+// xloc.bar_time ne rend pas les lignes dont l'endpoint est trop
+// loin dans le futur. On utilise bar_index à la place.
+// Les lignes sont recréées sur chaque barstate.islast.
+
+f_bi_end(target_time, ext) =>
+    tf_ms = timeframe.in_seconds(timeframe.period) * 1000
+    remaining = math.round((target_time - timenow) / tf_ms)
+    bar_index + math.max(math.min(math.min(remaining, ext), 490), 10)
+
+if barstate.islast
+    // — Set 1 (extension fixe 381) —
+    if not na(s1_start_bi)
+        s1_end = s1_target_t2
+        s1_rgt = f_lbl_x(s1_end, piv_lbl_pos1)
+
+        line.delete(ln_s1_p)
+        line.delete(ln_s1_r1)
+        line.delete(ln_s1_s1)
+        line.delete(ln_s1_r2)
+        line.delete(ln_s1_s2)
+        line.delete(ln_s1_r3)
+        line.delete(ln_s1_s3)
+        line.delete(ln_s1_r4)
+        line.delete(ln_s1_s4)
+        line.delete(ln_s1_r5)
+        line.delete(ln_s1_s5)
+        ln_s1_p  := piv_s1_p_on  and not na(rv_s1_p)  ? line.new(s1_start_t, rv_s1_p,  s1_end, rv_s1_p,  xloc=xloc.bar_time, color=piv_s1_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r1 := piv_s1_r1_on and not na(rv_s1_r1) ? line.new(s1_start_t, rv_s1_r1, s1_end, rv_s1_r1, xloc=xloc.bar_time, color=piv_s1_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s1 := piv_s1_s1_on and not na(rv_s1_s1) ? line.new(s1_start_t, rv_s1_s1, s1_end, rv_s1_s1, xloc=xloc.bar_time, color=piv_s1_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r2 := piv_s1_r2_on and not na(rv_s1_r2) ? line.new(s1_start_t, rv_s1_r2, s1_end, rv_s1_r2, xloc=xloc.bar_time, color=piv_s1_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s2 := piv_s1_s2_on and not na(rv_s1_s2) ? line.new(s1_start_t, rv_s1_s2, s1_end, rv_s1_s2, xloc=xloc.bar_time, color=piv_s1_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r3 := piv_s1_r3_on and not na(rv_s1_r3) ? line.new(s1_start_t, rv_s1_r3, s1_end, rv_s1_r3, xloc=xloc.bar_time, color=piv_s1_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s3 := piv_s1_s3_on and not na(rv_s1_s3) ? line.new(s1_start_t, rv_s1_s3, s1_end, rv_s1_s3, xloc=xloc.bar_time, color=piv_s1_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r4 := piv_s1_r4_on and not na(rv_s1_r4) ? line.new(s1_start_t, rv_s1_r4, s1_end, rv_s1_r4, xloc=xloc.bar_time, color=piv_s1_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s4 := piv_s1_s4_on and not na(rv_s1_s4) ? line.new(s1_start_t, rv_s1_s4, s1_end, rv_s1_s4, xloc=xloc.bar_time, color=piv_s1_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_r5 := piv_s1_r5_on and not na(rv_s1_r5) ? line.new(s1_start_t, rv_s1_r5, s1_end, rv_s1_r5, xloc=xloc.bar_time, color=piv_s1_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s1_s5 := piv_s1_s5_on and not na(rv_s1_s5) ? line.new(s1_start_t, rv_s1_s5, s1_end, rv_s1_s5, xloc=xloc.bar_time, color=piv_s1_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s1_p)
+        label.delete(lb_s1_r1)
+        label.delete(lb_s1_s1)
+        label.delete(lb_s1_r2)
+        label.delete(lb_s1_s2)
+        label.delete(lb_s1_r3)
+        label.delete(lb_s1_s3)
+        label.delete(lb_s1_r4)
+        label.delete(lb_s1_s4)
+        label.delete(lb_s1_r5)
+        label.delete(lb_s1_s5)
+        lb_s1_p  := piv_s1_p_on  and piv_show_lbl and not na(rv_s1_p)  ? label.new(s1_rgt, rv_s1_p,  f_lbl_text(rv_s1_p,  "P"),  xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r1 := piv_s1_r1_on and piv_show_lbl and not na(rv_s1_r1) ? label.new(s1_rgt, rv_s1_r1, f_lbl_text(rv_s1_r1, "R1"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s1 := piv_s1_s1_on and piv_show_lbl and not na(rv_s1_s1) ? label.new(s1_rgt, rv_s1_s1, f_lbl_text(rv_s1_s1, "S1"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r2 := piv_s1_r2_on and piv_show_lbl and not na(rv_s1_r2) ? label.new(s1_rgt, rv_s1_r2, f_lbl_text(rv_s1_r2, "R2"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s2 := piv_s1_s2_on and piv_show_lbl and not na(rv_s1_s2) ? label.new(s1_rgt, rv_s1_s2, f_lbl_text(rv_s1_s2, "S2"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r3 := piv_s1_r3_on and piv_show_lbl and not na(rv_s1_r3) ? label.new(s1_rgt, rv_s1_r3, f_lbl_text(rv_s1_r3, "R3"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s3 := piv_s1_s3_on and piv_show_lbl and not na(rv_s1_s3) ? label.new(s1_rgt, rv_s1_s3, f_lbl_text(rv_s1_s3, "S3"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r4 := piv_s1_r4_on and piv_show_lbl and not na(rv_s1_r4) ? label.new(s1_rgt, rv_s1_r4, f_lbl_text(rv_s1_r4, "R4"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s4 := piv_s1_s4_on and piv_show_lbl and not na(rv_s1_s4) ? label.new(s1_rgt, rv_s1_s4, f_lbl_text(rv_s1_s4, "S4"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_r5 := piv_s1_r5_on and piv_show_lbl and not na(rv_s1_r5) ? label.new(s1_rgt, rv_s1_r5, f_lbl_text(rv_s1_r5, "R5"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s1_s5 := piv_s1_s5_on and piv_show_lbl and not na(rv_s1_s5) ? label.new(s1_rgt, rv_s1_s5, f_lbl_text(rv_s1_s5, "S5"), xloc=xloc.bar_time, textcolor=piv_s1_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+    // — Set 2 (extension réglable) —
+    if piv_s2_enable and not na(s2_start_bi)
+        s2_end = s2_target_t2
+        s2_rgt = f_lbl_x(s2_end, piv_lbl_pos)
+
+        line.delete(ln_s2_p)
+        line.delete(ln_s2_r1)
+        line.delete(ln_s2_s1)
+        line.delete(ln_s2_r2)
+        line.delete(ln_s2_s2)
+        line.delete(ln_s2_r3)
+        line.delete(ln_s2_s3)
+        line.delete(ln_s2_r4)
+        line.delete(ln_s2_s4)
+        line.delete(ln_s2_r5)
+        line.delete(ln_s2_s5)
+        ln_s2_p  := piv_s2_p_on  and not na(rv_s2_p)  ? line.new(s2_start_t, rv_s2_p,  s2_end, rv_s2_p,  xloc=xloc.bar_time, color=piv_s2_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r1 := piv_s2_r1_on and not na(rv_s2_r1) ? line.new(s2_start_t, rv_s2_r1, s2_end, rv_s2_r1, xloc=xloc.bar_time, color=piv_s2_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s1 := piv_s2_s1_on and not na(rv_s2_s1) ? line.new(s2_start_t, rv_s2_s1, s2_end, rv_s2_s1, xloc=xloc.bar_time, color=piv_s2_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r2 := piv_s2_r2_on and not na(rv_s2_r2) ? line.new(s2_start_t, rv_s2_r2, s2_end, rv_s2_r2, xloc=xloc.bar_time, color=piv_s2_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s2 := piv_s2_s2_on and not na(rv_s2_s2) ? line.new(s2_start_t, rv_s2_s2, s2_end, rv_s2_s2, xloc=xloc.bar_time, color=piv_s2_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r3 := piv_s2_r3_on and not na(rv_s2_r3) ? line.new(s2_start_t, rv_s2_r3, s2_end, rv_s2_r3, xloc=xloc.bar_time, color=piv_s2_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s3 := piv_s2_s3_on and not na(rv_s2_s3) ? line.new(s2_start_t, rv_s2_s3, s2_end, rv_s2_s3, xloc=xloc.bar_time, color=piv_s2_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r4 := piv_s2_r4_on and not na(rv_s2_r4) ? line.new(s2_start_t, rv_s2_r4, s2_end, rv_s2_r4, xloc=xloc.bar_time, color=piv_s2_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s4 := piv_s2_s4_on and not na(rv_s2_s4) ? line.new(s2_start_t, rv_s2_s4, s2_end, rv_s2_s4, xloc=xloc.bar_time, color=piv_s2_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_r5 := piv_s2_r5_on and not na(rv_s2_r5) ? line.new(s2_start_t, rv_s2_r5, s2_end, rv_s2_r5, xloc=xloc.bar_time, color=piv_s2_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s2_s5 := piv_s2_s5_on and not na(rv_s2_s5) ? line.new(s2_start_t, rv_s2_s5, s2_end, rv_s2_s5, xloc=xloc.bar_time, color=piv_s2_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s2_p)
+        label.delete(lb_s2_r1)
+        label.delete(lb_s2_s1)
+        label.delete(lb_s2_r2)
+        label.delete(lb_s2_s2)
+        label.delete(lb_s2_r3)
+        label.delete(lb_s2_s3)
+        label.delete(lb_s2_r4)
+        label.delete(lb_s2_s4)
+        label.delete(lb_s2_r5)
+        label.delete(lb_s2_s5)
+        lb_s2_p  := piv_s2_p_on  and piv_show_lbl and not na(rv_s2_p)  ? label.new(s2_rgt, rv_s2_p,  f_lbl_text(rv_s2_p,  "P"),  xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r1 := piv_s2_r1_on and piv_show_lbl and not na(rv_s2_r1) ? label.new(s2_rgt, rv_s2_r1, f_lbl_text(rv_s2_r1, "R1"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s1 := piv_s2_s1_on and piv_show_lbl and not na(rv_s2_s1) ? label.new(s2_rgt, rv_s2_s1, f_lbl_text(rv_s2_s1, "S1"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r2 := piv_s2_r2_on and piv_show_lbl and not na(rv_s2_r2) ? label.new(s2_rgt, rv_s2_r2, f_lbl_text(rv_s2_r2, "R2"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s2 := piv_s2_s2_on and piv_show_lbl and not na(rv_s2_s2) ? label.new(s2_rgt, rv_s2_s2, f_lbl_text(rv_s2_s2, "S2"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r3 := piv_s2_r3_on and piv_show_lbl and not na(rv_s2_r3) ? label.new(s2_rgt, rv_s2_r3, f_lbl_text(rv_s2_r3, "R3"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s3 := piv_s2_s3_on and piv_show_lbl and not na(rv_s2_s3) ? label.new(s2_rgt, rv_s2_s3, f_lbl_text(rv_s2_s3, "S3"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r4 := piv_s2_r4_on and piv_show_lbl and not na(rv_s2_r4) ? label.new(s2_rgt, rv_s2_r4, f_lbl_text(rv_s2_r4, "R4"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s4 := piv_s2_s4_on and piv_show_lbl and not na(rv_s2_s4) ? label.new(s2_rgt, rv_s2_s4, f_lbl_text(rv_s2_s4, "S4"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_r5 := piv_s2_r5_on and piv_show_lbl and not na(rv_s2_r5) ? label.new(s2_rgt, rv_s2_r5, f_lbl_text(rv_s2_r5, "R5"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s2_s5 := piv_s2_s5_on and piv_show_lbl and not na(rv_s2_s5) ? label.new(s2_rgt, rv_s2_s5, f_lbl_text(rv_s2_s5, "S5"), xloc=xloc.bar_time, textcolor=piv_s2_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+    // — Set 3 Weekly (extension réglable) —
+    if piv_s3_enable and not na(s3_start_bi)
+        s3_end = s3_target_t2
+        s3_rgt = f_lbl_x(s3_end, piv_lbl_pos)
+
+        line.delete(ln_s3_p)
+        line.delete(ln_s3_r1)
+        line.delete(ln_s3_s1)
+        line.delete(ln_s3_r2)
+        line.delete(ln_s3_s2)
+        line.delete(ln_s3_r3)
+        line.delete(ln_s3_s3)
+        line.delete(ln_s3_r4)
+        line.delete(ln_s3_s4)
+        line.delete(ln_s3_r5)
+        line.delete(ln_s3_s5)
+        ln_s3_p  := piv_s3_p_on  and not na(rv_s3_p)  ? line.new(s3_start_t, rv_s3_p,  s3_end, rv_s3_p,  xloc=xloc.bar_time, color=piv_s3_p_col,  width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r1 := piv_s3_r1_on and not na(rv_s3_r1) ? line.new(s3_start_t, rv_s3_r1, s3_end, rv_s3_r1, xloc=xloc.bar_time, color=piv_s3_r1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s1 := piv_s3_s1_on and not na(rv_s3_s1) ? line.new(s3_start_t, rv_s3_s1, s3_end, rv_s3_s1, xloc=xloc.bar_time, color=piv_s3_s1_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r2 := piv_s3_r2_on and not na(rv_s3_r2) ? line.new(s3_start_t, rv_s3_r2, s3_end, rv_s3_r2, xloc=xloc.bar_time, color=piv_s3_r2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s2 := piv_s3_s2_on and not na(rv_s3_s2) ? line.new(s3_start_t, rv_s3_s2, s3_end, rv_s3_s2, xloc=xloc.bar_time, color=piv_s3_s2_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r3 := piv_s3_r3_on and not na(rv_s3_r3) ? line.new(s3_start_t, rv_s3_r3, s3_end, rv_s3_r3, xloc=xloc.bar_time, color=piv_s3_r3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s3 := piv_s3_s3_on and not na(rv_s3_s3) ? line.new(s3_start_t, rv_s3_s3, s3_end, rv_s3_s3, xloc=xloc.bar_time, color=piv_s3_s3_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r4 := piv_s3_r4_on and not na(rv_s3_r4) ? line.new(s3_start_t, rv_s3_r4, s3_end, rv_s3_r4, xloc=xloc.bar_time, color=piv_s3_r4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s4 := piv_s3_s4_on and not na(rv_s3_s4) ? line.new(s3_start_t, rv_s3_s4, s3_end, rv_s3_s4, xloc=xloc.bar_time, color=piv_s3_s4_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_r5 := piv_s3_r5_on and not na(rv_s3_r5) ? line.new(s3_start_t, rv_s3_r5, s3_end, rv_s3_r5, xloc=xloc.bar_time, color=piv_s3_r5_col, width=piv_line_w, style=line.style_solid) : na
+        ln_s3_s5 := piv_s3_s5_on and not na(rv_s3_s5) ? line.new(s3_start_t, rv_s3_s5, s3_end, rv_s3_s5, xloc=xloc.bar_time, color=piv_s3_s5_col, width=piv_line_w, style=line.style_solid) : na
+
+        label.delete(lb_s3_p)
+        label.delete(lb_s3_r1)
+        label.delete(lb_s3_s1)
+        label.delete(lb_s3_r2)
+        label.delete(lb_s3_s2)
+        label.delete(lb_s3_r3)
+        label.delete(lb_s3_s3)
+        label.delete(lb_s3_r4)
+        label.delete(lb_s3_s4)
+        label.delete(lb_s3_r5)
+        label.delete(lb_s3_s5)
+        lb_s3_p  := piv_s3_p_on  and piv_show_lbl and not na(rv_s3_p)  ? label.new(s3_rgt, rv_s3_p,  f_lbl_text(rv_s3_p,  "P"),  xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r1 := piv_s3_r1_on and piv_show_lbl and not na(rv_s3_r1) ? label.new(s3_rgt, rv_s3_r1, f_lbl_text(rv_s3_r1, "R1"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s1 := piv_s3_s1_on and piv_show_lbl and not na(rv_s3_s1) ? label.new(s3_rgt, rv_s3_s1, f_lbl_text(rv_s3_s1, "S1"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r2 := piv_s3_r2_on and piv_show_lbl and not na(rv_s3_r2) ? label.new(s3_rgt, rv_s3_r2, f_lbl_text(rv_s3_r2, "R2"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s2 := piv_s3_s2_on and piv_show_lbl and not na(rv_s3_s2) ? label.new(s3_rgt, rv_s3_s2, f_lbl_text(rv_s3_s2, "S2"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r3 := piv_s3_r3_on and piv_show_lbl and not na(rv_s3_r3) ? label.new(s3_rgt, rv_s3_r3, f_lbl_text(rv_s3_r3, "R3"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s3 := piv_s3_s3_on and piv_show_lbl and not na(rv_s3_s3) ? label.new(s3_rgt, rv_s3_s3, f_lbl_text(rv_s3_s3, "S3"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r4 := piv_s3_r4_on and piv_show_lbl and not na(rv_s3_r4) ? label.new(s3_rgt, rv_s3_r4, f_lbl_text(rv_s3_r4, "R4"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s4 := piv_s3_s4_on and piv_show_lbl and not na(rv_s3_s4) ? label.new(s3_rgt, rv_s3_s4, f_lbl_text(rv_s3_s4, "S4"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_r5 := piv_s3_r5_on and piv_show_lbl and not na(rv_s3_r5) ? label.new(s3_rgt, rv_s3_r5, f_lbl_text(rv_s3_r5, "R5"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+        lb_s3_s5 := piv_s3_s5_on and piv_show_lbl and not na(rv_s3_s5) ? label.new(s3_rgt, rv_s3_s5, f_lbl_text(rv_s3_s5, "S5"), xloc=xloc.bar_time, textcolor=piv_s3_lbl_col, color=color.new(color.black, 100), style=label.style_label_left, size=piv_sz, text_font_family=piv_font) : na
+
+// ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU PRINCIPAL — réplique validée (source Midgar-)
+// Remplace l'ancien « TABLEAU PRINCIPAL V6 » de PorscheOnArrive.
+// ══════════════════════════════════════════════════════════════
+// TABLEAU PRINCIPAL V7 — réplique de l'original
+// ══════════════════════════════════════════════════════════════
+// Logique reprise de « SuperTrader Trend Analysis and Trade Study
+// Dashboard » par Midgar- (script public open source) :
+// https://www.tradingview.com/script/4hlaRIHC-SuperTrader-Trend-Analysis-and-Trade-Study-Dashboard/
+// Ephore l'a copié tel quel (mêmes libellés) avec ses couleurs.
+// Vérifié MES 15m HA, 30/09 bougie 09:30 : RSI 60.67, CCI 134.23,
+// YoYo 0.08 %, Bull 0/3, Bear 1/3 — identiques à l'original.
+grp_main     = "=== EPHORE TABLEAU PRINCIPAL ==="
+main_show    = input.bool(true, "Afficher Tableau Principal", group=grp_main)
+main_pos     = input.string("Top Right", "Position", group=grp_main, options=["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Middle Right", "Middle Left"])
+main_sz      = input.string("Normal", "Taille Texte", group=grp_main, options=["Tiny", "Small", "Normal", "Large", "Huge"])
+st_tk1       = input.symbol("", "Ticker 1 (volume) — vide = symbole du graphique", group=grp_main)
+st_tk2       = input.symbol("", "Ticker 2 (volume) — vide = symbole du graphique", group=grp_main)
+st_vix_sym   = input.symbol("CBOE:VIX", "Symbole VIX", group=grp_main)
+
+// ─── PALETTE STYLE TABLEAU ───
+c_bg         = color.rgb(21, 22, 45)     // fond général
+c_border     = color.rgb(95, 97, 125)    // bordures
+c_label      = color.rgb(190, 190, 205)  // texte gris clair
+c_bull       = color.rgb(56, 149, 255)   // bleu
+c_bear       = color.rgb(255, 82, 99)    // rouge
+c_neut       = color.rgb(130, 130, 150)  // neutre gris
+c_super      = color.rgb(140, 180, 255)  // bleu clair (SUPERBULL, Unusual)
+c_warn       = color.rgb(245, 166, 35)   // orange (Basing, Melt)
+c_cell_blue  = color.rgb(24, 38, 92)     // fond bleu foncé
+c_cell_red   = color.rgb(74, 26, 49)     // fond rouge/bordeaux
+c_cell_neut  = color.rgb(45, 46, 70)     // fond neutre
+c_cell_gold  = color.rgb(98, 63, 16)     // fond orange/marron
+c_cell_sup   = color.rgb(52, 64, 110)    // fond bleu-gris (SUPERBULL, Unusual)
+
+// Couleurs sémantiques de l'original → palette Ephore
+// "bull" = vert d'origine, "bear" = rouge, "super" = bleu, "warn" = jaune/orange, "neut" = gris/blanc
+f_st_txt(s) => s == "bull" ? c_bull : s == "bear" ? c_bear : s == "super" ? c_super : s == "warn" ? c_warn : c_neut
+f_st_bg(s)  => s == "bull" ? c_cell_blue : s == "bear" ? c_cell_red : s == "super" ? c_cell_sup : s == "warn" ? c_cell_gold : c_cell_neut
+
+// ─── CONSTANTES DE L'ORIGINAL ───
+st_rsiLen = 14
+st_vidPer = 10      // Trend Line Period
+st_vidMom = 20      // Trend Momentum
+st_band   = 2.0     // Trend Band Distance (x ATR 200)
+st_yoyoTh = 3.0     // YoYo Threshold (%)
+st_mFast  = 20      // MACD 20 / 40 / 5 (EMA)
+st_mSlow  = 40
+st_mSig   = 5
+st_bbLen  = 20
+st_bbMult = 2.0
+
+st_macd(src) =>
+    m = ta.ema(src, st_mFast) - ta.ema(src, st_mSlow)
+    s = ta.ema(m, st_mSig)
+    [m, s]
+
+// ─── DONNÉES EXTERNES ───
+[st_dSma50, st_dSma200] = request.security(syminfo.tickerid, "D", [ta.sma(close, 50), ta.sma(close, 200)])
+[st_dH, st_dL, st_dO, st_dC] = request.security(syminfo.tickerid, "D", [high, low, open, close])
+st_vixP = request.security(st_vix_sym, "D", close,  lookahead=barmerge.lookahead_on)
+st_vixV = request.security(st_vix_sym, "D", volume, lookahead=barmerge.lookahead_on)
+st_v1   = request.security(st_tk1, "D", volume, lookahead=barmerge.lookahead_on)
+st_v2   = request.security(st_tk2, "D", volume, lookahead=barmerge.lookahead_on)
+
+// ─── CROSS SIGNAL : golden / death cross SMA50/200 journalier, remis à « — » chaque semaine ───
+st_golden = ta.crossover(st_dSma50, st_dSma200)
+st_death  = ta.crossunder(st_dSma50, st_dSma200)
+st_week   = int(math.floor(time / 604800000))
+var int    st_lastWeek  = na
+var string st_crossTxt  = "—"
+var string st_crossSem  = "neut"
+if na(st_lastWeek)
+    st_lastWeek := st_week
+if st_week != st_lastWeek
+    st_crossTxt := "—"
+    st_crossSem := "neut"
+    st_lastWeek := st_week
+if st_golden
+    st_crossTxt := "Golden"
+    st_crossSem := "warn"
+if st_death
+    st_crossTxt := "Death"
+    st_crossSem := "warn"
+
+// ─── MACD (10m) ───
+[st_m10, st_s10] = request.security(syminfo.tickerid, "10", st_macd(close))
+st_mBull   = st_m10 > st_s10
+st_mStrong = st_mBull and st_m10 > -0.25 and st_s10 > -0.25
+st_mBase   = not st_mBull and st_m10 > -0.025 and st_s10 > -0.025
+st_macdTxt = st_mStrong ? "SUPERBULL" : st_mBase ? "Basing" : st_mBull ? "Bullish" : "Bearish"
+st_macdSem = st_mStrong ? "super" : st_mBase ? "warn" : st_mBull ? "bull" : "bear"
+
+// ─── RSI + DIVERGENCE (pivots 5/5, écart 5 à 60 barres, affichée 10 barres) ───
+st_rsi = ta.rsi(close, st_rsiLen)
+st_inRange(cond) =>
+    bb = ta.barssince(cond)
+    5 <= bb and bb <= 60
+st_rsiLBR = st_rsi[5]
+st_plFound = not na(ta.pivotlow(st_rsi, 5, 5))
+st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRange(st_plFound[1])
+st_priceLL = low[5] < ta.valuewhen(st_plFound, low[5], 1)
+st_bullDiv = st_priceLL and st_rsiHL and st_plFound
+st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
+st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRange(st_phFound[1])
+st_priceHH = high[5] > ta.valuewhen(st_phFound, high[5], 1)
+st_bearDiv = st_priceHH and st_rsiLH and st_phFound
+var string st_divTxt = "None"
+var string st_divSem = "neut"
+var int    st_divTimer = 0
+if st_bullDiv
+    st_divTxt := "Bullish"
+    st_divSem := "bull"
+    st_divTimer := 10
+else if st_bearDiv
+    st_divTxt := "Bearish"
+    st_divSem := "bear"
+    st_divTimer := 10
+else
+    st_divTimer := math.max(st_divTimer - 1, 0)
+st_divShow    = st_divTimer > 0 ? st_divTxt : "None"
+st_divShowSem = st_divTimer > 0 ? st_divSem : "neut"
+
+// ─── BULL / BEAR SCORE (non complémentaires) ───
+st_cci    = ta.cci(close, 30)
+st_basis  = ta.sma(close, st_bbLen)
+st_upBB   = st_basis + st_bbMult * ta.stdev(close, st_bbLen)
+st_loBB   = st_basis - st_bbMult * ta.stdev(close, st_bbLen)
+st_emaF   = ta.ema(close, 50)
+st_emaS   = ta.ema(close, 200)
+st_bullCount = (st_emaF > st_emaS ? 1 : 0) + (ta.crossover(st_rsi, 30) ? 1 : 0) + (ta.crossover(close, st_loBB) ? 1 : 0)
+st_bearCount = (st_emaF < st_emaS ? 1 : 0) + (ta.crossunder(st_rsi, 70) ? 1 : 0) + (ta.crossunder(close, st_upBB) ? 1 : 0)
+st_buySignal = st_bullCount >= 2
+
+// ─── TREND : VIDYA (CMO 20, période 10, SMA 15) ± ATR(200) x 2 ───
+st_vidya_calc(src, len, mom) =>
+    mo = ta.change(src)
+    sp = math.sum(mo >= 0 ? mo : 0.0, mom)
+    sn = math.sum(mo < 0 ? -mo : 0.0, mom)
+    cmo = math.abs(100 * (sp - sn) / math.max(sp + sn, 1))
+    alpha = 2.0 / (len + 1.0)
+    var float v = na
+    v := alpha * cmo / 100 * src + (1 - alpha * cmo / 100) * nz(v[1])
+    v
+st_vidya  = ta.sma(st_vidya_calc(close, st_vidPer, st_vidMom), 15)
+st_atr200 = ta.atr(200)
+st_upBand = st_vidya + st_atr200 * st_band
+st_loBand = st_vidya - st_atr200 * st_band
+var bool st_trendUp = false
+st_trendUp := ta.crossover(close, st_upBand) ? true : ta.crossunder(close, st_loBand) ? false : st_trendUp[1]
+
+// ─── YOYO : distance en % au SMA(10) ───
+st_sma10 = ta.sma(close, 10)
+st_yoyo  = (close - st_sma10) / st_sma10 * 100
+st_yoyoSem = math.abs(st_yoyo) > st_yoyoTh + 3.0 ? "bear" : math.abs(st_yoyo) > st_yoyoTh + 1.5 ? "warn" : "bull"
+
+// ─── GAP ↑ / ↓ PROB (pondération double) ───
+st_smaVol   = ta.sma(volume, 20)
+st_rangePos = st_dH != st_dL ? (st_dC - st_dL) / (st_dH - st_dL) : 0.5
+st_chg      = st_dO != 0 ? (st_dC - st_dO) / st_dO * 100 * 0.5 : 0.0
+st_macdS    = ta.ema(close, 12) - ta.ema(close, 26)
+st_sigS     = ta.ema(st_macdS, 9)
+st_squeeze  = ta.stdev(close, st_bbLen) < ta.lowest(ta.stdev(close, st_bbLen), 20) ? 7 : 0
+st_bullF = st_rangePos * 20 + st_chg + (volume > st_smaVol ? 10 : 0) + (ta.crossover(st_macdS, st_sigS) ? 10 : 0) + (close > ta.ema(close, 20) ? 5 : 0) + (st_buySignal ? 10 : 0) + st_squeeze
+st_bearF = (1 - st_rangePos) * 20 - st_chg + (volume < st_smaVol ? 10 : 0) + (ta.crossunder(st_macdS, st_sigS) ? 10 : 0) + (close < ta.ema(close, 20) ? 5 : 0)
+st_bullT = math.max(0, math.min(100, st_bullF))
+st_bearT = math.max(0, math.min(100, st_bearF))
+st_bullPct = st_bullT / (st_bullT + st_bearT) * 100
+st_bearPct = st_bearT / (st_bullT + st_bearT) * 100
+
+// ─── TF1 / TF2 / TF3 PA : 1, 5, 15 minutes (codés en dur dans l'original) ───
+st_status(tf) =>
+    [sH, sL] = request.security(syminfo.tickerid, tf, [ta.sma(high, 20), ta.sma(low, 20)])
+    [mT, sT] = request.security(syminfo.tickerid, tf, st_macd(close))
+    pT = request.security(syminfo.tickerid, tf, close)
+    mb = mT > sT
+    above = pT > sH and pT > sL
+    txt = ""
+    sem = "neut"
+    if above and mb and mT > -0.025
+        txt := "SUPERBULL"
+        sem := "super"
+    else if mT > -0.025 and not mb
+        txt := "Basing"
+        sem := "warn"
+    else if above and mb
+        txt := "Bullish"
+        sem := "bull"
+    else if not above and not mb
+        txt := "Bearish"
+        sem := "bear"
+    [txt, sem]
+[st_pa1, st_pa1s] = st_status("1")
+[st_pa2, st_pa2s] = st_status("5")
+[st_pa3, st_pa3s] = st_status("15")
+
+// ─── VOLUMES (Ticker 1 / 2, VIX) ───
+st_volCat(vol, base) =>
+    vol < base ? (vol < base / 2.0 ? "Melt" : vol < base / 1.5 ? "Low Vol" : "Normal") : (vol < 1.5 * base ? "Elevated" : "Unusual")
+st_volSem(c) => c == "Normal" ? "neut" : c == "Low Vol" ? "bear" : c == "Melt" ? "warn" : c == "Elevated" ? "bull" : "super"
+st_lvl1 = st_volCat(st_v1, ta.sma(st_v1, 20))
+st_lvl2 = st_volCat(st_v2, ta.sma(st_v2, 20))
+st_vixBase = ta.sma(st_vixV, 20)
+st_vixLvl  = st_vixV < st_vixBase ? "Normal" : st_vixV < 1.5 * st_vixBase ? "Elevated" : "Unusual"
+st_vixLvlSem = st_vixLvl == "Normal" ? "bear" : st_vixLvl == "Elevated" ? "warn" : "super"
+st_vixTxt = st_vixP >= 80 ? "HOLY SHIT" : str.tostring(st_vixP, "#.##")
+st_vixSem = st_vixP >= 80 ? "neut" : st_vixP < 20 ? "bull" : st_vixP < 50 ? "bear" : "warn"
+
+// ─── CONSTRUCTION TABLEAU ───
+f_sz(_s) =>
+    _s == "Tiny" ? size.tiny : _s == "Small" ? size.small : _s == "Normal" ? size.normal : _s == "Large" ? size.large : size.huge
+
+m_pos = main_pos == "Bottom Right" ? position.bottom_right : main_pos == "Bottom Left" ? position.bottom_left :
+     main_pos == "Top Left" ? position.top_left : main_pos == "Middle Right" ? position.middle_right :
+     main_pos == "Middle Left" ? position.middle_left : position.top_right
+
+var table tbl_main = table.new(position.top_right, 4, 9, bgcolor=c_bg, border_color=c_border, border_width=1)
+
+f_st_row(col, row, lbl, val, sem, sz) =>
+    table.cell(tbl_main, col,     row, lbl, text_color=c_label, text_size=sz)
+    table.cell(tbl_main, col + 1, row, val, text_color=f_st_txt(sem), bgcolor=f_st_bg(sem), text_size=sz)
+
+if barstate.islast and main_show
+    table.set_position(tbl_main, m_pos)
+    sz = f_sz(main_sz)
+    f_st_row(0, 0, "Trend",        st_trendUp ? "Bullish" : "Bearish", st_trendUp ? "bull" : "bear", sz)
+    f_st_row(0, 1, "Bull Score",   str.tostring(st_bullCount) + " / 3", "bull", sz)
+    f_st_row(0, 2, "Bear Score",   str.tostring(st_bearCount) + " / 3", "bear", sz)
+    f_st_row(0, 3, "YoYo",         str.tostring(st_yoyo, "#.##") + "%", st_yoyoSem, sz)
+    f_st_row(0, 4, "Gap ↑ Prob",   str.tostring(st_bullPct, "#.##") + "%", st_bullPct >= st_bearPct ? "bull" : "bear", sz)
+    f_st_row(0, 5, "Gap ↓ Prob",   str.tostring(st_bearPct, "#.##") + "%", st_bearPct > st_bullPct ? "bull" : "bear", sz)
+    f_st_row(0, 6, "Divergence",   st_divShow, st_divShowSem, sz)
+    f_st_row(0, 7, "Vix",          st_vixTxt, st_vixSem, sz)
+    f_st_row(0, 8, "Ticker 1 Vol", st_lvl1, st_volSem(st_lvl1), sz)
+    f_st_row(2, 0, "Cross Signal", st_crossTxt, st_crossSem, sz)
+    f_st_row(2, 1, "CCI (30)",     str.tostring(st_cci, "#.##"), st_cci >= 0 ? "bull" : "bear", sz)
+    f_st_row(2, 2, "RSI (14)",     str.tostring(st_rsi, "#.##"), st_rsi >= 50 ? "bull" : "bear", sz)
+    f_st_row(2, 3, "MACD (10m)",   st_macdTxt, st_macdSem, sz)
+    f_st_row(2, 4, "TF1 PA",       st_pa1, st_pa1s, sz)
+    f_st_row(2, 5, "TF2 PA",       st_pa2, st_pa2s, sz)
+    f_st_row(2, 6, "TF3 PA",       st_pa3, st_pa3s, sz)
+    f_st_row(2, 7, "Vix Vol",      st_vixLvl, st_vixLvlSem, sz)
+    f_st_row(2, 8, "Ticker 2 Vol", st_lvl2, st_volSem(st_lvl2), sz)
+
+// ══════════════════════════════════════════════════════════════
+
+//------------------------------------------------------------------------------
+//DETECTOR ORDER BLCOK
+//-----------------------------------------------------------------------------{
+length = input.int(5, 'Volume Pivot Length'
+  , minval = 1)
+
+bull_ext_last = input.int(3, 'Bullish OB '
+  , minval = 1
+  , inline = 'bull')
+
+bg_bull_css = input.color(color.new(#1565C0, 80), ''
+  , inline = 'bull')
+
+bull_css = input.color(#1565C0, ''
+  , inline = 'bull')
+
+bull_avg_css = input.color(color.new(#757575, 50), ''
+  , inline = 'bull')
+
+bear_ext_last = input.int(3, 'Bearish OB'
+  , minval = 1
+  , inline = 'bear')
+
+bg_bear_css = input.color(color.new(#EF5350, 80), ''
+  , inline = 'bear')
+
+bear_css = input.color(#EF5350, ''
+  , inline = 'bear')
+
+bear_avg_css = input.color(color.new(#757575, 50), ''
+  , inline = 'bear')
+
+line_style = input.string('⎯⎯⎯', 'Average Line Style'
+  , options = ['⎯⎯⎯', '----', '····'])
+
+line_width = input.int(1, 'Average Line Width'
+  , minval = 1)
+
+mitigation = input.string('Wick', 'Mitigation Methods'
+  , options = ['Wick', 'Close'])
+
+//-----------------------------------------------------------------------------}
+//Functions
+//-----------------------------------------------------------------------------{
+//Line Style function
+get_line_style(style) =>
+    out = switch style
+        '⎯⎯⎯'  => line.style_solid
+        '----' => line.style_dashed
+        '····' => line.style_dotted
+
+//Function to get order block coordinates
+get_coordinates(condition, top, btm, ob_val)=>
+    var ob_top  = array.new_float(0)
+    var ob_btm  = array.new_float(0)
+    var ob_avg  = array.new_float(0)
+    var ob_left = array.new_int(0)
+
+    float ob = na
+
+    //Append coordinates to arrays
+    if condition
+        avg = math.avg(top, btm)
+
+        array.unshift(ob_top, top)
+        array.unshift(ob_btm, btm)
+        array.unshift(ob_avg, avg)
+        array.unshift(ob_left, time[length])
+
+        ob := ob_val
+
+    [ob_top, ob_btm, ob_avg, ob_left, ob]
+
+//Function to remove mitigated order blocks from coordinate arrays
+remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
+    mitigated = false
+    target_array = bull ? ob_btm : ob_top
+
+    for element in target_array
+        idx = array.indexof(target_array, element)
+
+        if (bull ? target < element : target > element)
+            mitigated := true
+
+            array.remove(ob_top, idx)
+            array.remove(ob_btm, idx)
+            array.remove(ob_avg, idx)
+            array.remove(ob_left, idx)
+
+    mitigated
+
+//Function to set order blocks
+// ─── GRISAGE DES ZONES — trouvé le 12/10 ───
+// Une boîte Detector est grisée exactement quand le PRIX COURANT est dedans.
+// Vérifié sur 2 copies de l'API du terminal web distantes de 10 jours, 19 boîtes :
+// la seule grisée est celle qui contient le prix, et les 3 autres situations
+// (aucune boîte ne contient le prix) n'ont aucune grisée. La 2e copie a été prise
+// APRÈS avoir formulé la règle : c'est une prédiction vérifiée.
+// Conforme à EPHORE_METHODE.md : « une zone trop proche du prix passe en gris
+// (bruit visuel enlevé, info gardée). Basé sur la DISTANCE, pas la force. »
+// Écarté par la mesure : « zone consommée » (8 boîtes sur 10 avaient été
+// traversées, une seule grisée), la force (volume, largeur, touches ne séparent
+// pas) et « la plus proche » (réfuté par le 2 min).
+// RÉSERVE : un seul cas positif, donc on ne peut pas distinguer « prix dedans »
+// d'un seuil « distance < k × ATR » avec k petit. La non grisée la plus proche
+// était à 2.09 ATR : k est entre 0 et 2. « Prix dedans » est la règle minimale,
+// sans paramètre. L'input ci-dessous permet d'élargir si besoin.
+grp_det = "=== EPHORE DETECTOR — GRISAGE ==="
+det_gris_on  = input.bool(true, "Griser les zones atteintes par le prix", group=grp_det)
+det_gris_tol = input.float(0.0, "Tolérance (× ATR14, 0 = prix strictement dedans)",
+     group=grp_det, minval=0.0, maxval=5.0, step=0.1,
+     tooltip="0 reproduit la règle mesurée. Au-delà, une zone proche mais non atteinte est grisée aussi — non validé.")
+det_gris_col = input.color(color.new(#787B86, 80), "Couleur des zones grisées", group=grp_det)
+det_atr14    = ta.atr(14)
+
+// Le prix est-il dans la boîte (à la tolérance près) ?
+f_det_grise(top, btm) =>
+    tol = det_gris_tol * det_atr14
+    close >= btm - tol and close <= top + tol
+
+set_order_blocks(ob_top, ob_btm, ob_left, ob_avg, ext_last, bg_css, border_css, lvl_css)=>
+    var ob_box = array.new_box(0)
+    var ob_lvl = array.new_line(0)
+
+    //Fill arrays with boxes/lines
+    if barstate.isfirst
+        for i = 0 to ext_last-1
+            array.unshift(ob_box, box.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend= extend.right
+              , bgcolor = bg_css
+              , border_color = color.new(border_css, 70)))
+
+            array.unshift(ob_lvl, line.new(na,na,na,na
+              , xloc = xloc.bar_time
+              , extend = extend.right
+              , color = lvl_css
+              , style = get_line_style(line_style)
+              , width = line_width))
+
+    //Set order blocks
+    if barstate.islast
+        if array.size(ob_top) > 0
+            for i = 0 to math.min(ext_last-1, array.size(ob_top)-1)
+                get_box = array.get(ob_box, i)
+                get_lvl = array.get(ob_lvl, i)
+
+                box.set_lefttop(get_box, array.get(ob_left, i), array.get(ob_top, i))
+                box.set_rightbottom(get_box, array.get(ob_left, i), array.get(ob_btm, i))
+                // grisage : le prix est dans la zone
+                grise = det_gris_on and f_det_grise(array.get(ob_top, i), array.get(ob_btm, i))
+                box.set_bgcolor(get_box, grise ? det_gris_col : bg_css)
+                box.set_border_color(get_box, grise ? color.new(det_gris_col, 50) : color.new(border_css, 70))
+
+                line.set_xy1(get_lvl, array.get(ob_left, i), array.get(ob_avg, i))
+                line.set_xy2(get_lvl, array.get(ob_left, i)+1, array.get(ob_avg, i))
+
+
+//-----------------------------------------------------------------------------}
+//Global elements
+//-----------------------------------------------------------------------------{
+var os = 0
+var target_bull = 0.
+var target_bear = 0.
+
+n = bar_index
+upper = ta.highest(length)
+lower = ta.lowest(length)
+
+if mitigation == 'Close'
+    target_bull := ta.lowest(close, length)
+    target_bear := ta.highest(close, length)
+else
+    target_bull := lower
+    target_bear := upper
+
+os := high[length] > upper ? 0 : low[length] < lower ? 1 : os[1]
+
+phv = not na(ta.pivothigh(volume, length, length))
+
+//-----------------------------------------------------------------------------}
+//Get bullish/bearish order blocks coordinates
+//-----------------------------------------------------------------------------{
+[bull_top
+  , bull_btm
+  , bull_avg
+  , bull_left
+  , bull_ob] = get_coordinates(phv and os == 1, hl2[length], low[length], low[length])
+
+[bear_top
+  , bear_btm
+  , bear_avg
+  , bear_left
+  , bear_ob] = get_coordinates(phv and os == 0, high[length], hl2[length], high[length])
+
+//-----------------------------------------------------------------------------}
+//Remove mitigated order blocks
+//-----------------------------------------------------------------------------{
+mitigated_bull = remove_mitigated(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , target_bull
+  , true)
+
+mitigated_bear = remove_mitigated(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , target_bear
+  , false)
+
+//-----------------------------------------------------------------------------}
+//Display order blocks
+//-----------------------------------------------------------------------------{
+//Set bullish order blocks
+set_order_blocks(bull_top
+  , bull_btm
+  , bull_left
+  , bull_avg
+  , bull_ext_last
+  , bg_bull_css
+  , bull_css
+  , bull_avg_css)
+
+//Set bearish order blocks
+set_order_blocks(bear_top
+  , bear_btm
+  , bear_left
+  , bear_avg
+  , bear_ext_last
+  , bg_bear_css
+  , bear_css
+  , bear_avg_css)
+
+//Show detected order blocks
+plot(bull_ob, 'Bull OB', bull_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+plot(bear_ob, 'Bear OB', bear_css, 2, plot.style_linebr
+  , offset = -length
+  , display = display.none)
+
+
+//condition alerte
+bull_ob_alert = not na(bull_ob)
+bear_ob_alert = not na(bear_ob)
+
+
+
+// ══════════════════════════════════════════════════════════════
+// EPHORE TRENDLINES V2 — résistance descendante + support ascendant
+// ══════════════════════════════════════════════════════════════
+// Logique dérivée de « Trendlines » © Amphibiantrading (MPL 2.0),
+// https://www.tradingview.com/script/RQ1D3gHZ-Trendlines/
+// Modifications Ephore retrouvées : 2e point = pivot confirmé,
+// droite revérifiée à chaque bougie, support ascendant en miroir.
+// Validé 38/38 (MES + NQ, 1m à 4h, HA) et en direct jusqu'au 12h.
+max_bars_back(high, 5000)
+max_bars_back(low, 5000)
+max_bars_back(time, 5000)
+
+tl_grp = "=== EPHORE TRENDLINES V2 ==="
+tl_bars   = input.int(10,    "Pivot : barres de chaque côté (Pivot High Bars Required for Anchor)", group=tl_grp, minval=1, maxval=50)
+tl_bufPct = input.float(0.1, "Tampon % (Price Buffer %)", group=tl_grp, minval=0.0, step=0.05)
+tl_nT     = input.int(3,     "Touches minimum (Minimum Number of Touches)", group=tl_grp, minval=1, maxval=10)
+tl_newH   = input.int(100,   "Nouvelle ancre après X barres (Look for New Pivot High after X Bars)", group=tl_grp, minval=1, maxval=1000)
+
+tl_grp_d = "=== TRENDLINES : affichage ==="
+tl_brkSrc  = input.string("Mèche + tampon", "Cassure (points) mesurée sur", group=tl_grp_d,
+     options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"],
+     tooltip="Défaut = original : la mèche dépasse la trend de plus que le tampon (0,1 %). Vérifié sur MES 15m : point rouge à 07:00 comme l'original (la clôture le mettait à 06:15). Un seul point haussier et un seul baissier restent affichés : le dernier de chaque.")
+tl_showRes = input.bool(true, "Afficher la résistance (trend baissière)", group=tl_grp_d)
+tl_showSup = input.bool(true, "Afficher le support (trend haussière)",   group=tl_grp_d)
+tl_showAnc = input.bool(false, "Marquer les ancres (◆)", group=tl_grp_d)
+tl_showTbl = input.bool(false, "Tableau de diagnostic", group=tl_grp_d)
+
+tl_grp_s = "=== TRENDLINES : style ==="
+tl_resCol  = input.color(#000000, "Couleur résistance", group=tl_grp_s, inline="c")
+tl_supCol  = input.color(#000000, "Couleur support",    group=tl_grp_s, inline="c")
+tl_tlW     = input.int(2, "Épaisseur", group=tl_grp_s, minval=1, maxval=5)
+tl_ext     = input.bool(true, "Prolonger les droites (Extend Trendlines)", group=tl_grp_s)
+tl_showBo  = input.bool(true, "Points de cassure", group=tl_grp_s)
+tl_boUpShp = input.string("Cercle", "Cassure haussière : forme", options=["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"], group=tl_grp_s, inline="bu")
+tl_boUpCol = input.color(color.lime, "couleur", group=tl_grp_s, inline="bu")
+tl_boDnShp = input.string("Cercle", "Cassure baissière : forme", options=["Cercle", "Triangle haut", "Triangle bas", "Flèche haut", "Flèche bas", "Losange", "Carré", "Croix", "X", "Drapeau"], group=tl_grp_s, inline="bd")
+tl_boDnCol = input.color(color.red,  "couleur", group=tl_grp_s, inline="bd")
+tl_boSzS   = input.string("Minuscule", "Taille des points", options=["Auto", "Minuscule", "Petite", "Normale", "Grande", "Énorme"], group=tl_grp_s)
+
+tl_f_boStyle(x) =>
+    switch x
+        "Triangle haut" => label.style_triangleup
+        "Triangle bas"  => label.style_triangledown
+        "Flèche haut"   => label.style_arrowup
+        "Flèche bas"    => label.style_arrowdown
+        "Losange"       => label.style_diamond
+        "Carré"         => label.style_square
+        "Croix"         => label.style_cross
+        "X"             => label.style_xcross
+        "Drapeau"       => label.style_flag
+        => label.style_circle
+
+tl_boSize = switch tl_boSzS
+    "Auto"   => size.auto
+    "Petite" => size.small
+    "Normale" => size.normal
+    "Grande" => size.large
+    "Énorme" => size.huge
+    => size.tiny
+
+tl_buf    = tl_bufPct / 100.0
+tl_usePiv = true   // 2e point = pivot confirmé (Ephore)
+tl_everyB = true   // droite revérifiée à chaque bougie (Ephore)
+
+tl_f_val(x1, y1, x2, y2, x) =>
+    y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+
+// ══════════════════════════════════════════════════════════════
+// RÉSISTANCE DESCENDANTE (pivots hauts)
+// ══════════════════════════════════════════════════════════════
+tl_ph = ta.pivothigh(high, tl_bars, tl_bars)
+
+var float tl_rAncH = na
+var int   tl_rAncB = na
+var float tl_rX1 = na
+var float tl_rY1 = na
+var float tl_rX2 = na
+var float tl_rY2 = na
+var int   tl_rTouch = 0
+var int   tl_rValidAt = na
+var bool  tl_rActive = false
+var float tl_rLastH = na
+var int   tl_rLastB = na
+bool tl_rNewAnchor = false
+bool tl_rNewPiv = false
+
+// a) ancre, ou dernier pivot plus bas que l'ancre
+if not na(tl_ph) and (na(tl_rAncH) or tl_ph > tl_rAncH or bar_index - tl_rAncB > tl_newH)
+    tl_rAncH := tl_ph
+    tl_rAncB := bar_index - tl_bars
+    tl_rLastH := na
+    tl_rLastB := na
+    tl_rNewAnchor := true
+else if not na(tl_ph) and bar_index - tl_bars > tl_rAncB and tl_ph < tl_rAncH
+    tl_rLastH := tl_ph
+    tl_rLastB := bar_index - tl_bars
+    tl_rNewPiv := true
+
+// b) candidate
+float tl_rCH = na
+int   tl_rCB = na
+if not na(tl_rAncH)
+    if tl_usePiv
+        if not na(tl_rLastB) and (tl_everyB ? high < tl_rAncH : tl_rNewPiv)
+            tl_rCH := tl_rLastH
+            tl_rCB := tl_rLastB
+    else
+        if high < tl_rAncH and bar_index > tl_rAncB
+            tl_rCH := high
+            tl_rCB := bar_index
+
+// c) validation : de la bougie courante (i = 0) jusqu'à l'ancre
+if not na(tl_rCB) and bar_index - tl_rAncB < 4900
+    int  tl_tc = 0
+    bool tl_ok = true
+    for i = 0 to bar_index - tl_rAncB
+        tl_p = tl_f_val(float(tl_rAncB), tl_rAncH, float(tl_rCB), tl_rCH, float(bar_index - i))
+        if high[i] > tl_p * (1 + tl_buf)
+            tl_ok := false
+            break
+        if high[i] >= tl_p * (1 - tl_buf)
+            tl_tc += 1
+    // d) remplacement
+    if tl_ok and tl_tc >= tl_nT and (na(tl_rX1) or tl_rX1 != float(tl_rAncB) or tl_rX2 != float(tl_rCB))
+        tl_rX1 := float(tl_rAncB)
+        tl_rY1 := tl_rAncH
+        tl_rX2 := float(tl_rCB)
+        tl_rY2 := tl_rCH
+        tl_rTouch := tl_tc
+        tl_rValidAt := bar_index
+        tl_rActive := true
+
+// ══════════════════════════════════════════════════════════════
+// SUPPORT ASCENDANT (pivots bas) — miroir exact
+// ══════════════════════════════════════════════════════════════
+tl_pl = ta.pivotlow(low, tl_bars, tl_bars)
+
+var float tl_sAncL = na
+var int   tl_sAncB = na
+var float tl_sX1 = na
+var float tl_sY1 = na
+var float tl_sX2 = na
+var float tl_sY2 = na
+var int   tl_sTouch = 0
+var int   tl_sValidAt = na
+var bool  tl_sActive = false
+var float tl_sLastL = na
+var int   tl_sLastB = na
+bool tl_sNewAnchor = false
+bool tl_sNewPiv = false
+
+if not na(tl_pl) and (na(tl_sAncL) or tl_pl < tl_sAncL or bar_index - tl_sAncB > tl_newH)
+    tl_sAncL := tl_pl
+    tl_sAncB := bar_index - tl_bars
+    tl_sLastL := na
+    tl_sLastB := na
+    tl_sNewAnchor := true
+else if not na(tl_pl) and bar_index - tl_bars > tl_sAncB and tl_pl > tl_sAncL
+    tl_sLastL := tl_pl
+    tl_sLastB := bar_index - tl_bars
+    tl_sNewPiv := true
+
+float tl_sCL = na
+int   tl_sCB = na
+if not na(tl_sAncL)
+    if tl_usePiv
+        if not na(tl_sLastB) and (tl_everyB ? low > tl_sAncL : tl_sNewPiv)
+            tl_sCL := tl_sLastL
+            tl_sCB := tl_sLastB
+    else
+        if low > tl_sAncL and bar_index > tl_sAncB
+            tl_sCL := low
+            tl_sCB := bar_index
+
+if not na(tl_sCB) and bar_index - tl_sAncB < 4900
+    int  tl_tc2 = 0
+    bool tl_ok2 = true
+    for i = 0 to bar_index - tl_sAncB
+        tl_p = tl_f_val(float(tl_sAncB), tl_sAncL, float(tl_sCB), tl_sCL, float(bar_index - i))
+        if low[i] < tl_p * (1 - tl_buf)
+            tl_ok2 := false
+            break
+        if low[i] <= tl_p * (1 + tl_buf)
+            tl_tc2 += 1
+    if tl_ok2 and tl_tc2 >= tl_nT and (na(tl_sX1) or tl_sX1 != float(tl_sAncB) or tl_sX2 != float(tl_sCB))
+        tl_sX1 := float(tl_sAncB)
+        tl_sY1 := tl_sAncL
+        tl_sX2 := float(tl_sCB)
+        tl_sY2 := tl_sCL
+        tl_sTouch := tl_tc2
+        tl_sValidAt := bar_index
+        tl_sActive := true
+
+// ══════════════════════════════════════════════════════════════
+// CASSURES (points) — la droite reste affichée, seul l'état change
+// ══════════════════════════════════════════════════════════════
+bool tl_rBreak = false
+bool tl_sBreak = false
+if tl_rActive and not na(tl_rX1) and bar_index > tl_rValidAt
+    tl_rv = tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? high > tl_rv * (1 + tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.min(open, close) > tl_rv : close > tl_rv)
+        tl_rBreak := true
+        tl_rActive := false
+if tl_sActive and not na(tl_sX1) and bar_index > tl_sValidAt
+    tl_sv = tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? low < tl_sv * (1 - tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.max(open, close) < tl_sv : close < tl_sv)
+        tl_sBreak := true
+        tl_sActive := false
+
+// Un seul point haussier et un seul point baissier affichés à la fois : le dernier de chaque
+var label tl_boUpLb = na
+var label tl_boDnLb = na
+if tl_showBo and tl_showRes and tl_rBreak
+    label.delete(tl_boUpLb)
+    tl_boUpLb := label.new(bar_index, low, "", yloc=yloc.belowbar, style=tl_f_boStyle(tl_boUpShp), color=tl_boUpCol, size=tl_boSize)
+if tl_showBo and tl_showSup and tl_sBreak
+    label.delete(tl_boDnLb)
+    tl_boDnLb := label.new(bar_index, high, "", yloc=yloc.abovebar, style=tl_f_boStyle(tl_boDnShp), color=tl_boDnCol, size=tl_boSize)
+plotshape(tl_showAnc and tl_showRes and tl_rNewAnchor, "Nouvelle ancre haute", style=shape.diamond, location=location.abovebar, color=color.new(tl_resCol, 40), size=size.tiny, offset=-tl_bars)
+plotshape(tl_showAnc and tl_showSup and tl_sNewAnchor, "Nouvelle ancre basse", style=shape.diamond, location=location.belowbar, color=color.new(tl_supCol, 40), size=size.tiny, offset=-tl_bars)
+
+// ══════════════════════════════════════════════════════════════
+// DESSIN
+// ══════════════════════════════════════════════════════════════
+var line tl_rLn = na
+var line tl_sLn = na
+
+if barstate.islast
+    line.delete(tl_rLn)
+    line.delete(tl_sLn)
+    tl_xe = bar_index + 1
+    if tl_showRes and not na(tl_rX1)
+        tl_rLn := line.new(int(tl_rX1), tl_rY1, tl_xe, tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, tl_xe), xloc=xloc.bar_index,
+             extend=tl_ext ? extend.right : extend.none, color=tl_resCol, width=tl_tlW)
+    if tl_showSup and not na(tl_sX1)
+        tl_sLn := line.new(int(tl_sX1), tl_sY1, tl_xe, tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, tl_xe), xloc=xloc.bar_index,
+             extend=tl_ext ? extend.right : extend.none, color=tl_supCol, width=tl_tlW)
+
+// ══════════════════════════════════════════════════════════════
+// TABLEAU DE DIAGNOSTIC
+// ══════════════════════════════════════════════════════════════
+var table tl_tb = table.new(position.bottom_right, 3, 8, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.gray)
+
+tl_f_c(c, r, txt, col) =>
+    table.cell(tl_tb, c, r, txt, text_color=col, text_size=size.small)
+
+tl_f_t(x) =>
+    str.format_time(time[bar_index - int(x)], "dd/MM HH:mm", syminfo.timezone)
+
+if barstate.islast and tl_showTbl
+    tl_f_c(0, 0, "Réglages", color.silver)
+    tl_f_c(1, 0, str.tostring(tl_bars) + " / " + str.tostring(tl_bufPct) + "% / " + str.tostring(tl_nT) + " / " + str.tostring(tl_newH), color.white)
+    tl_f_c(2, 0, (tl_usePiv ? "2e pt = pivot" : "2e pt = bougie") + (tl_usePiv ? (tl_everyB ? ", vérif. chaque bougie" : ", vérif. 1 fois") : ""), color.white)
+    tl_f_c(1, 1, "RÉSISTANCE", tl_resCol)
+    tl_f_c(2, 1, "SUPPORT", tl_supCol)
+    tl_f_c(0, 2, "Droite", color.silver)
+    tl_f_c(1, 2, na(tl_rX1) ? "AUCUNE" : str.tostring(tl_rY1, format.mintick) + " → " + str.tostring(tl_rY2, format.mintick), tl_resCol)
+    tl_f_c(2, 2, na(tl_sX1) ? "AUCUNE" : str.tostring(tl_sY1, format.mintick) + " → " + str.tostring(tl_sY2, format.mintick), tl_supCol)
+    tl_f_c(0, 3, "Points (heure)", color.silver)
+    tl_f_c(1, 3, na(tl_rX1) ? "—" : tl_f_t(tl_rX1) + " → " + tl_f_t(tl_rX2), tl_resCol)
+    tl_f_c(2, 3, na(tl_sX1) ? "—" : tl_f_t(tl_sX1) + " → " + tl_f_t(tl_sX2), tl_supCol)
+    tl_f_c(0, 4, "Touches / état", color.silver)
+    tl_f_c(1, 4, na(tl_rX1) ? "—" : str.tostring(tl_rTouch) + " / " + (tl_rActive ? "active" : "cassée"), tl_resCol)
+    tl_f_c(2, 4, na(tl_sX1) ? "—" : str.tostring(tl_sTouch) + " / " + (tl_sActive ? "active" : "cassée"), tl_supCol)
+    tl_f_c(0, 5, "Ancre actuelle", color.silver)
+    tl_f_c(1, 5, na(tl_rAncH) ? "—" : str.tostring(tl_rAncH, format.mintick) + " (" + tl_f_t(tl_rAncB) + ")", tl_resCol)
+    tl_f_c(2, 5, na(tl_sAncL) ? "—" : str.tostring(tl_sAncL, format.mintick) + " (" + tl_f_t(tl_sAncB) + ")", tl_supCol)
+    tl_f_c(0, 6, "Ancre : âge / max", color.silver)
+    tl_f_c(1, 6, na(tl_rAncB) ? "—" : str.tostring(bar_index - tl_rAncB) + " / " + str.tostring(tl_newH) + " b", tl_resCol)
+    tl_f_c(2, 6, na(tl_sAncB) ? "—" : str.tostring(bar_index - tl_sAncB) + " / " + str.tostring(tl_newH) + " b", tl_supCol)
+    tl_f_c(0, 7, "Écart au prix", color.silver)
+    tl_f_c(1, 7, na(tl_rX1) ? "—" : str.tostring(tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index) - close, format.mintick) + " pts", tl_resCol)
+    tl_f_c(2, 7, na(tl_sX1) ? "—" : str.tostring(tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index) - close, format.mintick) + " pts", tl_supCol)
+
+// ══════════════════════════════════════════════════════════════
+// ALERTES PIVOTS
+// ══════════════════════════════════════════════════════════════
+alertcondition(ta.cross(close, s1_p),  "Set1 P cross",  "Prix croise Pivot Set 1")
+alertcondition(ta.cross(close, s1_r1), "Set1 R1 cross", "Prix croise R1 Set 1")
+alertcondition(ta.cross(close, s1_s1), "Set1 S1 cross", "Prix croise S1 Set 1")
+alertcondition(ta.cross(close, s1_r2), "Set1 R2 cross", "Prix croise R2 Set 1")
+alertcondition(ta.cross(close, s1_s2), "Set1 S2 cross", "Prix croise S2 Set 1")
+alertcondition(ta.cross(close, s2_p),  "Set2 P cross",  "Prix croise Pivot Set 2")
+alertcondition(ta.cross(close, s2_r1), "Set2 R1 cross", "Prix croise R1 Set 2")
+alertcondition(ta.cross(close, s2_s1), "Set2 S1 cross", "Prix croise S1 Set 2")
+alertcondition(ta.cross(close, s2_r2), "Set2 R2 cross", "Prix croise R2 Set 2")
+alertcondition(ta.cross(close, s2_s2), "Set2 S2 cross", "Prix croise S2 Set 2")
+alertcondition(ta.cross(close, s3_p),  "Set3 P cross",  "Prix croise Pivot Set 3 (weekly)")
+alertcondition(ta.cross(close, s3_r1), "Set3 R1 cross", "Prix croise R1 Set 3 (weekly)")
+alertcondition(ta.cross(close, s3_s1), "Set3 S1 cross", "Prix croise S1 Set 3 (weekly)")
+alertcondition(bull_ob_alert, "Bullish OB Formed", "Bullish Order Block detected")
+alertcondition(bear_ob_alert, "Bearish OB Formed", "Bearish Order Block detected")
+
+alertcondition(mitigated_bull, 'Bullish OB Mitigated', 'Bullish order block mitigated')
+
+alertcondition(mitigated_bear, 'Bearish OB Mitigated', 'bearish order block mitigated')
+
+alertcondition(tl_rBreak, "Cassure résistance", "Cassure haussière de la trendline baissière")
+alertcondition(tl_sBreak, "Cassure support",    "Cassure baissière du support ascendant")
+
+// TABLEAU SIGNATOR (ancienne version de l'original)
+// Heishinator | TBT | Tendance | Score | TF
+// ══════════════════════════════════════════════════════════════
+// Règles retrouvées sur données (exports Singal = filtre décoché, Filtres = filtre coché) :
+//   Heishinator : EMA(ohlc4,4) vs EMA(ohlc4,32) (138/139 changements de l'original).
+//   Tendance    : clôture vs Moyenator 1 (EMA50).
+//   Score       : Candle Quality Filter = moyenne des 5 filtres continus (structure,
+//                 momentum, volume, engulfing, gap) x 100 ; l'engulfing vaut 0 en HA,
+//                 donc max 80. Fort ≥ 50, Moyen ≥ 18 (Seuil de Force), Faible < 18.
+//                 Classe Fort/Moyen de l'original retrouvée sur 177/178 flèches.
+//   TBT         : ADX(14,14) ≥ Seuil de Force (18) — seule règle compatible avec les
+//                 2 cas observés (MES OK / NQ Faible), à confirmer.
+//   Flèches     : 2e bougie Heishinator + ADX ≥ 18 + clôture du bon côté de l'EMA50
+//                 + conviction (clôture ≥ 0.3 ATR au-delà de la bande EMA50/EMA60
+//                 OU volume ≥ SMA20). Filtre coché = pas de flèche sur les bougies
+//                 d'annonces 14:30 / 16:00 (Paris).
+//                 Sans filtre : 112/113 flèches, 5 en trop ; avec filtre : 65/65, 5 en trop.
+grp_sg   = "=== EPHORE SIGNATOR (tableau) ==="
+sg_show  = input.bool(true, "Afficher le tableau Signator", group=grp_sg)
+sg_pos   = input.string("Top Left", "Position", group=grp_sg, options=["Top Left", "Top Right", "Middle Left", "Middle Right", "Bottom Left", "Bottom Right"])
+sg_szS   = input.string("Normal", "Taille Texte", group=grp_sg, options=["Tiny", "Small", "Normal", "Large"])
+sg_force = input.int(18, "Seuil de Force (Min) — ADX 14", group=grp_sg, minval=0, maxval=100,
+     tooltip="Réglage de l'original. Retrouvé sur ~500 flèches : aucune flèche de l'original n'a un ADX(14,14) < 18.")
+sg_tbtMode = input.string("ADX ≥ Seuil de Force", "TBT mesuré par", group=grp_sg, options=["ADX ≥ Seuil de Force", "Volume / moyenne 20 (bougie clôturée)"])
+sg_tbtTh = input.float(0.75, "TBT (mode volume) : seuil", group=grp_sg, minval=0.0, step=0.05)
+sg_arrows = input.bool(true, "Afficher les flèches Signator", group=grp_sg)
+sg_showM  = input.bool(true, "Afficher flèches MOYEN", group=grp_sg)
+sg_filter = input.bool(true, "Activer Filtre (pas de signal sur les annonces)", group=grp_sg,
+     tooltip="Comme l'original : avec le filtre, aucune flèche sur les bougies qui contiennent 14:30 ou 16:00 (heure de Paris = annonces US 8:30 / 10:00 New York).")
+sg_news   = input.string("1430,1600", "Heures d'annonces bloquées (HHMM, Paris)", group=grp_sg)
+sg_newsTz = input.string("Europe/Paris", "Fuseau des annonces", group=grp_sg)
+sg_arUp  = input.color(#FFFFFF, "Flèche long", group=grp_sg, inline="ar")
+sg_arDn  = input.color(#000000, "Flèche short", group=grp_sg, inline="ar")
+
+sg_c_bg   = color.new(color.gray, 35)
+sg_c_lbl  = color.rgb(235, 235, 240)
+sg_c_up   = color.rgb(91, 91, 245)    // bleu Ephore
+sg_c_dn   = color.rgb(224, 86, 80)    // rouge Ephore
+sg_c_ok   = color.rgb(76, 175, 80)    // vert
+sg_c_warn = color.rgb(240, 180, 41)   // orange
+sg_c_off  = color.rgb(200, 200, 205)  // gris clair
+
+// ─── Heishinator (validé) ───
+// Formulation retrouvée sur 139 changements imposés par les flèches de l'original (138/139,
+// toutes TF) : EMA(ohlc4, 4) vs EMA(ohlc4, 32). 0.42/0.44 vs EMA33 n'en était qu'une approximation.
+sg_sha = ta.ema(ohlc4, 4)
+sg_heiBull = sg_sha > ta.ema(ohlc4, 32)
+
+// ─── Tendance : clôture vs Moyenator 1 (EMA50) ───
+// (EMA50 > EMA60 réfuté : l'original affichait Baissière avec EMA50 > EMA60)
+sg_ema50 = ta.ema(close, 50)
+sg_trendBull = close > sg_ema50
+
+// ─── Force : ADX(14,14) ───
+[sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
+
+// ─── Score = CANDLE QUALITY FILTER de l'original (moyenne de 5 filtres continus) ───
+sg_scoreMin = 50
+sg_atr   = ta.atr(14)
+sg_rng   = high - low
+sg_rngS  = math.max(sg_rng, syminfo.mintick)
+sg_br    = math.min(math.abs(close - open) / sg_rngS / 0.5, 1.0)
+sg_cpos  = sg_heiBull ? (close - low) / sg_rngS : (high - close) / sg_rngS
+sg_awick = sg_heiBull ? (high - close) / sg_rngS : (close - low) / sg_rngS
+sg_sStr  = (sg_br + (1.0 - math.min(sg_awick / 0.35, 1.0)) + math.min(sg_cpos / 0.67, 1.0)) / 3.0
+sg_sMom  = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0)
+sg_volMa = ta.sma(volume, 20)
+sg_sVol  = sg_volMa > 0 ? math.min(volume / sg_volMa, 1.0) : 0.0
+sg_sGap  = math.min(math.abs(open - close[1]) / math.max(0.3 * sg_atr, syminfo.mintick), 1.0)
+sg_eng   = (sg_heiBull ? close > open[1] and open < close[1] : open > close[1] and close < open[1]) and high > high[1] and low < low[1]
+sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap + (sg_eng ? 1.0 : 0.0)) / 5.0 * 100.0
+sg_scoreTxt = sg_score >= sg_scoreMin ? "Fort" : sg_score >= sg_force ? "Moyen" : "Faible"
+sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= sg_force ? sg_c_warn : sg_c_dn
+
+// ─── TBT : force suffisante (ADX ≥ Seuil de Force), variante volume en option ───
+sg_volRatioPrev = ta.sma(volume, 20)[1] > 0 ? volume[1] / ta.sma(volume, 20)[1] : 0.0
+sg_tbtOk = sg_tbtMode == "ADX ≥ Seuil de Force" ? sg_adx >= sg_force : sg_volRatioPrev >= sg_tbtTh
+
+// ─── Filtre annonces : la bougie contient-elle une heure bloquée ? ───
+f_sg_news() =>
+    bool hit = false
+    if timeframe.isintraday
+        tfMs = timeframe.in_seconds(timeframe.period) * 1000
+        parts = str.split(sg_news, ",")
+        for p in parts
+            hhmm = str.tonumber(str.trim(p))
+            if not na(hhmm)
+                hh = int(math.floor(hhmm / 100))
+                mm = int(hhmm - hh * 100)
+                tN = timestamp(sg_newsTz, year(time, sg_newsTz), month(time, sg_newsTz), dayofmonth(time, sg_newsTz), hh, mm, 0)
+                if tN >= time and tN < time + tfMs
+                    hit := true
+    hit
+sg_newsBar = sg_filter and f_sg_news()
+
+// ─── FLÈCHES SIGNATOR ───
+var int sg_run = 0
+sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
+sg_ema60  = ta.ema(close, 60)
+sg_dBand  = sg_heiBull ? (close - math.max(sg_ema50, sg_ema60)) / sg_atr : (math.min(sg_ema50, sg_ema60) - close) / sg_atr
+sg_conv   = sg_dBand >= 0.3 or volume >= sg_volMa
+
+// ─── V9 : la bougie du signal doit SATURER un terme du Candle Quality Filter ───
+// Trouvé le 12/10 par deux recherches indépendantes qui ont convergé.
+// La V8 notait le momentum et la position de clôture dans le score, sans jamais
+// exiger qu'ils soient atteints. L'original, lui, exige que l'un des deux le soit.
+//   momentum saturé  : range >= 0.5 × ATR14   (la constante 0.5 est déjà celle
+//                      de sg_sMom ci-dessus, min(range / (0.5·ATR), 1))
+//   clôture saturée  : cpos  >= 0.67          (déjà celle de sg_sStr, cpos/0.67)
+// AUCUNE constante nouvelle : c'est une relecture du filtre existant, qui passe
+// de « noté » à « doit être franchi ». Ce n'est donc pas un seuil ajusté.
+//
+// Effet mesuré sur le groupe 4 des 14 exports « Base 10:10/Ajustements »
+// (MES + NQ, 7 unités de temps, ~9000 barres, 155 flèches de vérité) :
+//     V8   153 exactes / 6 en trop / 2 manquées   précision  96.2 %
+//     V9   153 exactes / 0 en trop / 2 manquées   précision 100.0 %
+// Aucune perte de rappel. Confirmé sur Singal (5 → 3 faux) et Filtres (5 → 3),
+// où les 3 restants sont des flèches d'une AUTRE version d'Ephore, pas des
+// erreurs. Les 6 faux positifs de la V8 échouent tous la clause, et les
+// 155 vraies flèches la passent toutes (155/155).
+// Les 6 faux positifs occupaient 6 des 7 plus petits range/ATR sur 161
+// événements : p = 3.2e-10. Validation croisée MES↔NQ et par unité de temps :
+// le seuil 0.50 ressort indépendamment à chaque découpage.
+sg_v9     = input.bool(true, "Conviction V9 : exiger momentum OU clôture saturés", group=grp_sg,
+     tooltip="Ajoute à la conviction V8 la condition « range >= 0.5×ATR14 OU position de clôture >= 0.67 ». Mesuré : 6 faux positifs supprimés sur 6, zéro vraie flèche perdue. Décocher pour retrouver le comportement V8 exact.")
+sg_satur  = sg_rng >= 0.5 * sg_atr or sg_cpos >= 0.67
+
+sg_base   = sg_arrows and sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and (not sg_v9 or sg_satur) and not sg_newsBar
+sg_isFort = sg_score >= sg_scoreMin
+sg_long   = sg_base and sg_heiBull and sg_isFort
+sg_short  = sg_base and not sg_heiBull and sg_isFort
+sg_longM  = sg_base and sg_showM and sg_heiBull and not sg_isFort and sg_score >= sg_force
+sg_shortM = sg_base and sg_showM and not sg_heiBull and not sg_isFort and sg_score >= sg_force
+plotshape(sg_long,   "Signator Long",        style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.normal)
+plotshape(sg_short,  "Signator Short",       style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.normal)
+plotshape(sg_longM,  "Signator Long Moyen",  style=shape.arrowup,   location=location.belowbar, color=sg_arUp, size=size.small)
+plotshape(sg_shortM, "Signator Short Moyen", style=shape.arrowdown, location=location.abovebar, color=sg_arDn, size=size.small)
+alertcondition(sg_long or sg_longM,   "Signator Long",  "Flèche Signator long")
+alertcondition(sg_short or sg_shortM, "Signator Short", "Flèche Signator short")
+
+// ─── Construction ───
+sg_pos_v = sg_pos == "Top Right" ? position.top_right : sg_pos == "Middle Left" ? position.middle_left :
+     sg_pos == "Middle Right" ? position.middle_right : sg_pos == "Bottom Left" ? position.bottom_left :
+     sg_pos == "Bottom Right" ? position.bottom_right : position.top_left
+sg_sz = sg_szS == "Tiny" ? size.tiny : sg_szS == "Small" ? size.small : sg_szS == "Large" ? size.large : size.normal
+
+var table sg_tbl = table.new(position.top_left, 2, 5, bgcolor=sg_c_bg, border_width=0)
+
+if barstate.islast and sg_show
+    table.set_position(sg_tbl, sg_pos_v)
+    table.cell(sg_tbl, 0, 0, "Heishinator", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 0, sg_heiBull ? "⬆ Haussier" : "⬇ Baissier", text_color=sg_heiBull ? sg_c_up : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 1, "TBT", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 1, sg_tbtOk ? "✔ OK" : "⛔ Faible", text_color=sg_tbtOk ? sg_c_ok : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 2, "Tendance", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 2, sg_trendBull ? "⬆ Haussière" : "⬇ Baissière", text_color=sg_trendBull ? sg_c_up : sg_c_dn, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 3, "Score", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 3, sg_scoreTxt, text_color=sg_scoreCol, text_size=sg_sz, text_halign=text.align_left)
+    table.cell(sg_tbl, 0, 4, "TF", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
+    table.cell(sg_tbl, 1, 4, "Actuel", text_color=sg_c_off, text_size=sg_sz, text_halign=text.align_left)
+
+// ══════════════════════════════════════════════════════════════
+// GARDE-FOU : graphique en Heiken Ashi
+// ══════════════════════════════════════════════════════════════
+// TOUT cet indicateur a été calibré sur des bougies Heiken Ashi (Heishinator,
+// Signator, Climax, tableaux). Sur des bougies normales les valeurs sont
+// fausses sans que rien ne le signale. D'où cet avertissement visible.
+if barstate.islast and not chart.is_heikinashi
+    var label ha_warn = na
+    label.delete(ha_warn)
+    ha_warn := label.new(bar_index, high, "⚠ Ephore : passe le graphique en Heiken Ashi\n(tous les calculs sont calibrés dessus)",
+         style=label.style_label_down, color=color.new(color.red, 10),
+         textcolor=color.white, size=size.normal)
+
+// ══════════════════════════════════════════════════════════════
+// LES 3 TABLEAUX MANQUANTS + LE FEU DE CONFLUENCE — NOUVEAU (12/10/2026)
+// ══════════════════════════════════════════════════════════════
+// Reconstitués à partir de 4 captures du 12/10 (MES 15 min, bougie 14:00 Paris),
+// identifiées de façon certaine : la légende affichait Moyenator 7871,48/7870,65
+// et le CSV donne 7871.4986/7870.6657 — un seul couple colle sur 15 fichiers.
+//
+// CE QUI EST VÉRIFIÉ AU CHIFFRE PRÈS (recalculé sur le CSV du même instant)
+//   CCI (30) = CCI standard sur prix typique HA : calculé −78.09 contre −78.03 affiché
+//   YoYo     = (close − SMA10) / SMA10 × 100   : calculé 0.011 % contre 0.01 % affiché
+//   RSI (14) = RSI de Wilder sur close HA      : écart 1.1 point, expliqué par la
+//              bougie en cours (35.57 à close 7866.00 contre 35.35 affiché)
+//   TREND    = close HA > EMA50                : 5 unités de temps sur 5
+//
+// CE QUI RESTE UNE HYPOTHÈSE, et il faut le savoir
+//   STRENGTH : la structure est sûre — c'est 25 % × (nombre de tests haussiers
+//              vrais parmi 4), et c'est une PRESSION ACHETEUSE ABSOLUE, pas une
+//              conviction dans le TREND affiché (preuve : l'unité 3 est BEARISH
+//              avec 100 %). Mais UNE seule capture ne donne que 5 contraintes, et
+//              186 combinaisons de 4 tests les satisfont. Celle codée ici fait 5/5
+//              sur la capture ; elle n'est pas démontrée.
+//   LES 10 VOIX du bloc SuperTrader dans le Feu ne sont pas identifiées. Les 19
+//              autres le sont (6 Dashator + 7 SIGNAL + 6 TREND). Le choix codé ici
+//              est explicite et modifiable.
+//
+// POUR TRANCHER IL MANQUE : un export 3 minutes (l'unité qui contredit tout), et
+// 3 captures à des moments où les valeurs bougent. Détail dans NOTES_TABLEAUX.md.
+
+grp_t3 = "=== LES 3 TABLEAUX ==="
+t3_on   = input.bool(true, "Afficher les 3 tableaux", group=grp_t3)
+t3_mode = input.string("Séparés", "Disposition des cellules", group=grp_t3,
+     options=["Séparés", "Fusionné", "Groupé par couleur", "Feu seul"],
+     tooltip="Séparés = 3 panneaux distincts (comme la v30). Fusionné = une seule grille de 6 colonnes sans libellés. Groupé par couleur = toutes les cellules retriées par camp. Feu seul = uniquement le badge.")
+t3_seuil = input.int(60, "Seuil du Feu de Confluence (%)", group=grp_t3, minval=50, maxval=100)
+t3_posS  = input.string("Bottom Left",  "Position — INDICATOR | SIGNAL", group=grp_t3,
+     options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
+t3_posT  = input.string("Bottom Right", "Position — TIMEFRAME | TREND", group=grp_t3,
+     options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
+t3_posD  = input.string("Bottom Center","Position — Dashator", group=grp_t3,
+     options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
+t3_posF  = input.string("Middle Left",  "Position — tableau fusionné / badge", group=grp_t3,
+     options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
+t3_tf1 = input.timeframe("3",   "TIMEFRAME — unité 1", group=grp_t3)
+t3_tf2 = input.timeframe("5",   "TIMEFRAME — unité 2", group=grp_t3)
+t3_tf3 = input.timeframe("15",  "TIMEFRAME — unité 3", group=grp_t3)
+t3_tf4 = input.timeframe("60",  "TIMEFRAME — unité 4", group=grp_t3)
+t3_tf5 = input.timeframe("240", "TIMEFRAME — unité 5", group=grp_t3)
+t3_tf6 = input.timeframe("1D",  "TIMEFRAME — unité 6", group=grp_t3)
+t3_dd1 = input.timeframe("1",   "Dashator — unité 1", group=grp_t3)
+t3_dd2 = input.timeframe("5",   "Dashator — unité 2", group=grp_t3)
+t3_dd3 = input.timeframe("15",  "Dashator — unité 3", group=grp_t3)
+t3_dd4 = input.timeframe("60",  "Dashator — unité 4", group=grp_t3)
+t3_dd5 = input.timeframe("240", "Dashator — unité 5", group=grp_t3)
+t3_dd6 = input.timeframe("1D",  "Dashator — unité 6", group=grp_t3)
+
+// ─── Palette (reprise du tableau principal) ───
+t3_cBull = color.rgb(56, 149, 255)
+t3_cBear = color.rgb(255, 82, 99)
+t3_cOrn  = color.new(#F0B429, 0)
+t3_cDark = color.rgb(21, 22, 45)
+t3_cNeut = color.rgb(45, 46, 70)
+
+// ─── Le paquet multi-unités : TREND + les 4 tests du STRENGTH ───
+// Un seul request.security par unité : on respecte la limite de 40 appels.
+f_t3_pack() =>
+    e50 = ta.ema(close, 50)
+    [m, sg, _h] = ta.macd(close, 12, 26, 9)
+    r  = ta.rsi(close, 14)
+    // TREND : vérifié 5/5 sur la capture du 12/10
+    tr = close > e50
+    // STRENGTH : 25 % par test haussier vrai. Structure certaine, choix des tests
+    // non démontré (186 combinaisons possibles sur une seule capture).
+    st = (close > open ? 1 : 0) + (m > sg ? 1 : 0) + (close > e50 ? 1 : 0) + (r > 50 ? 1 : 0)
+    [tr, st, close > open]
+
+[t3_tr1, t3_st1, t3_b1] = request.security(syminfo.tickerid, t3_tf1, f_t3_pack(), lookahead=barmerge.lookahead_off)
+[t3_tr2, t3_st2, t3_b2] = request.security(syminfo.tickerid, t3_tf2, f_t3_pack(), lookahead=barmerge.lookahead_off)
+[t3_tr3, t3_st3, t3_b3] = request.security(syminfo.tickerid, t3_tf3, f_t3_pack(), lookahead=barmerge.lookahead_off)
+[t3_tr4, t3_st4, t3_b4] = request.security(syminfo.tickerid, t3_tf4, f_t3_pack(), lookahead=barmerge.lookahead_off)
+[t3_tr5, t3_st5, t3_b5] = request.security(syminfo.tickerid, t3_tf5, f_t3_pack(), lookahead=barmerge.lookahead_off)
+[t3_tr6, t3_st6, t3_b6] = request.security(syminfo.tickerid, t3_tf6, f_t3_pack(), lookahead=barmerge.lookahead_off)
+
+// ─── Dashator : bougie HA haussière sur chaque unité ───
+// Règle retenue : 6/6 sur une capture, 5/6 sur l'autre (le seul écart est une
+// bougie 1H en cours, à 0.42 point). Les règles concurrentes font 2 à 4 sur 6.
+f_t3_ha() => close > open
+t3_d1 = request.security(syminfo.tickerid, t3_dd1, f_t3_ha(), lookahead=barmerge.lookahead_off)
+t3_d2 = request.security(syminfo.tickerid, t3_dd2, f_t3_ha(), lookahead=barmerge.lookahead_off)
+t3_d3 = request.security(syminfo.tickerid, t3_dd3, f_t3_ha(), lookahead=barmerge.lookahead_off)
+t3_d4 = request.security(syminfo.tickerid, t3_dd4, f_t3_ha(), lookahead=barmerge.lookahead_off)
+t3_d5 = request.security(syminfo.tickerid, t3_dd5, f_t3_ha(), lookahead=barmerge.lookahead_off)
+t3_d6 = request.security(syminfo.tickerid, t3_dd6, f_t3_ha(), lookahead=barmerge.lookahead_off)
+
+// ─── INDICATOR | SIGNAL : 7 lignes ───
+[t3_stv, t3_std] = ta.supertrend(3, 10)
+t3_sigST  = t3_std < 0
+t3_sigMA  = close > ta.ema(close, 50)
+t3_sigVW  = close > ta.vwap(hlc3)
+t3_lrNow  = ta.linreg(close, 100, 0)
+t3_sigLR  = t3_lrNow > ta.linreg(close, 100, 1)
+[t3_pdh, t3_pdl, t3_pdc] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+t3_cprP  = (t3_pdh + t3_pdl + t3_pdc) / 3
+t3_cprBC = (t3_pdh + t3_pdl) / 2
+t3_cprTC = 2 * t3_cprP - t3_cprBC
+t3_cprHi = math.max(t3_cprTC, t3_cprBC)
+t3_cprLo = math.min(t3_cprTC, t3_cprBC)
+t3_cpr   = close > t3_cprHi ? 1 : close < t3_cprLo ? -1 : 0
+t3_cprTx = t3_cpr == 1 ? "Above TC" : t3_cpr == -1 ? "Below BC" : "Inside"
+
+var float t3_orbH = na
+var float t3_orbL = na
+var int   t3_orbT = na
+if ta.change(time("D")) != 0
+    t3_orbT := time
+    t3_orbH := high
+    t3_orbL := low
+else if not na(t3_orbT) and time - t3_orbT < 15 * 60 * 1000
+    t3_orbH := math.max(t3_orbH, high)
+    t3_orbL := math.min(t3_orbL, low)
+t3_orb   = not timeframe.isintraday or na(t3_orbH) ? 0 : close > t3_orbH ? 1 : close < t3_orbL ? -1 : 0
+t3_orbTx = not timeframe.isintraday or na(t3_orbH) ? "N/A" : t3_orb == 1 ? "Above" : t3_orb == -1 ? "Below" : "In Range"
+t3_pd    = close > t3_pdh ? 1 : close < t3_pdl ? -1 : 0
+t3_pdTx  = t3_pd == 1 ? "Above PDH" : t3_pd == -1 ? "Below PDL" : "In Range"
+
+// ─── LE FEU DE CONFLUENCE : 29 voix ───
+// Décomposition prouvée par la source du terminal web (GROUPES_FEU) :
+//   « Colonne temps (6 voix) » + « Bloc SuperTrader (10 voix) »
+//   + « Colonne SIGNAL (7 voix) » + « Tendances multi-unités (6 voix) » = 29
+// et l'API expose bien 29 votes avec un seuil de 60 %.
+// 19 voix sont identifiées avec certitude ici (Dashator, SIGNAL, TREND).
+// LES 10 DU BLOC SUPERTRADER NE LE SONT PAS : ce qui suit est un choix explicite
+// parmi les cellules du tableau principal qui portent une polarité. À corriger
+// quand on aura plusieurs captures du badge à des valeurs différentes.
+f_t3_vote(sem) =>
+    sem == "bull" or sem == "super" ? 1 : sem == "bear" ? -1 : 0
+
+// On compte les voix POSITIVES et NÉGATIVES séparément (l'original affiche des
+// parts, donc il compte des voix, pas une somme algébrique).
+f_t3_cnt(b) => b ? 1 : 0
+// PIÈGE PINE v6 : une expression ne peut pas se poursuivre sur la ligne suivante
+// avec un opérateur en fin de ligne (erreur CE10156). Chaque somme tient donc
+// sur une seule ligne, aussi longue soit-elle.
+t3_nLong  = f_t3_cnt(t3_tr1) + f_t3_cnt(t3_tr2) + f_t3_cnt(t3_tr3) + f_t3_cnt(t3_tr4) + f_t3_cnt(t3_tr5) + f_t3_cnt(t3_tr6) + f_t3_cnt(t3_d1) + f_t3_cnt(t3_d2) + f_t3_cnt(t3_d3) + f_t3_cnt(t3_d4) + f_t3_cnt(t3_d5) + f_t3_cnt(t3_d6) + f_t3_cnt(t3_sigST) + f_t3_cnt(t3_sigMA) + f_t3_cnt(t3_sigVW) + f_t3_cnt(t3_sigLR) + f_t3_cnt(t3_cpr == 1) + f_t3_cnt(t3_orb == 1) + f_t3_cnt(t3_pd == 1) + f_t3_cnt(f_t3_vote(st_macdSem) == 1) + f_t3_cnt(f_t3_vote(st_crossSem) == 1) + f_t3_cnt(f_t3_vote(st_divShowSem) == 1) + f_t3_cnt(f_t3_vote(st_yoyoSem) == 1) + f_t3_cnt(f_t3_vote(st_vixSem) == 1) + f_t3_cnt(f_t3_vote(st_vixLvlSem) == 1)
+t3_nShort = f_t3_cnt(not t3_tr1) + f_t3_cnt(not t3_tr2) + f_t3_cnt(not t3_tr3) + f_t3_cnt(not t3_tr4) + f_t3_cnt(not t3_tr5) + f_t3_cnt(not t3_tr6) + f_t3_cnt(not t3_d1) + f_t3_cnt(not t3_d2) + f_t3_cnt(not t3_d3) + f_t3_cnt(not t3_d4) + f_t3_cnt(not t3_d5) + f_t3_cnt(not t3_d6) + f_t3_cnt(not t3_sigST) + f_t3_cnt(not t3_sigMA) + f_t3_cnt(not t3_sigVW) + f_t3_cnt(not t3_sigLR) + f_t3_cnt(t3_cpr == -1) + f_t3_cnt(t3_orb == -1) + f_t3_cnt(t3_pd == -1) + f_t3_cnt(f_t3_vote(st_macdSem) == -1) + f_t3_cnt(f_t3_vote(st_crossSem) == -1) + f_t3_cnt(f_t3_vote(st_divShowSem) == -1) + f_t3_cnt(f_t3_vote(st_yoyoSem) == -1) + f_t3_cnt(f_t3_vote(st_vixSem) == -1) + f_t3_cnt(f_t3_vote(st_vixLvlSem) == -1)
+
+// HONNÊTETÉ DU DÉNOMINATEUR. L'original compte 29 voix (6 Dashator + 10 bloc
+// SuperTrader + 7 SIGNAL + 6 TREND). Ici on n'en câble que 25 : les 19 certaines,
+// plus 6 seulement des 10 du bloc SuperTrader, car les 4 autres ne sont pas
+// identifiées. Le dénominateur suit donc le nombre réellement compté, sinon les
+// parts seraient sous-évaluées de 14 %. Le badge affiche le total pour que tu
+// puisses comparer à l'original — s'il affiche 29, il manque 4 voix ici.
+t3_nTot  = 25
+t3_pLong  = 100.0 * t3_nLong  / t3_nTot
+t3_pShort = 100.0 * t3_nShort / t3_nTot
+t3_feuTxt = t3_pLong >= t3_seuil ? "LONG" : t3_pShort >= t3_seuil ? "SHORT" : "NEUTRE"
+t3_feuCol = t3_feuTxt == "LONG" ? t3_cBull : t3_feuTxt == "SHORT" ? t3_cBear : t3_cOrn
+
+// ─── Helpers d'affichage ───
+f_t3_pos(p) =>
+    p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
+     p == "Top Center" ? position.top_center : p == "Middle Left" ? position.middle_left :
+     p == "Middle Right" ? position.middle_right : p == "Bottom Left" ? position.bottom_left :
+     p == "Bottom Center" ? position.bottom_center : position.bottom_right
+f_t3_stCol(v) => v <= 25 ? t3_cBear : v == 50 ? t3_cOrn : t3_cBull
+f_t3_sigCol(v) => v == 1 ? t3_cBull : v == -1 ? t3_cBear : t3_cOrn
+
+// ─── Rendu ───
+var table t3_tS = na
+var table t3_tT = na
+var table t3_tD = na
+var table t3_tF = na
+var bool  t3_init = false
+
+if barstate.islast and t3_on
+    if not t3_init
+        t3_tS := table.new(f_t3_pos(t3_posS), 2, 8, bgcolor=t3_cDark, border_width=1, border_color=color.rgb(95, 97, 125))
+        t3_tT := table.new(f_t3_pos(t3_posT), 3, 7, bgcolor=t3_cDark, border_width=1, border_color=color.rgb(95, 97, 125))
+        t3_tD := table.new(f_t3_pos(t3_posD), 1, 7, bgcolor=t3_cDark, border_width=1, border_color=color.rgb(95, 97, 125))
+        t3_tF := table.new(f_t3_pos(t3_posF), 6, 10, bgcolor=t3_cDark, border_width=1, border_color=color.rgb(95, 97, 125))
+        t3_init := true
+
+    sigTx  = array.from("SuperTrend", "Moving Avg", "VWAP", "Lin Regress", "CPR", "ORB 15min", "PDH/PDL")
+    sigVal = array.from(t3_sigST ? "Bull" : "Bear", t3_sigMA ? "Bull" : "Bear", t3_sigVW ? "Bull" : "Bear",
+                        t3_sigLR ? "Bull" : "Bear", t3_cprTx, t3_orbTx, t3_pdTx)
+    sigPol = array.from(t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1,
+                        t3_cpr, t3_orb, t3_pd)
+    tfTx   = array.from(t3_tf1, t3_tf2, t3_tf3, t3_tf4, t3_tf5, t3_tf6)
+    tfTr   = array.from(t3_tr1, t3_tr2, t3_tr3, t3_tr4, t3_tr5, t3_tr6)
+    tfSt   = array.from(t3_st1 * 25, t3_st2 * 25, t3_st3 * 25, t3_st4 * 25, t3_st5 * 25, t3_st6 * 25)
+    ddTx   = array.from(t3_dd1, t3_dd2, t3_dd3, t3_dd4, t3_dd5, t3_dd6)
+    ddB    = array.from(t3_d1, t3_d2, t3_d3, t3_d4, t3_d5, t3_d6)
+
+    sep = t3_mode == "Séparés"
+    fus = t3_mode == "Fusionné"
+    grp = t3_mode == "Groupé par couleur"
+
+    // -- mode Séparés : les 3 panneaux comme la v30 --
+    if sep
+        table.cell(t3_tS, 0, 0, "INDICATOR", text_color=color.silver, text_size=size.small)
+        table.cell(t3_tS, 1, 0, "SIGNAL",    text_color=color.silver, text_size=size.small)
+        for k = 0 to 6
+            table.cell(t3_tS, 0, k + 1, array.get(sigTx, k), text_color=color.silver, text_size=size.small)
+            table.cell(t3_tS, 1, k + 1, array.get(sigVal, k), text_color=color.white, text_size=size.small,
+                 bgcolor=f_t3_sigCol(array.get(sigPol, k)))
+        table.cell(t3_tT, 0, 0, "TIMEFRAME", text_color=color.silver, text_size=size.small)
+        table.cell(t3_tT, 1, 0, "TREND",     text_color=color.silver, text_size=size.small)
+        table.cell(t3_tT, 2, 0, "STRENGTH",  text_color=color.silver, text_size=size.small)
+        for k = 0 to 5
+            table.cell(t3_tT, 0, k + 1, array.get(tfTx, k), text_color=color.silver, text_size=size.small)
+            table.cell(t3_tT, 1, k + 1, array.get(tfTr, k) ? "BULLISH" : "BEARISH", text_color=color.white,
+                 text_size=size.small, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
+            table.cell(t3_tT, 2, k + 1, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
+                 text_size=size.small, bgcolor=f_t3_stCol(array.get(tfSt, k)))
+        table.cell(t3_tD, 0, 0, "⏱", text_color=color.silver, text_size=size.small)
+        for k = 0 to 5
+            table.cell(t3_tD, 0, k + 1, array.get(ddTx, k), text_color=color.white, text_size=size.small,
+                 bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
+
+    // -- mode Fusionné : une grille de 6 colonnes, sans libellés --
+    if fus
+        for k = 0 to 5
+            table.cell(t3_tF, 0, k, array.get(tfTr, k) ? "BULLISH" : "BEARISH", text_color=color.white,
+                 text_size=size.small, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
+            table.cell(t3_tF, 1, k, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
+                 text_size=size.small, bgcolor=f_t3_stCol(array.get(tfSt, k)))
+            table.cell(t3_tF, 2, k, array.get(ddTx, k), text_color=color.white, text_size=size.small,
+                 bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
+        for k = 0 to 6
+            table.cell(t3_tF, 5, k, array.get(sigVal, k), text_color=color.white, text_size=size.small,
+                 bgcolor=f_t3_sigCol(array.get(sigPol, k)))
+
+    // -- mode Groupé par couleur : toutes les cellules retriées par camp --
+    if grp
+        bl = array.new_string(0)
+        rd = array.new_string(0)
+        or_ = array.new_string(0)
+        // PIÈGE PINE v6 : on ne peut pas appeler une méthode sur un ternaire entre
+        // parenthèses — (cond ? a : b).push(x) donne une erreur CE10156. Il faut
+        // des `if` explicites.
+        for k = 0 to 5
+            if array.get(tfTr, k)
+                array.push(bl, "BULLISH")
+            else
+                array.push(rd, "BEARISH")
+            v = array.get(tfSt, k)
+            if v >= 75
+                array.push(bl, str.tostring(v) + "%")
+            else if v == 50
+                array.push(or_, str.tostring(v) + "%")
+            else
+                array.push(rd, str.tostring(v) + "%")
+            if array.get(ddB, k)
+                array.push(bl, array.get(ddTx, k))
+            else
+                array.push(rd, array.get(ddTx, k))
+        for k = 0 to 6
+            pol = array.get(sigPol, k)
+            if pol == 1
+                array.push(bl, array.get(sigVal, k))
+            else if pol == -1
+                array.push(rd, array.get(sigVal, k))
+            else
+                array.push(or_, array.get(sigVal, k))
+        nb = math.max(array.size(bl), math.max(array.size(rd), array.size(or_)))
+        for k = 0 to math.min(nb - 1, 9)
+            if k < array.size(bl)
+                table.cell(t3_tF, 0, k, array.get(bl, k), text_color=color.white, text_size=size.small, bgcolor=t3_cBull)
+            if k < array.size(or_)
+                table.cell(t3_tF, 2, k, array.get(or_, k), text_color=color.white, text_size=size.small, bgcolor=t3_cOrn)
+            if k < array.size(rd)
+                table.cell(t3_tF, 4, k, array.get(rd, k), text_color=color.white, text_size=size.small, bgcolor=t3_cBear)
+
+    // -- le badge du Feu, présent dans les 4 modes --
+    badge = t3_feuTxt + "  " + str.tostring(t3_pLong, "0") + "% / " + str.tostring(t3_pShort, "0") + "%  (" + str.tostring(t3_nLong) + "L " + str.tostring(t3_nShort) + "S / " + str.tostring(t3_nTot) + ")"
+    table.cell(t3_tF, 0, 9, badge, text_color=color.white, text_size=size.normal, bgcolor=t3_feuCol)
+
+alertcondition(t3_pLong  >= t3_seuil, "Feu LONG",  "Feu de Confluence passe au vert long")
+alertcondition(t3_pShort >= t3_seuil, "Feu SHORT", "Feu de Confluence passe au rouge short")
