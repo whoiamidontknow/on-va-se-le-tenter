@@ -19,8 +19,9 @@
 //                       sur 155 flèches (déclenchement, 14 exports MES+NQ,
 //                       7 unités de temps). Paramètres = optimum exact d'une
 //                       grille de 111 combinaisons. Au niveau Fort : 140/3/10.
-//   Climax (NOUVEAU)    jamais implémenté avant le 10/10. Rappel 90.8 %
-//                       sur 500 événements MES+NQ, précision 80.9 %.
+//
+//   Climax              DÉLIBÉRÉMENT ABSENT : il vit dans CLIMATOR.pine, un
+//                       indicateur séparé. Demande explicite de Jeremy.
 //
 // CE QU'IL NE CONTIENT PAS, ET POURQUOI
 //   TBT                 le libellé n'existe nulle part chez Ephore ; 2 cas
@@ -42,9 +43,8 @@
 //                   Vérifié par l'API TradingView : 0 erreur. Relu par agent :
 //                   fusion fidèle, aucune perte, aucune variable orpheline,
 //                   aucune collision. Deux garde-fous ajoutés après relecture :
-//                   Climax validé à la clôture (il a été calibré sur bougies
-//                   fermées) et avertissement visible si le graphique n'est pas
-//                   en Heiken Ashi.
+//                   avertissement visible si le graphique n'est pas en
+//                   Heiken Ashi.
 //   V2  2026-10-12  Signator V9 : la conviction exige en plus que la bougie
 //                   SATURE un terme du Candle Quality Filter (range >= 0.5×ATR
 //                   OU cpos >= 0.67). Les deux constantes existaient déjà dans
@@ -1671,95 +1671,6 @@ if barstate.islast and sg_show
     table.cell(sg_tbl, 1, 3, sg_scoreTxt, text_color=sg_scoreCol, text_size=sg_sz, text_halign=text.align_left)
     table.cell(sg_tbl, 0, 4, "TF", text_color=sg_c_lbl, text_size=sg_sz, text_halign=text.align_right)
     table.cell(sg_tbl, 1, 4, "Actuel", text_color=sg_c_off, text_size=sg_sz, text_halign=text.align_left)
-
-// ══════════════════════════════════════════════════════════════
-// EPHORE CLIMAX — NOUVEAU (10/10/2026)
-// ══════════════════════════════════════════════════════════════
-// Premier calage de ce module. Jusqu'au 10/10 il était listé « jamais traité ».
-//
-// Vérité terrain : les marqueurs clx_ de l'API publique du terminal web
-// (86 en 15m, 96 en 2m, avec sens buy/sell et niveau HIGH/PREMIUM), puis
-// VALIDATION CROISÉE indépendante sur les colonnes « Climax BUY/SELL
-// (confirmed) » de 21 exports TradingView — autre instrument (MES, NQ),
-// autre source, 7 unités de temps, 500 événements :
-//     rappel 454/500 = 90.8 %   précision 80.9 %
-// Le rappel est identique à celui mesuré sur l'API (91 %), donc la règle
-// n'est pas surajustée à un instrument.
-//
-// RÈGLE (toutes les valeurs sur bougies Heiken Ashi, sauf le volume)
-//   body = (close - open) / (high - low)
-//   vr   = volume / SMA20(volume), barre courante incluse
-//   BUY  si open == low  et  body >=  0.55  et  vr >= 1.5
-//          niveau PREMIUM si vr >= 2.0 et body >= 0.70, sinon HIGH
-//   SELL si open == high et -body >=  0.65  et  vr >= 2.0
-//          niveau TOUJOURS HIGH — aucun sell PREMIUM n'a jamais été observé,
-//          même à volume 12x et corps 0.76.
-//
-// FAITS ÉTABLIS, utiles si tu veux retoucher les seuils
-//   - « bougie HA sans mèche du côté du sens » est quasi nécessaire (52/56
-//     buys, 13/13 sells) mais très insuffisante : elle laisse 291 faux
-//     candidats buy en 15m. Ne pas s'en contenter.
-//   - le volume est le discriminant le plus fort (AUC 0.96).
-//   - le corps est une vraie porte : dans la bande 0.50-0.55, même à volume
-//     4x la moyenne, on compte 0 vrai pour 14 faux.
-//   - les sells sont plus exigeants que les buys (volume 2.0 vs 1.5,
-//     corps 0.65 vs 0.55).
-//
-// LIMITE CONNUE : la précision (80.9 %) est en retrait du rappel. 5 des 14
-// faux positifs analysés sont des déclenchements à ±3 barres d'un vrai
-// climax, donc une déduplication sur la fenêtre de 3 barres de la formation
-// en supprimerait environ un tiers. Non implémenté ici volontairement : la
-// règle brute est celle qui a été mesurée, on ne mélange pas les deux.
-// Détail complet dans tools/ephore_api/NOTES_CLIMAX.md.
-
-grp_clx = "=== EPHORE CLIMAX ==="
-clx_on       = input.bool(true,  "Afficher les climax", group=grp_clx)
-clx_confirm  = input.bool(true,  "Valider seulement à la clôture de la barre", group=grp_clx,
-     tooltip="La règle a été calibrée sur des bougies FERMÉES (exports CSV et marqueurs « confirmed » de l'API). En temps réel, le volume et le corps bougent : sans cette option un triangle peut apparaître puis disparaître avant la clôture. Laisser coché pour reproduire l'original.")
-clx_buyBody  = input.float(0.55, "Buy — corps minimum (|c-o| / range)",  group=grp_clx, minval=0.0, maxval=1.0, step=0.05)
-clx_buyVol   = input.float(1.5,  "Buy — volume minimum (× SMA20)",       group=grp_clx, minval=0.0, maxval=10.0, step=0.1)
-clx_selBody  = input.float(0.65, "Sell — corps minimum (|c-o| / range)", group=grp_clx, minval=0.0, maxval=1.0, step=0.05)
-clx_selVol   = input.float(2.0,  "Sell — volume minimum (× SMA20)",      group=grp_clx, minval=0.0, maxval=10.0, step=0.1)
-clx_pVol     = input.float(2.0,  "PREMIUM — volume minimum (× SMA20)",   group=grp_clx, minval=0.0, maxval=10.0, step=0.1)
-clx_pBody    = input.float(0.70, "PREMIUM — corps minimum",              group=grp_clx, minval=0.0, maxval=1.0, step=0.05)
-clx_cBuy     = input.color(#2962FF, "Couleur BUY (HIGH)",     group=grp_clx, inline="clxc")
-clx_cSell    = input.color(#F23645, "Couleur SELL (HIGH)",    group=grp_clx, inline="clxc")
-clx_cPrem    = input.color(#F5E24E, "Couleur PREMIUM",        group=grp_clx, inline="clxc")
-
-clx_rg   = high - low
-// Égalité open/low sur flottants : on tolère un centième de tick, ce qui
-// revient à l'égalité exacte sans dépendre de l'arrondi de la plateforme.
-clx_eps  = syminfo.mintick / 100.0
-clx_body = clx_rg > 0 ? (close - open) / clx_rg : 0.0
-clx_vma  = ta.sma(volume, 20)
-clx_vr   = clx_vma > 0 ? volume / clx_vma : 0.0
-
-// La regle repose sur « bougie HA sans meche du cote du sens ». Sur des bougies
-// NORMALES, open == low est frequent et le module produirait des signaux faux en
-// silence. On exige donc explicitement un graphique Heiken Ashi.
-clx_ok   = clx_on and chart.is_heikinashi and (not clx_confirm or barstate.isconfirmed)
-
-clx_buy  = clx_ok and clx_rg > 0 and clx_vma > 0 and (open - low) <= clx_eps
-             and clx_body >= clx_buyBody and clx_vr >= clx_buyVol
-clx_sell = clx_ok and clx_rg > 0 and clx_vma > 0 and (high - open) <= clx_eps
-             and -clx_body >= clx_selBody and clx_vr >= clx_selVol
-
-clx_prem = clx_buy and clx_vr >= clx_pVol and clx_body >= clx_pBody
-
-// PIÈGE PINE v6 (attrapé par le vérificateur de syntaxe, 10/10) : l'argument
-// `size` de plotshape exige un `const string`. Or input.string() renvoie un
-// `input string`, qui n'est PAS acceptée — erreur CE10123. La taille ne peut
-// donc pas être réglable par input ici : elle est figée.
-
-plotshape(clx_buy and not clx_prem, "Climax BUY (HIGH)",     style=shape.triangleup,
-     location=location.belowbar, color=clx_cBuy,  size=size.small)
-plotshape(clx_prem,                 "Climax BUY (PREMIUM)",  style=shape.triangleup,
-     location=location.belowbar, color=clx_cPrem, size=size.small)
-plotshape(clx_sell,                 "Climax SELL (HIGH)",    style=shape.triangledown,
-     location=location.abovebar, color=clx_cSell, size=size.small)
-
-alertcondition(clx_buy,  "Climax BUY",  "Climax acheteur Ephore")
-alertcondition(clx_sell, "Climax SELL", "Climax vendeur Ephore")
 
 // ══════════════════════════════════════════════════════════════
 // GARDE-FOU : graphique en Heiken Ashi
