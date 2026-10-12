@@ -396,3 +396,113 @@ Résultats du 10/10, qui reproduisent la V8 :
   scratchpad signator_v9/NOTES.md de la session du 02/10).
 - Pour aller plus loin : des exports de la **nouvelle** version sur des périodes déjà couvertes par
   d'anciens exports (pour avoir plus de flèches retirées), ou le journal des changements d'Ephore.
+
+---
+
+## 11. LA PIERRE DE ROSETTE DES RÉGLAGES (12/10) — à lire avant toute hypothèse sur un paramètre
+
+Jeremy a fourni les panneaux de réglages de **deux** versions d'Ephore : une ancienne
+où les paramètres portent leurs **vrais noms**, et la dernière où le créateur les a
+anonymisés en « Réglage 1 » à « Réglage 82 » pour empêcher la copie. Les deux listent
+**les mêmes champs dans le même ordre de déclaration**. Tout est donc décodable, et la
+table complète est dans **`tools/NOTES_REGLAGES_ROSETTE.md`**.
+
+Deux preuves que la table est complète : les numéros vont de 1 à 82 **sans aucun trou**,
+et l'ancien panneau reconstitue **exactement les 67 valeurs** de la légende TradingView,
+dans l'ordre et sans décalage.
+
+### Ce que ça CORRIGE dans ce document
+
+1. **`22 0,34 3 8 1 1 0,45 0,12 20 61,8 0,3` est le RANGEATOR, pas le Signator.**
+   Certitude : ce sont les Réglages 41 à 51, sous l'en-tête `RANGEATOR · DÉTECTION`.
+   Conséquence sur §5 : les tests qui « réfutaient » ces valeurs ne réfutaient rien,
+   ils appliquaient au Signator les réglages d'un autre module. **Erreur de catégorie,
+   pas falsification.** Le `61,8` n'est pas un niveau de Fibonacci d'entrée sur repli.
+
+2. **Le Seuil de Force à 18 est CONFIRMÉ par le panneau** (`Réglage 5 = 18`). Ce n'était
+   jusqu'ici qu'un optimum trouvé sur grille ; c'est désormais une valeur lue.
+
+3. **Il n'y a pas de plage de séance 09:00–20:00.** Ce que la légende montrait ainsi,
+   c'étaient les ouvertures de marché et les créneaux personnalisés du Blackout, tous
+   **décochés**. Confirme par le panneau la piste morte déjà mesurée.
+
+4. **`Réglage 82 = 60` est le seuil du Feu de Confluence** — le même 60 % que l'API.
+   Et l'en-tête `… Large 8 60 …` n'était pas des EMA 8/60, c'était ce bloc.
+
+5. **Il n'existe aucun input de période pour le Moyenator**, dans aucune version :
+   les EMA 50 et 60 sont codées en dur dans l'original. Inutile de les chercher.
+
+6. **Le tableau Signator a été supprimé** de la dernière version, et `INDICATOR|SIGNAL`
+   et `TIMEFRAME|TREND` ont **fusionné** en une TABLE UNIFIÉE. Les captures prises avant
+   et après la bascule du 30/09 ne décrivent donc pas le même objet.
+
+### Les modules entiers qu'on ignorait
+
+- **`BLACKOUT NO-TRADE`** — entièrement en clair, aucun paramètre anonymisé. Résolu et
+  implémenté, voir §12.
+- **`RANGEATOR`** — 21 réglages plus 10 inputs de style. Jamais calibré : ses colonnes
+  sont vides dans tous les exports.
+- **`MONDAY HIGH LOW`** — 4 inputs, historique 26 semaines. Jamais vu auparavant.
+- **`TABLE UNIFIÉE`** — avec `Points = 8`, `Disposition des cellules` et `Côté des camps`.
+
+### La tension non résolue, à ne pas enterrer
+
+Le panneau donne **4 poids à 25 %** et **aucun poids pour l'Engulfing**, qui est un filtre
+dur coché. Or notre simulation mesure qu'une pondération 4×25 % dégrade le résultat. Et
+surtout : si l'Engulfing était un vrai veto, il tuerait **tous** les signaux en Heiken Ashi,
+où l'englobement vaut toujours 0 — ce n'est pas le cas. Lecture la plus économique : le
+`Mode Scoring` **remplace** les filtres au lieu de s'y ajouter. **Ne pas toucher au score
+tant que ce n'est pas tranché sur données** ; la V9 des flèches est à 100 % de précision
+et n'en dépend pas.
+
+---
+
+## 12. BLACKOUT NO-TRADE — résolu et implémenté (12/10)
+
+**Un bug réel corrigé.** Notre filtre testait si la bougie **contient** 14:30 ou 16:00.
+L'original teste si la bougie **ouvre** à cette heure. Mesuré sur les 176 flèches :
+« contient » en bloque **30**, « ouvre à » en bloque **9**. On détruisait 21 bonnes flèches
+dès que la case était cochée — Jeremy l'a toujours laissée décochée, le bug n'a jamais mordu.
+Preuve la plus nette : l'original conserve 14 des 15 flèches journalières, alors qu'un jour
+contient forcément 14:30.
+
+**Règle validée**, mêmes paramètres sur deux jeux de données indépendants :
+
+```
+fuseau America/New_York ; on teste l'heure d'OUVERTURE de la bougie
+  08:30 ET  (données US : CPI, PPI, Retail, GDP, PCE, NFP, Jobless) — tous les jours
+  10:00 ET  (données : ISM, JOLTS, UMich)                           — tous les jours
+  marge ±3 min
+DÉCOCHÉS chez Ephore : ouverture Europe 09:00, ouverture US 09:30 ET, FOMC, créneaux persos
+```
+
+Accord : **13 retraits corrects, 0 à tort, 6 non expliqués → précision 100 %.**
+
+Les ouvertures de marché sont décochées **par mesure, pas par supposition** : 3 flèches sont
+conservées à 15:30 Paris et 2 à 09:00. **C'est là que le graphique de Jeremy diffère du
+terminal web**, qui lui affiche bien 4 bandes rouges (§9). Le panneau dit ce que le créateur
+a *écrit* ; chaque copie exécute ses propres réglages.
+
+Le code exprime les heures en fuseau New York, donc **le changement d'heure se règle tout
+seul** : du 25 au 31 octobre 2026, 08:30 ET tombe à 13:30 Paris. C'est précisément la semaine
+que nos données ne couvrent pas — elle est gérée sans qu'on ait eu à la mesurer.
+
+**Les 6 retraits restants ne sont pas un sujet d'horaire** : leurs heures sont toutes
+différentes et non récurrentes. Ils ont une signature de volume (4 sur 5 mesurables ont
+vol/SMA20 < 0,50 ; p = 0,0012), mais le plancher de volume reste **non viable** — il tue plus
+de bonnes flèches qu'il n'en retire. Piste morte confirmée pour la troisième fois.
+
+### Ce que le panneau ne permet PAS de conclure
+
+La marge de ±3 min **n'est pas contrainte par les données** : toute valeur de 0 à 9 donne le
+même résultat, la flèche conservée la plus proche d'un créneau étant à 10 minutes. La valeur 3
+vient du panneau, pas d'une mesure. De même, NFP, Jobless, FOMC et les créneaux personnalisés
+sont réglés **par absence de contre-exemple**, pas par des cas positifs.
+
+### Leçon de méthode, valable au-delà de ce module
+
+**Quand un panneau de réglages et une mesure se contredisent, on garde la mesure.** Le cas du
+grisage du Detector l'illustre : le panneau indique « 1,5 % fixe », mais ce seuil griserait
+16 des 19 boîtes observées alors qu'une seule l'est. Soit le terminal web est réglé autrement,
+soit « 1,5 % » mesure autre chose. Le code garde donc la règle vérifiée par défaut et expose
+la structure du vrai réglage pour pouvoir élargir.
