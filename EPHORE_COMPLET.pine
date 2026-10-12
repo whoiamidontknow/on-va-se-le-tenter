@@ -1,6 +1,6 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE COMPLET — VERSION V1 (2026-10-10)
+// EPHORE COMPLET — VERSION V2 (2026-10-12)
 // Indicateur unique regroupant TOUT ce qui est validé sur données.
 // PORSCHEONARRIVE.pine et TABLEAU.pine restent inchangés : ce fichier
 // les consolide, il ne les remplace pas tant que Jeremy n'a pas tranché.
@@ -45,6 +45,12 @@
 //                   Climax validé à la clôture (il a été calibré sur bougies
 //                   fermées) et avertissement visible si le graphique n'est pas
 //                   en Heiken Ashi.
+//   V2  2026-10-12  Signator V9 : la conviction exige en plus que la bougie
+//                   SATURE un terme du Candle Quality Filter (range >= 0.5×ATR
+//                   OU cpos >= 0.67). Les deux constantes existaient déjà dans
+//                   le score. Résultat : 153 exactes / 0 en trop / 2 manquées,
+//                   soit une PRÉCISION DE 100 % contre 96.2 %, sans perdre une
+//                   seule vraie flèche. Réversible par input.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -1606,7 +1612,33 @@ sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
 sg_ema60  = ta.ema(close, 60)
 sg_dBand  = sg_heiBull ? (close - math.max(sg_ema50, sg_ema60)) / sg_atr : (math.min(sg_ema50, sg_ema60) - close) / sg_atr
 sg_conv   = sg_dBand >= 0.3 or volume >= sg_volMa
-sg_base   = sg_arrows and sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and not sg_newsBar
+
+// ─── V9 : la bougie du signal doit SATURER un terme du Candle Quality Filter ───
+// Trouvé le 12/10 par deux recherches indépendantes qui ont convergé.
+// La V8 notait le momentum et la position de clôture dans le score, sans jamais
+// exiger qu'ils soient atteints. L'original, lui, exige que l'un des deux le soit.
+//   momentum saturé  : range >= 0.5 × ATR14   (la constante 0.5 est déjà celle
+//                      de sg_sMom ci-dessus, min(range / (0.5·ATR), 1))
+//   clôture saturée  : cpos  >= 0.67          (déjà celle de sg_sStr, cpos/0.67)
+// AUCUNE constante nouvelle : c'est une relecture du filtre existant, qui passe
+// de « noté » à « doit être franchi ». Ce n'est donc pas un seuil ajusté.
+//
+// Effet mesuré sur le groupe 4 des 14 exports « Base 10:10/Ajustements »
+// (MES + NQ, 7 unités de temps, ~9000 barres, 155 flèches de vérité) :
+//     V8   153 exactes / 6 en trop / 2 manquées   précision  96.2 %
+//     V9   153 exactes / 0 en trop / 2 manquées   précision 100.0 %
+// Aucune perte de rappel. Confirmé sur Singal (5 → 3 faux) et Filtres (5 → 3),
+// où les 3 restants sont des flèches d'une AUTRE version d'Ephore, pas des
+// erreurs. Les 6 faux positifs de la V8 échouent tous la clause, et les
+// 155 vraies flèches la passent toutes (155/155).
+// Les 6 faux positifs occupaient 6 des 7 plus petits range/ATR sur 161
+// événements : p = 3.2e-10. Validation croisée MES↔NQ et par unité de temps :
+// le seuil 0.50 ressort indépendamment à chaque découpage.
+sg_v9     = input.bool(true, "Conviction V9 : exiger momentum OU clôture saturés", group=grp_sg,
+     tooltip="Ajoute à la conviction V8 la condition « range >= 0.5×ATR14 OU position de clôture >= 0.67 ». Mesuré : 6 faux positifs supprimés sur 6, zéro vraie flèche perdue. Décocher pour retrouver le comportement V8 exact.")
+sg_satur  = sg_rng >= 0.5 * sg_atr or sg_cpos >= 0.67
+
+sg_base   = sg_arrows and sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and (not sg_v9 or sg_satur) and not sg_newsBar
 sg_isFort = sg_score >= sg_scoreMin
 sg_long   = sg_base and sg_heiBull and sg_isFort
 sg_short  = sg_base and not sg_heiBull and sg_isFort

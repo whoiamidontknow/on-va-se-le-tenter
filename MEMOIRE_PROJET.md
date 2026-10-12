@@ -137,6 +137,50 @@ EMA50 et EMA60 du close (+ remplissage).
 | API 15m (bandes d'annonces appliquées) | 23 | 2 | 0 | 100 % | **92.0 %** |
 | API 2m | 19 | 0 | 1 | 95.0 % | **100 %** |
 
+### FLÈCHES — PRÉCISION 100 % le 12/10 (Signator V9)
+
+**Ce qui manquait : la bougie du signal doit SATURER un terme du Candle Quality Filter.**
+La V8 notait le momentum et la position de clôture dans le score, sans jamais exiger qu'ils
+soient atteints. L'original exige que l'un des deux le soit.
+
+```
+V9 = V8  ET  ( range >= 0.5 × ATR14   OU   cpos >= 0.67 )
+```
+
+**Aucune constante nouvelle** : 0.5·ATR est déjà celle de `sg_sMom`, et 0.67 celle de
+`sg_sStr`. C'est une relecture du filtre existant, qui passe de « noté » à « doit être
+franchi ». Ce n'est donc pas un seuil ajusté aux données.
+
+| corpus | V8 | V9 |
+|---|---|---|
+| Ajustements groupe 4 (155 flèches, MES+NQ, 7 TF, ~9000 barres) | 153/6/2 — précision 96.2 % | **153/0/2 — précision 100 %** |
+| `~/Ephore/Singal` | 118/5/1 | 118/**3**/1 |
+| `~/Ephore/Filtres` | 70/5/0 | 70/**3**/0 |
+| API terminal 15m | 23/6/0 | 23/**5**/0 |
+
+Aucune perte de rappel nulle part. Les 3 « en trop » restants sur Singal et Filtres sont les
+flèches du **groupe 2** (28/09 16:15, 25/09 09:00, 29/09 18:00) : différences de version, pas
+des erreurs.
+
+**Solidité.** Deux recherches indépendantes ont convergé dessus le même jour : l'une sur les
+variables de contexte, l'autre sur la forme de la conviction (~186 500 combinaisons). Les
+6 faux positifs de la V8 occupaient **6 des 7 plus petits `range/ATR`** sur 161 événements —
+p = 3.2e-10. Validation croisée MES↔NQ et par groupes d'unités de temps : le seuil 0.50
+ressort indépendamment à chaque découpage.
+
+**Les 2 manquées restantes** sont des échecs de conviction de peu, sans rapport avec la V9 :
+MES 5m 08/10 07:05 (dBand 0.28 contre 0.30, volume 0.89 contre 1.00) et NQ 240 31/07 08:00
+(dBand 0.20, volume 0.69).
+
+**Pistes mortes, ne pas refaire** : plage de séance dans les deux fuseaux (600 fenêtres —
+46 % des vraies flèches sont hors 09:00-20:00 Paris, donc le `9 0 … 20 0` de la légende ne
+concerne PAS les flèches) ; jour de la semaine ; volume rapporté au même créneau horaire
+(fait passer les faux de 6 à 17) ; distance au plus haut/bas ; délai minimum entre flèches ;
+régime ATR ; plancher de volume sur la clause dBand (supprime les faux mais tue 25 vraies).
+
+Implémenté dans `EPHORE_COMPLET.pine` V2, réversible par input. Scripts :
+`tools/ephore_api/sim_signator_conviction_v9.py` et `sim_signator_range_atr.py`.
+
 **LE DÉCLENCHEMENT DES FLÈCHES EST RÉSOLU (10/10).** Mesuré sur le groupe 4 des 14 exports
 « Ajustements », **sans distinguer Fort et Moyen** : **153 exactes, 6 en trop, 2 manquées** sur
 155 flèches — rappel 98.7 %, précision 96.2 %. Vérifié deux fois.
