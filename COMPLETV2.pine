@@ -1920,8 +1920,16 @@ t3_d6 = request.security(syminfo.tickerid, t3_dd6, f_t3_ha(), lookahead=barmerge
 t3_sigST  = t3_std < 0
 t3_sigMA  = close > ta.ema(close, 50)
 t3_sigVW  = close > ta.vwap(hlc3)
-t3_lrNow  = ta.linreg(close, 100, 0)
-t3_sigLR  = t3_lrNow > ta.linreg(close, 100, 1)
+// LIN REGRESS — deux lectures sont possibles et nous avions choisi la seconde
+// sans jamais la vérifier. Sur le relevé simultané du 13/10, l'original affiche
+// Bull là où nous affichons Bear : notre lecture est donc probablement la
+// mauvaise. Le réglage permet de trancher en une seconde sur le graphique.
+t3_lrLen  = input.int(100, "Lin Regress — période", group=grp_t3, minval=2)
+t3_lrMode = input.string("Prix au-dessus de la droite", "Lin Regress — critère", group=grp_t3,
+     options=["Prix au-dessus de la droite", "Droite orientée à la hausse"],
+     tooltip="Le premier compare la clôture à la droite de régression. Le second regarde la pente de la droite — c'est ce que nous faisions, et ça ne correspond pas au relevé.")
+t3_lrNow  = ta.linreg(close, t3_lrLen, 0)
+t3_sigLR  = t3_lrMode == "Prix au-dessus de la droite" ? close > t3_lrNow : t3_lrNow > ta.linreg(close, t3_lrLen, 1)
 [t3_pdh, t3_pdl, t3_pdc] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
 t3_cprP  = (t3_pdh + t3_pdl + t3_pdc) / 3
 t3_cprBC = (t3_pdh + t3_pdl) / 2
@@ -1931,14 +1939,26 @@ t3_cprLo = math.min(t3_cprTC, t3_cprBC)
 t3_cpr   = close > t3_cprHi ? 1 : close < t3_cprLo ? -1 : 0
 t3_cprTx = t3_cpr == 1 ? "Above TC" : t3_cpr == -1 ? "Below BC" : "Inside"
 
+// ORB — CORRIGÉ le 13/10. Nous ancrions la plage d'ouverture sur le début de la
+// bougie JOURNALIÈRE (`ta.change(time("D"))`). Or pour un future comme MES ou NQ,
+// la journée TradingView commence à 18:00 New York, c'est-à-dire à l'ouverture
+// de la séance de nuit. Nous mesurions donc les 15 premières minutes de la nuit,
+// pas celles de la séance régulière — une zone de prix sans rapport. D'où le
+// « Below » que nous affichions quand l'original affichait « In Range ».
+// L'ancre est désormais la première barre de la séance régulière.
+t3_orbSess = input.session("0930-1600", "ORB — séance de référence", group=grp_t3,
+     tooltip="Heure de New York. 0930-1600 = séance régulière américaine, celle qu'un ORB mesure par convention.")
+t3_orbMin  = input.int(15, "ORB — durée en minutes", group=grp_t3, minval=1, maxval=240)
+t3_inSess  = not na(time(timeframe.period, t3_orbSess, "America/New_York"))
+t3_sessOpn = t3_inSess and not t3_inSess[1]
 var float t3_orbH = na
 var float t3_orbL = na
 var int   t3_orbT = na
-if ta.change(time("D")) != 0
+if t3_sessOpn
     t3_orbT := time
     t3_orbH := high
     t3_orbL := low
-else if not na(t3_orbT) and time - t3_orbT < 15 * 60 * 1000
+else if not na(t3_orbT) and time - t3_orbT < t3_orbMin * 60 * 1000
     t3_orbH := math.max(t3_orbH, high)
     t3_orbL := math.min(t3_orbL, low)
 t3_orb   = not timeframe.isintraday or na(t3_orbH) ? 0 : close > t3_orbH ? 1 : close < t3_orbL ? -1 : 0
