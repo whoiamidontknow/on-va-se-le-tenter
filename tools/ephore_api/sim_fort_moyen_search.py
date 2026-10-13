@@ -40,6 +40,7 @@ def load():
         for k in NUM:
             r[k] = fnum(r.get(k))
         r["run"] = fnum(r.get("run"))
+        r["bidx"] = fnum(r.get("bidx"))
     return rows
 
 
@@ -51,7 +52,13 @@ def dedup(rows):
         by[(r["sym"], r["tf"], r["time"], r["sens"])].append(r)
     out, mism = [], []
     for k, v in by.items():
-        v.sort(key=lambda r: 0 if r["src"] == "ajust" else 1)
+        # on garde en priorite le lot le plus "chauffe" (plus de barres avant la
+        # fleche), car ADX/ATR ne sont pas converges en debut de fichier ;
+        # a egalite, le lot `ajust` qui possede le volume.
+        v.sort(key=lambda r: (-(r.get("bidx") or 0) // 1,
+                              0 if r["src"] == "ajust" else 1))
+        for r in v:
+            r["bidx"] = fnum(r.get("bidx"))
         base = dict(v[0])
         if len(v) > 1:
             for f in NUM:

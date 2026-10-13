@@ -569,3 +569,75 @@ Inutile de redemander un export : même réglages changés, le résultat sera id
 3. **Capture + export au même instant**, 5 m sur NQ (son preset est « Scalping Nasdaq (1-5m) ») :
    les bornes sont probablement `ta.highest/lowest` sur la fenêtre du range ; on lit les niveaux sur
    la capture et on cherche quelle barre du CSV porte ce `high`/`low`.
+
+---
+
+## 14. SCORE FORT/MOYEN — le symptôme de Jeremy expliqué et corrigé, la frontière déclarée non calable (13/10)
+
+Jeremy avait signalé : « le seuil de score n'est pas tout à fait bon, il me figure **fort** en ce
+moment alors qu'il est **moyen** chez nous ». Et il a proposé la bonne méthode : « si les flèches
+correspondent, alors il y a un paramètre qui fait que lorsque les flèches s'affichent ça veut dire
+que c'est fort ». C'est-à-dire : ne plus chercher à caler un seuil absolu, mais trouver ce qui
+sépare deux groupes de flèches qu'on reproduit déjà parfaitement.
+
+### La cause du symptôme — corrigée
+
+**Nous moyennions CINQ termes, le panneau n'en pondère que QUATRE.** Il donne
+`Poids Structure / Momentum / Volume / Gap = 25` chacun, soit 100 % à eux quatre :
+**l'englobement n'a aucun poids**. Or nous le comptions comme 5ᵉ terme, et en Heiken Ashi une
+bougie n'englobe jamais la précédente — ce terme vaut donc **toujours 0**. Notre score plafonnait
+à 80, et un seuil à 50 agissait en réalité comme un seuil à 62 % de l'échelle atteignable.
+
+Mesuré sur les 203 flèches de l'original (197 FORT, 6 MOYEN) :
+
+| formule du score | vraies FORT déclassées à tort | MOYEN attrapées | erreurs |
+|---|---:|---:|---:|
+| moyenne des **5** termes (notre code) | **15** | 2 / 6 | **19** |
+| moyenne des **4** termes (panneau) | **3** | 0 / 6 | **9** |
+| ne rien classer, tout FORT | 0 | 0 / 6 | **6** |
+
+Le score est passé à 4 termes dans les trois fichiers. L'englobement reste calculé : il sert aux
+filtres, pas au score.
+
+### La frontière elle-même n'est pas calable, et il faut le dire
+
+**Il n'y a que 6 flèches MOYEN dans toutes nos données, soit 3,0 %** — et ce sont les mêmes dans
+les deux lots d'exports. Sur **~145 000 combinaisons testées** (9 780 seuils simples sur 28
+grandeurs, 105 300 conjonctions à deux conditions, grilles fines, sous-ensemble 1D isolé) :
+**aucun séparateur parfait, et 7 règles seulement battent « tout FORT »** — toutes fondées sur
+l'ATR ou la largeur de Bollinger **en points de prix absolus**, c'est-à-dire des détecteurs
+d'instrument, pas de force de bougie.
+
+Le cas qui tue toute hypothèse de seuil monotone : **MES 1D 2025-11-19 est MOYEN avec un score de
+67, au-dessus de la médiane des FORT.**
+
+Répartition par pli de validation : MES 1 MOYEN, intraday 2 MOYEN. **6 exemples pour 1 paramètre
+libre, ce n'est pas calable.** L'API publique n'aide pas : 114 flèches, **0 MOYEN**.
+
+### L'indice le plus prometteur pour la suite
+
+**0 MOYEN sur les 125 flèches de 2 à 30 minutes, mais 4 sur 15 en journalier** (26,7 % contre
+1,1 %). Si le niveau dépendait d'une propriété de la bougie de signal, cette concentration n'aurait
+aucune raison d'exister. Elle oriente vers une cause **non locale** — un vote multi-unités, peut-être
+le Feu de Confluence — qui se dégrade quand on est déjà sur l'unité la plus haute. Intestable
+aujourd'hui : il n'existe pas d'unité supérieure exportée au-dessus de 1D.
+
+### Pistes épuisées — NE PAS LES REFAIRE
+
+Seuil sur chacune des 28 grandeurs dans les deux sens ; seuils sur score5/score4/score3 ; les deux
+clauses V9 (`cpos ≥ 0.67`, `range ≥ 0,5 ATR`) seules, en ET, en OU ; les deux clauses de conviction ;
+ADX à 18/20/22/25/30 ; comptage « au moins N des 5 termes saturés » ; 105 300 conjonctions à deux
+conditions ; le sous-ensemble 1D isolé ; l'API comme oracle alternatif.
+
+### Ce qu'il faut pour trancher
+
+**Plus de MOYEN, et on sait où les pêcher : en journalier.** Une dizaine d'exports **1D** sur
+d'autres instruments (YM, RTY, CL, GC, EURUSD, BTC, SPY, QQQ, AAPL…), avec l'indicateur **Volume**
+affiché et l'historique maximal, donnerait 25 à 35 MOYEN — cinq fois la base actuelle, et de quoi
+caler un seuil et le vérifier en validation croisée.
+
+Alternative gratuite déjà proposée : **baisser le « Score Minimum » d'une instance de 50 à 35**,
+ce qui ferait émettre beaucoup plus de MOYEN.
+
+Et un seul **screen du Feu de Confluence au moment d'une flèche MOYEN** trancherait l'hypothèse
+multi-unités d'un coup.

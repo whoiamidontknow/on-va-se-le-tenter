@@ -1651,7 +1651,21 @@ sg_volMa = ta.sma(volume, 20)
 sg_sVol  = sg_volMa > 0 ? math.min(volume / sg_volMa, 1.0) : 0.0
 sg_sGap  = math.min(math.abs(open - close[1]) / math.max(0.3 * sg_atr, syminfo.mintick), 1.0)
 sg_eng   = (sg_heiBull ? close > open[1] and open < close[1] : open > close[1] and close < open[1]) and high > high[1] and low < low[1]
-sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap + (sg_eng ? 1.0 : 0.0)) / 5.0 * 100.0
+// SCORE = moyenne des QUATRE termes pondérés du panneau, pas cinq.
+//
+// Le panneau d'Ephore donne « Poids Structure / Momentum / Volume / Gap = 25 »
+// chacun, soit 100 % à eux quatre. **L'englobement n'a aucun poids.** Nous le
+// comptions comme un 5ᵉ terme, et comme il vaut TOUJOURS 0 en Heiken Ashi
+// (une bougie HA n'englobe jamais la précédente), notre score plafonnait à 80.
+// Un seuil à 50 agissait donc en réalité comme un seuil à 62 % de l'échelle
+// atteignable — d'où le biais que Jeremy a constaté : « il me figure fort alors
+// qu'il est moyen chez nous ».
+//
+// MESURÉ sur les 203 flèches de l'original (197 FORT / 6 MOYEN) :
+//     moyenne des 5 termes : 15 vraies FORT déclassées à tort, 19 erreurs
+//     moyenne des 4 termes :  3 vraies FORT déclassées à tort,  9 erreurs
+// L'englobement reste calculé : il sert aux filtres, pas au score.
+sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap) / 4.0 * 100.0
 sg_scoreTxt = sg_score >= sg_scoreMin ? "Fort" : sg_score >= sg_force ? "Moyen" : "Faible"
 sg_scoreCol = sg_score >= sg_scoreMin ? sg_c_ok : sg_score >= sg_force ? sg_c_warn : sg_c_dn
 

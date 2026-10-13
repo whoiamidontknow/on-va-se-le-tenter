@@ -241,7 +241,7 @@ FIELDS = ["src", "sym", "tf", "time", "grp", "sens", "label",
           "score5", "score4", "score3", "adx", "dip", "dim", "dirdi",
           "rsi", "rsidir", "cci", "ccidir", "atr", "rng_atr", "body_rng",
           "cpos", "awick", "body_atr", "vol_sma", "dband", "d50", "bbw",
-          "bbpos", "gap_atr", "has_vol"]
+          "bbpos", "gap_atr", "has_vol", "bidx", "nbars"]
 
 
 def run_dir(root, tag, rows, stats):
@@ -273,7 +273,7 @@ def run_dir(root, tag, rows, stats):
                 r = dict(F[i])
                 r.update(src=tag, sym=sym, tf=tf, time=d["t"][i].isoformat(),
                          grp=gname, sens=sens, label=label,
-                         has_vol=int(d["has_vol"]))
+                         has_vol=int(d["has_vol"]), bidx=i, nbars=len(d["t"]))
                 rows.append(r)
                 if gname == "g4":
                     stats.setdefault((tag, sym, tf), {"FORT": 0, "MOYEN": 0})
