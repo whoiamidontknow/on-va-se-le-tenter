@@ -30,7 +30,7 @@
 //                       de structure certaine mais formule non démontrée),
 //                       Dashator (6/6 sur une capture, 5/6 sur l'autre).
 //   Feu de Confluence   NOUVEAU 12/10. 25 voix câblées sur les 29 de l'original.
-//   4 dispositions      Séparés / Fusionné / Groupé par couleur / Feu seul.
+//   dispositions        Normal / Groupé par couleur / Feu seul (+ Séparés, ancienne version).
 //
 // CE QU'IL NE CONTIENT PAS, ET POURQUOI
 //   TBT                 le libellé n'existe nulle part chez Ephore ; 2 cas
@@ -1818,9 +1818,13 @@ if barstate.islast and not chart.is_heikinashi
 
 grp_t3 = "=== LES 3 TABLEAUX ==="
 t3_on   = input.bool(true, "Afficher les 3 tableaux", group=grp_t3)
-t3_mode = input.string("Séparés", "Disposition des cellules", group=grp_t3,
-     options=["Séparés", "Fusionné", "Groupé par couleur", "Feu seul"],
-     tooltip="Séparés = 3 panneaux distincts (comme la v30). Fusionné = une seule grille de 6 colonnes sans libellés. Groupé par couleur = toutes les cellules retriées par camp. Feu seul = uniquement le badge.")
+// Les trois premiers noms sont ceux du menu déroulant d'Ephore, lus sur la
+// capture du 13/10. « Séparés » est en plus : c'est la disposition de l'ANCIENNE
+// version, où les tableaux INDICATOR|SIGNAL et TIMEFRAME|TREND étaient encore
+// deux panneaux distincts. Ils ont fusionné depuis.
+t3_mode = input.string("Normal", "Disposition des cellules", group=grp_t3,
+     options=["Normal", "Groupé par couleur", "Feu seul", "Séparés (ancienne version)"],
+     tooltip="Normal = la grille unifiée d'Ephore : TREND, STRENGTH, unité de temps, puis les indicateurs. Groupé par couleur = toutes les cellules retriées par camp. Feu seul = uniquement le badge. Séparés = les 3 panneaux de l'ancienne version.")
 t3_seuil = input.int(60, "Seuil du Feu de Confluence (%)", group=grp_t3, minval=50, maxval=100)
 t3_posS  = input.string("Bottom Left",  "Position — INDICATOR | SIGNAL", group=grp_t3,
      options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
@@ -1980,8 +1984,8 @@ if barstate.islast and t3_on
     ddTx   = array.from(t3_dd1, t3_dd2, t3_dd3, t3_dd4, t3_dd5, t3_dd6)
     ddB    = array.from(t3_d1, t3_d2, t3_d3, t3_d4, t3_d5, t3_d6)
 
-    sep = t3_mode == "Séparés"
-    fus = t3_mode == "Fusionné"
+    sep = t3_mode == "Séparés (ancienne version)"
+    fus = t3_mode == "Normal"
     grp = t3_mode == "Groupé par couleur"
 
     // -- mode Séparés : les 3 panneaux comme la v30 --
@@ -2006,18 +2010,31 @@ if barstate.islast and t3_on
             table.cell(t3_tD, 0, k + 1, array.get(ddTx, k), text_color=color.white, text_size=size.small,
                  bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
 
-    // -- mode Fusionné : une grille de 6 colonnes, sans libellés --
+    // -- mode Normal : la grille unifiée d'Ephore --
+    // Structure relevée sur la capture du 13/10 :
+    //   col 0 = TREND, col 1 = STRENGTH, col 2 = unité de temps,
+    //   col 3 à 5 = les valeurs d'indicateurs, qui coulent dans le sens de
+    //   la lecture (3 par ligne), sans aucun libellé de colonne.
+    //     BULLISH  100%  1m   Bearish  —          Bear
+    //     BULLISH  100%  5m   0 / 3    89.71      Bear
+    //     BEARISH  75%   15m  1 / 3    53.77      Bear
+    //     BEARISH  25%   1H   0.12%    Bullish    Bull
+    //     BEARISH  0%    4H   32.41%   SUPERBULL  Below BC
+    //     BULLISH  50%   1D   67.59%   SUPERBULL  In Range
     if fus
         for k = 0 to 5
             table.cell(t3_tF, 0, k, array.get(tfTr, k) ? "BULLISH" : "BEARISH", text_color=color.white,
                  text_size=size.small, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
             table.cell(t3_tF, 1, k, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
                  text_size=size.small, bgcolor=f_t3_stCol(array.get(tfSt, k)))
-            table.cell(t3_tF, 2, k, array.get(ddTx, k), text_color=color.white, text_size=size.small,
-                 bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
+            table.cell(t3_tF, 2, k, array.get(tfTx, k), text_color=color.silver, text_size=size.small)
         for k = 0 to 6
-            table.cell(t3_tF, 5, k, array.get(sigVal, k), text_color=color.white, text_size=size.small,
-                 bgcolor=f_t3_sigCol(array.get(sigPol, k)))
+            table.cell(t3_tF, 3 + k % 3, int(k / 3), array.get(sigVal, k), text_color=color.white,
+                 text_size=size.small, bgcolor=f_t3_sigCol(array.get(sigPol, k)))
+        for k = 0 to 5
+            table.cell(t3_tF, 3 + (k + 7) % 3, int((k + 7) / 3), array.get(ddTx, k),
+                 text_color=color.white, text_size=size.small,
+                 bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
 
     // -- mode Groupé par couleur : toutes les cellules retriées par camp --
     if grp
