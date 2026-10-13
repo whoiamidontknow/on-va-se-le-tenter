@@ -1855,7 +1855,10 @@ t3_posD  = input.string("Bottom Center","Position — Dashator", group=grp_t3,
      options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
 t3_posF  = input.string("Middle Left",  "Position — tableau fusionné / badge", group=grp_t3,
      options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
-t3_tf1 = input.timeframe("3",   "TIMEFRAME — unité 1", group=grp_t3)
+t3_sz    = input.string("Normal", "Taille du texte", group=grp_t3,
+     options=["Tiny", "Small", "Normal", "Large", "Huge"],
+     tooltip="Ce réglage ne pilotait rien : les cellules étaient figées en « Small ». Il agit désormais sur tout le tableau unifié.")
+t3_tf1 = input.timeframe("1",   "TIMEFRAME — unité 1", group=grp_t3)
 t3_tf2 = input.timeframe("5",   "TIMEFRAME — unité 2", group=grp_t3)
 t3_tf3 = input.timeframe("15",  "TIMEFRAME — unité 3", group=grp_t3)
 t3_tf4 = input.timeframe("60",  "TIMEFRAME — unité 4", group=grp_t3)
@@ -1877,6 +1880,10 @@ t3_cNeut = color.rgb(45, 46, 70)
 
 // ─── Le paquet multi-unités : TREND + les 4 tests du STRENGTH ───
 // Un seul request.security par unité : on respecte la limite de 40 appels.
+f_t3_tfLbl(_tf) =>
+    _n = str.tonumber(_tf)
+    na(_n) ? _tf : _n >= 1440 ? str.tostring(_n / 1440, "#") + "D" : _n >= 60 ? str.tostring(_n / 60, "#") + "H" : str.tostring(_n, "#") + "m"
+
 f_t3_pack() =>
     e50 = ta.ema(close, 50)
     [m, sg, _h] = ta.macd(close, 12, 26, 9)
@@ -1994,12 +2001,26 @@ if barstate.islast and t3_on
         t3_tF := table.new(f_t3_pos(t3_posF), 6, 10, bgcolor=t3_cDark, border_width=1, border_color=color.rgb(95, 97, 125))
         t3_init := true
 
+    szU    = f_sz(t3_sz)
+    // Libellés d'unités comme chez l'original : 1m, 5m, 15m, 1H, 4H, 1D —
+    // et non les chaînes brutes "60" et "240" qu'on affichait.
+    mainL  = array.from(st_trendUp ? "Bullish" : "Bearish", str.tostring(st_bullCount) + " / 3",
+                        str.tostring(st_bearCount) + " / 3", str.tostring(st_yoyo, "#.##") + "%",
+                        str.tostring(st_bullPct, "#.##") + "%", str.tostring(st_bearPct, "#.##") + "%",
+                        st_divShow, st_vixTxt, st_lvl1)
+    mainLs = array.from(st_trendUp ? "bull" : "bear", "bull", "bear", st_yoyoSem,
+                        st_bullPct >= st_bearPct ? "bull" : "bear", st_bearPct > st_bullPct ? "bull" : "bear",
+                        st_divShowSem, st_vixSem, st_volSem(st_lvl1))
+    mainR  = array.from(st_crossTxt, str.tostring(st_cci, "#.##"), str.tostring(st_rsi, "#.##"),
+                        st_macdTxt, st_pa1, st_pa2, st_pa3, st_vixLvl, st_lvl2)
+    mainRs = array.from(st_crossSem, st_cci >= 0 ? "bull" : "bear", st_rsi >= 50 ? "bull" : "bear",
+                        st_macdSem, st_pa1s, st_pa2s, st_pa3s, st_vixLvlSem, st_volSem(st_lvl2))
     sigTx  = array.from("SuperTrend", "Moving Avg", "VWAP", "Lin Regress", "CPR", "ORB 15min", "PDH/PDL")
     sigVal = array.from(t3_sigST ? "Bull" : "Bear", t3_sigMA ? "Bull" : "Bear", t3_sigVW ? "Bull" : "Bear",
                         t3_sigLR ? "Bull" : "Bear", t3_cprTx, t3_orbTx, t3_pdTx)
     sigPol = array.from(t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1,
                         t3_cpr, t3_orb, t3_pd)
-    tfTx   = array.from(t3_tf1, t3_tf2, t3_tf3, t3_tf4, t3_tf5, t3_tf6)
+    tfTx   = array.from(f_t3_tfLbl(t3_tf1), f_t3_tfLbl(t3_tf2), f_t3_tfLbl(t3_tf3), f_t3_tfLbl(t3_tf4), f_t3_tfLbl(t3_tf5), f_t3_tfLbl(t3_tf6))
     tfTr   = array.from(t3_tr1, t3_tr2, t3_tr3, t3_tr4, t3_tr5, t3_tr6)
     tfSt   = array.from(t3_st1 * 25, t3_st2 * 25, t3_st3 * 25, t3_st4 * 25, t3_st5 * 25, t3_st6 * 25)
     ddTx   = array.from(t3_dd1, t3_dd2, t3_dd3, t3_dd4, t3_dd5, t3_dd6)
@@ -2045,17 +2066,22 @@ if barstate.islast and t3_on
     if fus
         for k = 0 to 5
             table.cell(t3_tF, 0, k, array.get(tfTr, k) ? "BULLISH" : "BEARISH", text_color=color.white,
-                 text_size=size.small, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
+                 text_size=szU, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
             table.cell(t3_tF, 1, k, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
-                 text_size=size.small, bgcolor=f_t3_stCol(array.get(tfSt, k)))
-            table.cell(t3_tF, 2, k, array.get(tfTx, k), text_color=color.silver, text_size=size.small)
+                 text_size=szU, bgcolor=f_t3_stCol(array.get(tfSt, k)))
+            table.cell(t3_tF, 2, k, array.get(tfTx, k), text_color=color.silver, text_size=szU)
+        // Colonnes 4 et 5 : les 18 valeurs du tableau principal, déjà validées.
+        // Colonne 6 : les 7 signaux. On affichait auparavant les unités de temps
+        // du Dashator à cet endroit, ce qui répétait la colonne 3 sans rien
+        // apporter — c'est ce que Jeremy voyait comme « il manque des infos ».
+        for k = 0 to 8
+            table.cell(t3_tF, 3, k, array.get(mainL, k), text_color=f_st_txt(array.get(mainLs, k)),
+                 bgcolor=f_st_bg(array.get(mainLs, k)), text_size=szU)
+            table.cell(t3_tF, 4, k, array.get(mainR, k), text_color=f_st_txt(array.get(mainRs, k)),
+                 bgcolor=f_st_bg(array.get(mainRs, k)), text_size=szU)
         for k = 0 to 6
-            table.cell(t3_tF, 3 + k % 3, int(k / 3), array.get(sigVal, k), text_color=color.white,
-                 text_size=size.small, bgcolor=f_t3_sigCol(array.get(sigPol, k)))
-        for k = 0 to 5
-            table.cell(t3_tF, 3 + (k + 7) % 3, int((k + 7) / 3), array.get(ddTx, k),
-                 text_color=color.white, text_size=size.small,
-                 bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
+            table.cell(t3_tF, 5, k, array.get(sigVal, k), text_color=color.white,
+                 text_size=szU, bgcolor=f_t3_sigCol(array.get(sigPol, k)))
 
     // -- mode Groupé par couleur : toutes les cellules retriées par camp --
     if grp
