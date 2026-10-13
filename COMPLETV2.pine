@@ -1855,6 +1855,8 @@ t3_posD  = input.string("Bottom Center","Position — Dashator", group=grp_t3,
      options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
 t3_posF  = input.string("Middle Left",  "Position — tableau fusionné / badge", group=grp_t3,
      options=["Top Left","Top Right","Top Center","Middle Left","Middle Right","Bottom Left","Bottom Right","Bottom Center"])
+t3_puces = input.bool(false, "Puces devant les états", group=grp_t3,
+     tooltip="Option d'Ephore qu'on n'implémentait pas. Préfixe chaque état d'une puce ronde, comme « ● Bull ».")
 t3_sz    = input.string("Normal", "Taille du texte", group=grp_t3,
      options=["Tiny", "Small", "Normal", "Large", "Huge"],
      tooltip="Ce réglage ne pilotait rien : les cellules étaient figées en « Small ». Il agit désormais sur tout le tableau unifié.")
@@ -2016,8 +2018,10 @@ if barstate.islast and t3_on
     mainRs = array.from(st_crossSem, st_cci >= 0 ? "bull" : "bear", st_rsi >= 50 ? "bull" : "bear",
                         st_macdSem, st_pa1s, st_pa2s, st_pa3s, st_vixLvlSem, st_volSem(st_lvl2))
     sigTx  = array.from("SuperTrend", "Moving Avg", "VWAP", "Lin Regress", "CPR", "ORB 15min", "PDH/PDL")
-    sigVal = array.from(t3_sigST ? "Bull" : "Bear", t3_sigMA ? "Bull" : "Bear", t3_sigVW ? "Bull" : "Bear",
-                        t3_sigLR ? "Bull" : "Bear", t3_cprTx, t3_orbTx, t3_pdTx)
+    puce   = t3_puces ? "● " : ""
+    sigVal = array.from(puce + (t3_sigST ? "Bull" : "Bear"), puce + (t3_sigMA ? "Bull" : "Bear"),
+                        puce + (t3_sigVW ? "Bull" : "Bear"), puce + (t3_sigLR ? "Bull" : "Bear"),
+                        puce + t3_cprTx, puce + t3_orbTx, puce + t3_pdTx)
     sigPol = array.from(t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1,
                         t3_cpr, t3_orb, t3_pd)
     tfTx   = array.from(f_t3_tfLbl(t3_tf1), f_t3_tfLbl(t3_tf2), f_t3_tfLbl(t3_tf3), f_t3_tfLbl(t3_tf4), f_t3_tfLbl(t3_tf5), f_t3_tfLbl(t3_tf6))
@@ -2032,24 +2036,24 @@ if barstate.islast and t3_on
 
     // -- mode Séparés : les 3 panneaux comme la v30 --
     if sep
-        table.cell(t3_tS, 0, 0, "INDICATOR", text_color=color.silver, text_size=size.small)
-        table.cell(t3_tS, 1, 0, "SIGNAL",    text_color=color.silver, text_size=size.small)
+        table.cell(t3_tS, 0, 0, "🔷 INDICATOR", text_color=color.silver, text_size=szU)
+        table.cell(t3_tS, 1, 0, "🎯 SIGNAL",    text_color=color.silver, text_size=szU)
         for k = 0 to 6
-            table.cell(t3_tS, 0, k + 1, array.get(sigTx, k), text_color=color.silver, text_size=size.small)
-            table.cell(t3_tS, 1, k + 1, array.get(sigVal, k), text_color=color.white, text_size=size.small,
+            table.cell(t3_tS, 0, k + 1, array.get(sigTx, k), text_color=color.silver, text_size=szU)
+            table.cell(t3_tS, 1, k + 1, array.get(sigVal, k), text_color=color.white, text_size=szU,
                  bgcolor=f_t3_sigCol(array.get(sigPol, k)))
-        table.cell(t3_tT, 0, 0, "TIMEFRAME", text_color=color.silver, text_size=size.small)
-        table.cell(t3_tT, 1, 0, "TREND",     text_color=color.silver, text_size=size.small)
-        table.cell(t3_tT, 2, 0, "STRENGTH",  text_color=color.silver, text_size=size.small)
+        table.cell(t3_tT, 0, 0, "TIMEFRAME", text_color=color.silver, text_size=szU)
+        table.cell(t3_tT, 1, 0, "TREND",     text_color=color.silver, text_size=szU)
+        table.cell(t3_tT, 2, 0, "STRENGTH",  text_color=color.silver, text_size=szU)
         for k = 0 to 5
-            table.cell(t3_tT, 0, k + 1, array.get(tfTx, k), text_color=color.silver, text_size=size.small)
+            table.cell(t3_tT, 0, k + 1, array.get(tfTx, k), text_color=color.silver, text_size=szU)
             table.cell(t3_tT, 1, k + 1, array.get(tfTr, k) ? "BULLISH" : "BEARISH", text_color=color.white,
-                 text_size=size.small, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
+                 text_size=szU, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
             table.cell(t3_tT, 2, k + 1, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
-                 text_size=size.small, bgcolor=f_t3_stCol(array.get(tfSt, k)))
-        table.cell(t3_tD, 0, 0, "⏱", text_color=color.silver, text_size=size.small)
+                 text_size=szU, bgcolor=f_t3_stCol(array.get(tfSt, k)))
+        table.cell(t3_tD, 0, 0, "⏱", text_color=color.silver, text_size=szU)
         for k = 0 to 5
-            table.cell(t3_tD, 0, k + 1, array.get(ddTx, k), text_color=color.white, text_size=size.small,
+            table.cell(t3_tD, 0, k + 1, array.get(ddTx, k), text_color=color.white, text_size=szU,
                  bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
 
     // -- mode Normal : la grille unifiée d'Ephore --
@@ -2118,11 +2122,11 @@ if barstate.islast and t3_on
         nb = math.max(array.size(bl), math.max(array.size(rd), array.size(or_)))
         for k = 0 to math.min(nb - 1, 9)
             if k < array.size(bl)
-                table.cell(t3_tF, 0, k, array.get(bl, k), text_color=color.white, text_size=size.small, bgcolor=t3_cBull)
+                table.cell(t3_tF, 0, k, array.get(bl, k), text_color=color.white, text_size=szU, bgcolor=t3_cBull)
             if k < array.size(or_)
-                table.cell(t3_tF, 2, k, array.get(or_, k), text_color=color.white, text_size=size.small, bgcolor=t3_cOrn)
+                table.cell(t3_tF, 2, k, array.get(or_, k), text_color=color.white, text_size=szU, bgcolor=t3_cOrn)
             if k < array.size(rd)
-                table.cell(t3_tF, 4, k, array.get(rd, k), text_color=color.white, text_size=size.small, bgcolor=t3_cBear)
+                table.cell(t3_tF, 4, k, array.get(rd, k), text_color=color.white, text_size=szU, bgcolor=t3_cBear)
 
     // -- le badge du Feu, présent dans les 4 modes --
     badge = t3_feuTxt + "  " + str.tostring(t3_pLong, "0") + "% / " + str.tostring(t3_pShort, "0") + "%  (" + str.tostring(t3_nLong) + "L " + str.tostring(t3_nShort) + "S / " + str.tostring(t3_nTot) + ")"
