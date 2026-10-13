@@ -118,8 +118,9 @@ EMA50 et EMA60 du close (+ remplissage).
   - engulfing complet = 0 ou 1 (toujours 0 en HA, donc score max 80).
 - Classement : **Fort ≥ 50** (Score Minimum), **Moyen ≥ 18** (Seuil de Force), Faible en dessous.
   Classe Fort/Moyen de l'original retrouvée sur 192/193 flèches.
-- **« Activer Filtre »** = **aucun signal sur les bougies qui contiennent 14:30 ou 16:00 (Paris)**,
-  c'est-à-dire les annonces US.
+- **« Activer Filtre »** = le module **BLACKOUT NO-TRADE**. ⚠️ La description qui figurait ici
+  (« les bougies qui *contiennent* 14:30 ou 16:00 ») était **fausse** et détruisait 21 bonnes
+  flèches : l'original teste l'heure d'**ouverture** de la bougie. **Voir §12**, qui fait foi.
 - Résultats :
   - Singal (sans filtre) : 112/113, 5 en trop ;
   - Filtres (avec filtre) : 65/65, 5 en trop ;
