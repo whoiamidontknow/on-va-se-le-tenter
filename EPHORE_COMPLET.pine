@@ -846,11 +846,18 @@ st_inRange(cond) =>
     5 <= bb and bb <= 60
 st_rsiLBR = st_rsi[5]
 st_plFound = not na(ta.pivotlow(st_rsi, 5, 5))
-st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRange(st_plFound[1])
+// PIÈGE PINE v6 (CW10002) : `and` court-circuite, donc un appel à une fonction
+// à état placé à sa DROITE peut ne pas s'exécuter à chaque barre — et
+// ta.barssince(), à l'intérieur de st_inRange(), décale alors son historique.
+// La ligne Divergence devenait fausse par intermittence. Il faut évaluer
+// l'appel sur chaque barre, puis seulement combiner les booléens.
+st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
+st_inRpl   = st_inRange(st_plFound[1])
+st_inRph   = st_inRange(st_phFound[1])
+st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRpl
 st_priceLL = low[5] < ta.valuewhen(st_plFound, low[5], 1)
 st_bullDiv = st_priceLL and st_rsiHL and st_plFound
-st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
-st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRange(st_phFound[1])
+st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRph
 st_priceHH = high[5] > ta.valuewhen(st_phFound, high[5], 1)
 st_bearDiv = st_priceHH and st_rsiLH and st_phFound
 var string st_divTxt = "None"
