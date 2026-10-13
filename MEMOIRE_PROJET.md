@@ -507,3 +507,65 @@ grisage du Detector l'illustre : le panneau indique « 1,5 % fixe », mais ce se
 16 des 19 boîtes observées alors qu'une seule l'est. Soit le terminal web est réglé autrement,
 soit « 1,5 % » mesure autre chose. Le code garde donc la règle vérifiée par défaut et expose
 la structure du vrai réglage pour pouvoir élargir.
+
+---
+
+## 13. PIÈGE MAJEUR : « la colonne vaut 0 » ne veut PAS dire « l'événement n'a pas eu lieu » (13/10)
+
+Jeremy nous a contredits — « Rangeator ça s'affiche, je ne sais pas pourquoi tu ne les vois pas » —
+et il avait raison. Nous répétions depuis trois sessions que « les colonnes du Rangeator sont vides,
+donc le module est désactivé chez lui ». **C'était une mauvaise conclusion tirée d'un chiffre exact.**
+
+### Ce qui est mesuré
+
+Sur 94 CSV, 10 unités de temps, 2 symboles, du 07/07 au 12/10 :
+
+| colonne | ce qu'on VOIT sur le graphique | valeur exportée |
+|---|---|---|
+| `Rangeator Cassure Haussiere/Baissiere` | les ranges **sont** dessinés | **0 sur 66 775 cellules** |
+| `Signal Haussier/Baissier Heishi` | les bougies **sont** colorées | **0 sur 42 056 cellules** |
+| `Cassure résistance` / `Cassure support` | la case est **cochée** | **0 sur 8 547 cellules** |
+| `Nouvelle ancre haute/basse` | — | 0 dans `Lun12:10`, **non nul ailleurs** |
+
+Ce ne sont jamais des cellules vides ni des `NaN` : littéralement le chiffre `0` sur chaque barre.
+Les colonnes voisines du même fichier, elles, portent des données (Climax 415 non nuls, flèches
+158/184). **Ce n'est donc ni un problème de lecture, ni les doublons d'en-têtes, ni le piège
+`bool("0")`, ni un réglage décoché chez Jeremy.**
+
+### Les deux causes, cumulées
+
+1. **La géométrie d'un range est inexportable par construction.** TradingView n'exporte en CSV que
+   les séries `plot()`. Les `box.new()`, `line.new()`, `fill()` et labels n'apparaissent dans aucun
+   export, quel que soit le réglage. Or le bloc `RANGEATOR · STYLE` ne parle que de `Transparence
+   remplissage`, `Epaisseur bordure`, `Afficher mediane` : du vocabulaire de boîte. **Les bornes et
+   la médiane du range n'existeront jamais dans un CSV.**
+2. **Les seules séries `plot()` du Rangeator sont des plots morts** — vraisemblablement des
+   `plot(0.0, "…", display=display.none)` déclarés pour alimenter des alertes, la condition réelle
+   étant calculée sous un autre nom. Le motif « littéralement 0, jamais vide » colle exactement :
+   un `plotshape` non déclenché donnerait du vide, pas des zéros.
+
+Noter que `Nouvelle ancre haute/basse` est à 0 dans `Lun12:10` **mais non nul dans d'autres
+dossiers**. Donc « plot mort » n'est pas une propriété permanente de la colonne : **il faut le
+vérifier dossier par dossier**.
+
+### La règle de travail qui en découle
+
+**Avant de conclure quoi que ce soit d'une colonne à zéro, vérifier qu'elle n'est pas morte :**
+si elle vaut 0 sur *tout* le corpus alors que son rendu est visible à l'écran, c'est un plot
+placeholder, et son silence ne prouve rien. Un zéro n'est une information que si la même colonne
+est non nulle ailleurs.
+
+### Ce qu'il faut faire pour caler le Rangeator
+
+Inutile de redemander un export : même réglages changés, le résultat sera identique.
+
+1. **Cocher `Afficher infos (hauteur, duree)` et `Afficher fleches de cassure`** dans le bloc STYLE
+   (tous deux décochés aujourd'hui). Ça ne créera **aucune colonne CSV**, mais Ephore imprimera la
+   **hauteur et la durée de chaque range directement sur le graphique** — précisément les deux
+   grandeurs nécessaires pour caler les 11 valeurs de détection. Une capture devient alors aussi
+   informative qu'un CSV.
+2. **Les alertes** (`Activer alertes Rangeator` est déjà ☑) : le journal d'alertes TradingView donne
+   des cassures horodatées à la seconde. C'est la seule source propre pour les événements.
+3. **Capture + export au même instant**, 5 m sur NQ (son preset est « Scalping Nasdaq (1-5m) ») :
+   les bornes sont probablement `ta.highest/lowest` sur la fenêtre du range ; on lit les niveaux sur
+   la capture et on cherche quelle barre du CSV porte ce `high`/`low`.
