@@ -1,13 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE COMPLET V2 — VERSION V3 (2026-10-14)
+// EPHORE COMPLET V2 — VERSION V4 (2026-10-14)
 // Indicateur unique regroupant TOUT ce qui est validé sur données.
 // PORSCHEONARRIVE.pine et TABLEAU.pine restent inchangés : ce fichier
 // les consolide, il ne les remplace pas tant que Jeremy n'a pas tranché.
 // Graphique en Heiken Ashi obligatoire.
 //
 // CE QU'IL CONTIENT, ET LE NIVEAU DE PREUVE DE CHAQUE MODULE
-//   Heishinator V4      couleur des bougies, validée à l'œil par Jeremy
+//   Heishinator V5      couleur des bougies : EMA(ohlc4,4) vs EMA(ohlc4,32),
+//                       2600/2600 sur l'API (ancienne formule en option)
 //   Moyenator V5        EMA50/EMA60 du close, exact
 //   Pivator V3          3 sets Annuel/Mensuel/Weekly, validé par Jeremy
 //   Detector            order blocks (LuxAlgo), repris de PorscheOnArrive
@@ -78,6 +79,13 @@
 //                   d'ancre (séance US, début de journée TradingView, Europe
 //                   9h Paris) et bulle avec la plage mesurée, car aucune ancre
 //                   testée ne reproduit encore l'original.
+//
+//   V4  2026-10-14  Heishinator : la couleur des bougies passe à la formule
+//                   exacte EMA(ohlc4,4) > EMA(ohlc4,32), 2600 bougies sur 2600
+//                   identiques à l'original sur l'API (15m et 2m), contre
+//                   99.5 % pour l'ancienne (0.42/0.44 vs EMA33). C'est la
+//                   formule des flèches Signator : bougies et flèches sont
+//                   désormais cohérentes. L'ancienne reste en option.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet V2", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -116,7 +124,16 @@ hei_sha_close := na(hei_sha_close[1])
 hei_ema_base = ta.ema(close, 33)
 
 // ── RÈGLE DE COLORATION ───────────────────────────────────────
-hei_col_bull = hei_sha_close > hei_ema_base
+// 14/10 : la formule exacte est EMA(ohlc4, 4) > EMA(ohlc4, 32). Mesurée sur
+// l'API du terminal web : 2600 bougies sur 2600 (15m et 2m). L'ancienne
+// formule ci-dessus (0.42/0.44 vs EMA33) n'en est qu'une approximation à
+// 99.5 %. C'est aussi la formule des flèches Signator : bougies et flèches
+// ne peuvent donc plus se contredire. L'ancienne reste disponible en option.
+hei_formule  = input.string("Exacte — EMA(ohlc4,4) vs EMA(ohlc4,32)", "Formule de couleur", group=grp_hei_col,
+     options=["Exacte — EMA(ohlc4,4) vs EMA(ohlc4,32)", "Ancienne — SHA 0.42/0.44 vs EMA33"],
+     tooltip="Exacte : 2600 bougies sur 2600 identiques à l'original (API, 15m et 2m). Ancienne : 99.5 %, environ une bougie sur 200 diffère, toujours au moment d'un changement de couleur.")
+hei_exact    = ta.ema(hei_ohlc4_src, 4) > ta.ema(hei_ohlc4_src, 32)
+hei_col_bull = hei_formule == "Ancienne — SHA 0.42/0.44 vs EMA33" ? hei_sha_close > hei_ema_base : hei_exact
 col_bull     = hei_col_bull
 
 // ── APPLICATION ───────────────────────────────────────────────
