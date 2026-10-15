@@ -2349,17 +2349,20 @@ if mhl_on and (timeframe.isintraday or timeframe.isdaily)
 // SESSIONS : HIGH / LOW ASIE, LONDRES, US — module ajouté par Jeremy (15/10)
 // ══════════════════════════════════════════════════════════════
 // Pas dans l'original : rien à valider contre Ephore. Chaque session a son
-// fuseau, donc les changements d'heure (Europe, US, Japon n'en ont pas) se
-// règlent tout seuls. Horaires par défaut = heures d'ouverture des bourses
-// au comptant : Tokyo 09:00-15:30, Londres 08:00-16:30, New York 09:30-16:00.
-// Le plus haut et le plus bas se construisent en direct pendant la session,
-// puis restent tracés jusqu'à la même session le lendemain (option).
+// fuseau, donc les changements d'heure se règlent tout seuls. Horaires par
+// défaut = bourses au comptant : Tokyo 09:00-15:30, Londres 08:00-16:30,
+// New York 09:30-16:00.
+// Ce qui est affiché (demande de Jeremy, 15/10) :
+//   - pour chaque session, celle du jour et celle de la veille ;
+//   - le haut et le bas se construisent en direct pendant la session ;
+//   - une fois la session finie, chaque niveau s'allonge vers la droite tant
+//     que le prix ne l'a pas traversé, et DISPARAÎT dès qu'il l'est.
 grp_ses   = "=== SESSIONS : HIGH / LOW (Asie, Londres, US) ==="
 ses_on    = input.bool(true, "Afficher les sessions", group=grp_ses)
-ses_days  = input.int(1, "Nombre de jours affichés", group=grp_ses, minval=1, maxval=20,
-     tooltip="1 = seulement le dernier haut et le dernier bas de chaque session (choix de Jeremy).")
-ses_ext   = input.bool(true, "Prolonger jusqu'à la même session le lendemain", group=grp_ses,
-     tooltip="Décoché : les lignes s'arrêtent à la fin de la session.")
+ses_days  = input.int(2, "Jours gardés (jour actuel + veille = 2)", group=grp_ses, minval=1, maxval=10,
+     tooltip="Journées de trading TradingView. 2 = les sessions du jour en cours et celles de la veille.")
+ses_brk   = input.string("Mèche", "Niveau traversé quand", group=grp_ses, options=["Mèche", "Clôture"],
+     tooltip="Mèche : le prix dépasse le niveau, même d'un tick. Clôture : une bougie clôture au-delà.")
 ses_lbl   = input.bool(true, "Étiquettes (Asie H, Londres L…)", group=grp_ses)
 ses_bg    = input.bool(false, "Fond coloré pendant la session", group=grp_ses)
 ses_w     = input.int(1, "Épaisseur", group=grp_ses, minval=1, maxval=5)
@@ -2375,55 +2378,68 @@ ses_usSes = input.session("0930-1600", "", group=grp_ses, inline="us", tooltip="
 ses_usCol = input.color(#26A69A, "", group=grp_ses, inline="us")
 
 ses_style = ses_sty == "Plein" ? line.style_solid : ses_sty == "Pointillés" ? line.style_dotted : line.style_dashed
+// Numéro de la journée de trading, pour garder « jour actuel + veille ».
+var int ses_dayN = 0
+if ta.change(time("D")) != 0
+    ses_dayN += 1
 
 // Une session : chaque appel garde son propre état (les `var` d'une fonction
 // sont propres à l'endroit où elle est appelée).
 f_ses(_on, _sess, _tz, _col, _nom) =>
     inS = not na(time(timeframe.period, _sess, _tz))
-    var float h = na
-    var float l = na
-    var int   t0 = na
+    var float h  = na
+    var float l  = na
     var line  lh = na
     var line  ll = na
     var label bh = na
     var label bl = na
+    var int   jour = na
+    // niveaux des sessions terminées, encore intacts
     var array<line>  lns = array.new_line()
     var array<label> lbs = array.new_label()
+    var array<float> prx = array.new_float()
+    var array<bool>  hiF = array.new_bool()
+    var array<int>   age = array.new_int()
     actif = _on and ses_on and timeframe.isintraday
-    if actif and inS and not inS[1]
-        h  := high
-        l  := low
-        t0 := time
-        x2 = ses_ext ? time + 86400000 : time_close
-        lh := line.new(time, h, x2, h, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
-        ll := line.new(time, l, x2, l, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
-        array.push(lns, lh)
-        array.push(lns, ll)
-        while array.size(lns) > 2 * ses_days
-            line.delete(array.shift(lns))
-        if ses_lbl
-            bh := label.new(x2, h, _nom + " H", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small)
-            bl := label.new(x2, l, _nom + " L", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small)
-            array.push(lbs, bh)
-            array.push(lbs, bl)
-            while array.size(lbs) > 2 * ses_days
-                label.delete(array.shift(lbs))
-    else if actif and inS and not na(t0)
-        h := math.max(h, high)
-        l := math.min(l, low)
-        line.set_y1(lh, h)
-        line.set_y2(lh, h)
-        line.set_y1(ll, l)
-        line.set_y2(ll, l)
-        if not ses_ext
-            line.set_x2(lh, time_close)
-            line.set_x2(ll, time_close)
-        if ses_lbl
-            label.set_y(bh, h)
-            label.set_y(bl, l)
-            if not ses_ext
-                label.set_x(bh, time_close)
-                label.set_x(bl, time_close)
+    if actif
+        // 1. la session vient de finir : ses deux niveaux passent sous surveillance
+        if not inS and inS[1] and not na(lh)
+            array.push(lns, lh), array.push(lbs, bh), array.push(prx, h), array.push(hiF, true),  array.push(age, jour)
+            array.push(lns, ll), array.push(lbs, bl), array.push(prx, l), array.push(hiF, false), array.push(age, jour)
+            lh := na
+            ll := na
+            bh := na
+            bl := na
+        // 2. une session commence
+        if inS and not inS[1]
+            jour := ses_dayN
+            h  := high
+            l  := low
+            lh := line.new(time, h, time_close, h, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
+            ll := line.new(time, l, time_close, l, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
+            bh := ses_lbl ? label.new(time_close, h, _nom + " H", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small) : na
+            bl := ses_lbl ? label.new(time_close, l, _nom + " L", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small) : na
+        else if inS and not na(lh)
+            h := math.max(h, high)
+            l := math.min(l, low)
+            line.set_y1(lh, h), line.set_y2(lh, h), line.set_x2(lh, time_close)
+            line.set_y1(ll, l), line.set_y2(ll, l), line.set_x2(ll, time_close)
+            label.set_xy(bh, time_close, h)
+            label.set_xy(bl, time_close, l)
+        // 3. niveaux terminés : effacés dès que le prix les traverse ou qu'ils
+        //    datent d'avant la veille, sinon prolongés
+        if array.size(prx) > 0
+            for i = array.size(prx) - 1 to 0
+                p  = array.get(prx, i)
+                hi = array.get(hiF, i)
+                traverse = ses_brk == "Clôture" ? (hi ? close > p : close < p) : (hi ? high > p : low < p)
+                if traverse or array.get(age, i) <= ses_dayN - ses_days
+                    line.delete(array.get(lns, i))
+                    label.delete(array.get(lbs, i))
+                    array.remove(lns, i), array.remove(lbs, i), array.remove(prx, i), array.remove(hiF, i), array.remove(age, i)
+                else
+                    line.set_x2(array.get(lns, i), time_close)
+                    label.set_x(array.get(lbs, i), time_close)
     actif and inS
 
 ses_inAs = f_ses(ses_asOn, ses_asSes, "Asia/Tokyo",       ses_asCol, "Asie")
