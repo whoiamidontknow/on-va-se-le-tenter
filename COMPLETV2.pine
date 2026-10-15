@@ -2484,7 +2484,9 @@ if barstate.islast and rnd_on
     rnd_c = math.floor(close / rnd_step) * rnd_step
     rnd_x = rnd_pos == "Gauche" ? bar_index - rnd_off : bar_index + rnd_off
     // On ne redessine que quand le prix change de tranche.
-    if rnd_c != rnd_center
+    // PIÈGE PINE v6 (§8) : une comparaison avec na vaut false. Sans le test
+    // na(), le premier dessin n'avait jamais lieu et rien ne s'affichait.
+    if na(rnd_center) or rnd_c != rnd_center
         while array.size(rnd_lines) > 0
             line.delete(array.pop(rnd_lines))
         while array.size(rnd_labels) > 0
