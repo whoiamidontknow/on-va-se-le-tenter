@@ -773,3 +773,22 @@ n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la du
 - **Données à obtenir** : 6-12 mois de 15m MES + NQ avec une phase baissière, idéalement le même graphique
   en Heiken Ashi (avec CompletV3 + Volume) ET en bougies standard ; ou le backtest TradingView sur
   historique profond.
+
+### Testeur TradingView, 1er jet (15/10, 3 ans, 15m, NQ1! et ES1!) — `~/Stratégie /1er jet/`
+
+- **BUG trouvé et corrigé (V3)** : `ticker.standard()` ignore l'ajustement des contrats continus → vrais prix
+  décalés de centaines de points. C faisait 0 gagnant sur 300 (NQ) / 409 (ES). Correction :
+  `ticker.new(..., backadjustment.inherit)` + stop/objectif en ticks relatifs à l'entrée. **B et C du 1er jet
+  sont à jeter.** Attention : les fichiers « MES » de Jeremy sont en réalité ES1! (50 $/pt).
+- **Préréglage A, corrigé de l'effet du bug** (heure des fichiers = Paris) : NQ ≈ +80 k$, PF 1,18
+  [0,99 ; 1,40], +0,16 R [−0,01 ; +0,36] ; ES ≈ +15 k$, PF 1,06, non significatif. Tout vient de la queue
+  (10 meilleurs trades NQ = +140 k$). **Gain non distinguable du biais haussier** : excédent sur la dérive du
+  marché +35 $/trade [−92 ; +173] (NQ), −29 $ (ES). Acheter et garder : NQ +243 k$, ES +138 k$.
+  Saigne dans la baisse lente oct. 2025 → mars 2026 ; trade peu dans les chutes brutales (filtre TREND 1H).
+- Sorties : stop 2 ATR garde ~95 % des gagnants, le resserrer coûte ; tout objectif réduit l'espérance ;
+  break-even non tranchable sans l'ordre des excursions. Entrées 0 h-8 h Paris négatives sur NQ et ES.
+- **Stop « zone Detector »** (`tools/strategie/stop_detector/`, indicatif sur ~2 mois) : pas mieux que l'ATR ;
+  la zone ne retient pas le prix (41,8 % de stops touchés contre 41,4 % au hasard).
+- **À refaire au testeur** : A en V3 sur NQ et ES ; puis en Personnalisé, A sans entrées de nuit
+  (plage 08:00-23:00), break-even 1R/2R, stop 2,5/3 ATR, suiveur ATR 3-4 — un réglage à la fois, garder
+  seulement ce qui s'améliore sur NQ, ES et chaque moitié de la période.

@@ -1,0 +1,331 @@
+====================================================================================================
+0. CONTRÔLES : fuseau horaire, bug de la bougie de remplissage, qualité de R
+====================================================================================================
+NQ heures présentes (entrées+sorties) : {0: 19, 1: 9, 2: 11, 3: 13, 4: 18, 5: 15, 6: 13, 7: 27, 8: 87, 9: 113, 10: 102, 11: 26, 12: 49, 13: 72, 14: 113, 15: 196, 16: 171, 17: 80, 18: 35, 19: 23, 20: 21, 21: 16, 22: 35}
+ES heures présentes (entrées+sorties) : {0: 17, 1: 16, 2: 6, 3: 15, 4: 21, 5: 13, 6: 16, 7: 32, 8: 83, 9: 124, 10: 105, 11: 45, 12: 39, 13: 72, 14: 113, 15: 192, 16: 182, 17: 94, 18: 39, 19: 21, 20: 21, 21: 19, 22: 36, 23: 1}
+Aucune entrée/sortie à 23 h ; pic à 15h30-16h et 8h-10h -> heure de PARIS (maintenance CME 17-18 h ET = 23-24 h Paris ;
+ en heure de la bourse (CT) on aurait 110 entrées à 16 h CT, marché fermé).
+
+NQ: stops sur la bougie de remplissage (barres=0) : 1 sur 388 stops (dernier contrat seulement : [datetime.date(2026, 9, 29)])
+  SÛR  : trades stoppés dont le MAE dépasse la perte (plongée sous le stop prévu sur la bougie 0, remontée, stoppés plus tard au bon niveau) : 17 -> P&L inchangé
+  ESTIMÉ seuil MAE > 0.80 R :  80 trades sortis au signal ; leur P&L réel   +113970 $ -> corrigé    -94284 $ (écart  -208254 $)
+  ESTIMÉ seuil MAE > 1.00 R :  35 trades sortis au signal ; leur P&L réel    +29242 $ -> corrigé    -37918 $ (écart   -67161 $)
+  ESTIMÉ seuil MAE > 1.25 R :  15 trades sortis au signal ; leur P&L réel     +5458 $ -> corrigé    -14188 $ (écart   -19645 $)
+  ESTIMÉ seuil MAE > 1.50 R :   7 trades sortis au signal ; leur P&L réel     +4012 $ -> corrigé     -6559 $ (écart   -10572 $)
+  Sans bug, l'erreur sur R seule donnerait ~37 trades > 1 R (borne haute) : excédent ≈ -2 vrais trades touchés.
+  => Correctif retenu : 17 sûrs × 244/388 = 11 trades au plus fort MAE/R (MAE/R ≥ 1.40) passés à −1 R ; leur P&L réel +732 $
+  P&L brut +92070 $ -> corrigé +80406 $ ; trades touchés par le bug au total ≈ 28 (4.4 %)
+
+ES: stops sur la bougie de remplissage (barres=0) : 1 sur 412 stops (dernier contrat seulement : [datetime.date(2026, 10, 14)])
+  SÛR  : trades stoppés dont le MAE dépasse la perte (plongée sous le stop prévu sur la bougie 0, remontée, stoppés plus tard au bon niveau) : 12 -> P&L inchangé
+  ESTIMÉ seuil MAE > 0.80 R :  76 trades sortis au signal ; leur P&L réel    +34410 $ -> corrigé    -42511 $ (écart   -76921 $)
+  ESTIMÉ seuil MAE > 1.00 R :  40 trades sortis au signal ; leur P&L réel    +16100 $ -> corrigé    -21997 $ (écart   -38097 $)
+  ESTIMÉ seuil MAE > 1.25 R :  22 trades sortis au signal ; leur P&L réel     +3732 $ -> corrigé    -10082 $ (écart   -13814 $)
+  ESTIMÉ seuil MAE > 1.50 R :  12 trades sortis au signal ; leur P&L réel     +4495 $ -> corrigé     -5090 $ (écart    -9585 $)
+  Sans bug, l'erreur sur R seule donnerait ~36 trades > 1 R (borne haute) : excédent ≈ 4 vrais trades touchés.
+  => Correctif retenu : 12 sûrs × 249/412 = 7 trades au plus fort MAE/R (MAE/R ≥ 1.83) passés à −1 R ; leur P&L réel +2208 $
+  P&L brut +19685 $ -> corrigé +14644 $ ; trades touchés par le bug au total ≈ 19 (2.9 %)
+
+====================================================================================================
+1. ROBUSTESSE DANS LE TEMPS (P&L corrigé ; R = 2 ATR estimé)
+====================================================================================================
+
+--- NQ --- global brut : {'n': 632.0, 'P&L $': 92070.0, 'PF': 1.2, 'gagn %': 25.5, 'R moy': 0.182, 't': 1.86, 'R tot': 115.2}
+    global corrigé : {'n': 632.0, 'P&L $': 80406.0, 'PF': 1.18, 'gagn %': 25.0, 'R moy': 0.16, 't': 1.65, 'R tot': 101.4}
+           n    P&L $    PF gagn %  R moy     t R tot
+annee                                                
+2023    54.0   9145.0  1.42   22.2  0.311  0.74  16.8
+2024   218.0  18643.0  1.15   22.5   0.14  0.82  30.5
+2025   207.0  12132.0  1.08   28.5  0.075  0.53  15.5
+2026   153.0  40486.0  1.25   24.8  0.253  1.18  38.7
+             n    P&L $    PF gagn %  R moy     t R tot
+sem                                                    
+2023-S2   54.0   9145.0  1.42   22.2  0.311  0.74  16.8
+2024-S1  115.0  -4914.0  0.92   20.9 -0.045 -0.22  -5.2
+2024-S2  103.0  23558.0  1.35   24.3  0.346  1.27  35.7
+2025-S1   99.0   4329.0  1.05   28.3  0.171  0.81  16.9
+2025-S2  108.0   7803.0  1.12   28.7 -0.013 -0.07  -1.4
+2026-S1  106.0    890.0  1.01   20.8  0.044  0.19   4.6
+2026-S2   47.0  39596.0  1.79   34.0  0.725  1.53  34.1
+           n    P&L $    PF gagn %  R moy     t R tot
+trim                                                 
+2023Q4  54.0   9145.0  1.42   22.2  0.311  0.74  16.8
+2024Q1  58.0  -8604.0  0.71   20.7 -0.209 -0.85 -12.1
+2024Q2  57.0   3690.0  1.13   21.1  0.121  0.35   6.9
+2024Q3  55.0   -938.0  0.98   18.2 -0.008 -0.02  -0.4
+2024Q4  48.0  24495.0  1.92   31.2  0.752   1.7  36.1
+2025Q1  40.0  15167.0   1.6   30.0  0.592  1.39  23.7
+2025Q2  59.0 -10838.0  0.81   27.1 -0.115 -0.59  -6.8
+2025Q3  65.0    924.0  1.03   29.2 -0.102 -0.53  -6.6
+2025Q4  43.0   6879.0  1.23   27.9   0.12  0.32   5.2
+2026Q1  45.0 -21648.0  0.57   15.6 -0.221 -0.88 -10.0
+2026Q2  61.0  22537.0  1.37   24.6  0.239  0.69  14.6
+2026Q3  44.0  31458.0  1.65   31.8  0.651  1.32  28.6
+2026Q4   3.0   8138.0  6.49   66.7  1.815  0.91   5.4
+            n    P&L $    PF gagn %  R moy     t R tot
+moitie                                                
+H1      320.0  25225.0  1.13   23.1  0.202  1.39  64.8
+H2      312.0  55182.0  1.21   26.9  0.117  0.91  36.6
+
+--- ES --- global brut : {'n': 661.0, 'P&L $': 19685.0, 'PF': 1.08, 'gagn %': 26.9, 'R moy': 0.087, 't': 0.9, 'R tot': 57.5}
+    global corrigé : {'n': 661.0, 'P&L $': 14644.0, 'PF': 1.06, 'gagn %': 26.3, 'R moy': 0.062, 't': 0.65, 'R tot': 40.9}
+           n    P&L $    PF gagn %  R moy     t R tot
+annee                                                
+2023    57.0   7545.0  1.68   31.6  0.426  0.92  24.3
+2024   229.0   6818.0   1.1   26.2  0.078  0.45  17.9
+2025   222.0 -10030.0  0.89   24.3 -0.041  -0.3  -9.0
+2026   153.0  10310.0  1.15   27.5  0.051  0.27   7.8
+             n    P&L $    PF gagn %  R moy     t R tot
+sem                                                    
+2023-S2   57.0   7545.0  1.68   31.6  0.426  0.92  24.3
+2024-S1  126.0  -3968.0  0.88   19.0 -0.107 -0.44 -13.4
+2024-S2  103.0  10786.0  1.33   35.0  0.304  1.24  31.3
+2025-S1  116.0  -9465.0  0.84   24.1  0.024  0.12   2.8
+2025-S2  106.0   -565.0  0.98   24.5 -0.112 -0.62 -11.8
+2026-S1  101.0   3635.0  1.08   29.7  0.016  0.07   1.6
+2026-S2   52.0   6675.0  1.29   23.1  0.119  0.33   6.2
+           n    P&L $    PF gagn %  R moy     t R tot
+trim                                                 
+2023Q4  57.0   7545.0  1.68   31.6  0.426  0.92  24.3
+2024Q1  64.0  -4650.0  0.75   20.3 -0.165 -0.58 -10.6
+2024Q2  62.0    682.0  1.04   17.7 -0.046 -0.12  -2.9
+2024Q3  62.0    182.0  1.01   30.6  0.193  0.61  11.9
+2024Q4  41.0  10603.0  2.04   41.5  0.472  1.21  19.4
+2025Q1  51.0   1935.0   1.1   23.5  0.234  0.64  11.9
+2025Q2  65.0 -11400.0  0.71   24.6  -0.14 -0.62  -9.1
+2025Q3  64.0  -3398.0  0.82   23.4 -0.221 -1.25 -14.2
+2025Q4  42.0   2833.0  1.19   26.2  0.055  0.15   2.3
+2026Q1  42.0  -5305.0  0.73   28.6 -0.176 -0.77  -7.4
+2026Q2  59.0   8940.0  1.32   30.5  0.152  0.46   9.0
+2026Q3  46.0   3840.0  1.18   21.7  0.067  0.18   3.1
+2026Q4   6.0   2835.0  2.34   33.3  0.524  0.43   3.1
+            n   P&L $    PF gagn %  R moy     t R tot
+moitie                                               
+H1      344.0  6768.0  1.06   26.2   0.14  0.94  48.0
+H2      317.0  7876.0  1.06   26.5 -0.022 -0.19  -7.1
+
+--- Marché (prix reconstitués depuis les entrées/sorties) et phases baissières ---
+NQ phases baissières ≥ 8 % : 2024-07-10→2024-08-08 (-11%); 2024-12-17→2025-04-08 (-20%); 2025-10-29→2026-03-31 (-12%); 2026-06-03→2026-07-30 (-10%)
+   2024-07-10→2024-08-08 marché -11% : {'n': 12.0, 'P&L $': -1645.0, 'PF': 0.87, 'gagn %': 16.7, 'R moy': -0.096, 't': -0.14, 'R tot': -1.2}
+   2024-12-17→2025-04-08 marché -20% : {'n': 46.0, 'P&L $': 15352.0, 'PF': 1.51, 'gagn %': 28.3, 'R moy': 0.498, 't': 1.3, 'R tot': 22.9}
+   2025-10-29→2026-03-31 marché -12% : {'n': 69.0, 'P&L $': -34606.0, 'PF': 0.51, 'gagn %': 18.8, 'R moy': -0.314, 't': -1.72, 'R tot': -21.6}
+   2026-06-03→2026-07-30 marché -10% : {'n': 22.0, 'P&L $': 15684.0, 'PF': 1.6, 'gagn %': 31.8, 'R moy': 0.211, 't': 0.46, 'R tot': 4.7}
+   fenêtre fixe 2024-07-10→2024-08-07 (marché -10%) : n=11 P&L -1,892 $ R -2.0 (-0.185 R/trade)
+   fenêtre fixe 2025-02-19→2025-04-08 (marché -20%) : n=11 P&L +2,338 $ R +9.7 (+0.880 R/trade)
+   fenêtre fixe 2025-10-29→2026-03-31 (marché -11%) : n=68 P&L -31,938 $ R -20.6 (-0.303 R/trade)
+NQ mois haussiers (25) : P&L +75645 $, R +91.5 sur 478 trades (+0.191 R/trade) | mois baissiers (11) : P&L +8221 $, R +13.9 sur 150 trades (+0.093 R/trade)
+   corrélation P&L mensuel / rendement mensuel du marché : +0.33 ; mois gagnants 58 %
+ES phases baissières ≥ 8 % : 2024-12-09→2025-04-08 (-16%)
+   2024-12-09→2025-04-08 marché -16% : {'n': 62.0, 'P&L $': -342.0, 'PF': 0.99, 'gagn %': 24.2, 'R moy': 0.132, 't': 0.42, 'R tot': 8.2}
+   fenêtre fixe 2024-07-10→2024-08-07 (marché -5%) : n=9 P&L +3,952 $ R +16.2 (+1.805 R/trade)
+   fenêtre fixe 2025-02-19→2025-04-08 (marché -16%) : n=15 P&L -1,262 $ R +4.8 (+0.323 R/trade)
+   fenêtre fixe 2025-10-29→2026-03-31 (marché -7%) : n=68 P&L -11,870 $ R -23.8 (-0.350 R/trade)
+ES mois haussiers (24) : P&L +5794 $, R +23.7 sur 494 trades (+0.048 R/trade) | mois baissiers (12) : P&L +9383 $, R +17.9 sur 164 trades (+0.109 R/trade)
+   corrélation P&L mensuel / rendement mensuel du marché : +0.06 ; mois gagnants 58 %
+
+--- Acheter et garder, dérive haussière ---
+NQ: acheter-garder +242,905 $ (+68.35 %) ; stratégie corrigée +80,406 $ ; temps en position 23.3 % des bougies
+   dérive attendue par trade (même durée, dérive moyenne) : +92.5 $ ; total +58,479 $ ; espérance corrigée +127.2 $/trade
+   excédent sur la dérive : +34.7 $/trade, t = 0.34 ; équivalent acheter-garder au même temps d'exposition : +56,685 $
+   DD max (clôtures de trades) brut 34,365 $ ; corrigé 38,253 $ ; en R 30.9 R
+   concentration : 10 meilleurs trades = +140,305 $ ; sans eux -59,899 $ ; sans les 20 meilleurs -137,004 $
+ES: acheter-garder +137,575 $ (+55.14 %) ; stratégie corrigée +14,644 $ ; temps en position 23.9 % des bougies
+   dérive attendue par trade (même durée, dérive moyenne) : +51.1 $ ; total +33,792 $ ; espérance corrigée +22.2 $/trade
+   excédent sur la dérive : -29.0 $/trade, t = -0.63 ; équivalent acheter-garder au même temps d'exposition : +32,903 $
+   DD max (clôtures de trades) brut 27,320 $ ; corrigé 28,545 $ ; en R 43.7 R
+   concentration : 10 meilleurs trades = +67,312 $ ; sans eux -52,668 $ ; sans les 20 meilleurs -90,543 $
+
+====================================================================================================
+2. CONTEXTE (P&L corrigé)
+====================================================================================================
+
+--- NQ ---
+                        n    P&L $    PF gagn %  R moy     t R tot
+seance                                                            
+Asie (00-08)         37.0 -17032.0  0.29   13.5 -0.467 -2.11 -17.3
+Londres (08-14h30)  288.0  38915.0  1.22   20.8  0.204  1.26  58.6
+Soir (22-23)         22.0  14544.0  2.39   31.8  0.538   0.9  11.8
+US (14h30-22)       285.0  43980.0  1.18   30.2  0.169   1.3  48.2
+        n    P&L $     PF gagn %  R moy     t R tot
+h                                                  
+0     1.0  -1082.0    0.0    0.0 -1.007   NaN  -1.0
+3     1.0  -1588.0    0.0    0.0 -1.005   NaN  -1.0
+4     9.0  -1672.0   0.74   11.1 -0.034 -0.04  -0.3
+5     7.0  -2678.0   0.32   14.3 -0.362 -1.13  -2.5
+6     3.0  -1872.0    0.0    0.0 -0.674 -2.02  -2.0
+7    16.0  -8140.0   0.11   18.8  -0.65 -3.71 -10.4
+8    63.0   9058.0   1.26   22.2  0.174  0.54  11.0
+9    71.0 -18413.0   0.57   15.5 -0.423 -2.16 -30.0
+10   56.0  14080.0   1.39   26.8  0.657  1.59  36.8
+11    6.0   4355.0   2.22   16.7  0.313  0.26   1.9
+12   16.0   4575.0   1.47   18.8  0.229  0.36   3.7
+13   41.0  24248.0   1.92   22.0  0.913  1.42  37.4
+14   57.0  -7350.0   0.82   19.3 -0.251 -1.05 -14.3
+15   90.0  30387.0   1.39   27.8  0.446   1.5  40.1
+16  110.0  42042.0   1.44   36.4   0.28  1.38  30.9
+17   48.0 -20660.0   0.53   27.1  -0.18 -0.99  -8.6
+18    7.0  -4663.0   0.14   28.6 -0.532 -2.06  -3.7
+19    2.0   7621.0  11.71   50.0  2.066   NaN   4.1
+20    4.0  -1890.0   0.23   25.0  -0.38 -1.64  -1.5
+21    2.0   -495.0    0.0    0.0 -0.394   NaN  -0.8
+22   22.0  14544.0   2.39   31.8  0.538   0.9  11.8
+              n    P&L $    PF gagn %  R moy     t R tot
+jour_sem                                                
+jeu       125.0 -12636.0  0.87   24.0  -0.03 -0.16  -3.8
+lun       125.0  31038.0  1.34   24.8  0.406  1.59  50.7
+mar       125.0  27387.0  1.34   24.8   0.13  0.65  16.3
+mer       125.0   -712.0  0.99   22.4  0.133  0.57  16.7
+ven       132.0  35330.0  1.39   28.8  0.163  0.79  21.5
+            n     P&L $    PF gagn %  R moy       t  R tot
+duree                                                     
+0-1      73.0  -82478.0   0.0    0.0 -1.038  -52.68  -75.8
+2-3      91.0  -93436.0   0.0    0.0 -1.005 -288.02  -91.5
+4-10    134.0 -135240.0   0.0    0.0 -0.947  -54.94 -126.9
+11-30   153.0 -112818.0  0.04    9.8 -0.717  -18.81 -109.8
+31-100  163.0  332469.0  12.9   76.7  2.228    10.6  363.1
+>100     18.0  171910.0   NaN  100.0  7.899    8.23  142.2
+                        n     P&L $    PF gagn %  R moy       t  R tot
+stop_c                                                                
+changement couleur  233.0  501338.0  14.9   67.8  2.171   10.57  505.9
+stop                399.0 -420931.0   0.0    0.0 -1.014 -272.43 -404.5
+   Asie (00-08) par moitié : H1: -0.269 R (n=21) | H2: -0.726 R (n=16)
+   Londres (08-14h30) par moitié : H1: +0.414 R (n=162) | H2: -0.067 R (n=126)
+   Soir (22-23) par moitié : H1: +0.006 R (n=8) | H2: +0.842 R (n=14)
+   US (14h30-22) par moitié : H1: +0.026 R (n=129) | H2: +0.287 R (n=156)
+
+--- ES ---
+                        n    P&L $    PF gagn %  R moy     t R tot
+seance                                                            
+Asie (00-08)         42.0  -4468.0  0.63   19.0 -0.261 -0.73 -11.0
+Londres (08-14h30)  295.0  -1919.0  0.98   20.0  0.084  0.49  24.9
+Soir (22-23)         24.0    520.0  1.08   33.3  0.039  0.13   0.9
+US (14h30-22)       300.0  20511.0  1.18   33.0  0.087  0.79  26.0
+        n    P&L $     PF gagn %  R moy     t R tot
+h                                                  
+0     1.0   -602.0    0.0    0.0 -1.026   NaN  -1.0
+3     1.0   -165.0    0.0    0.0   -1.1   NaN  -1.1
+4     6.0  -2765.0    0.0    0.0  -0.91 -7.21  -5.5
+5     7.0  -1018.0   0.38   28.6 -0.401 -1.45  -2.8
+6     4.0  -1060.0   0.01   25.0 -0.698 -2.73  -2.8
+7    23.0   1142.0   1.19   21.7  0.096  0.15   2.2
+8    63.0  -9182.0   0.56   14.3 -0.234 -0.77 -14.7
+9    73.0  -4245.0   0.84   20.5 -0.018 -0.05  -1.3
+10   55.0  -3875.0    0.8   21.8  0.016  0.04   0.9
+11   13.0     42.0   1.01   23.1 -0.097 -0.19  -1.3
+12   17.0   7382.0   2.73   35.3  0.671  0.94  11.4
+13   41.0  15066.0   2.02   24.4  0.954  1.33  39.1
+14   50.0 -12588.0   0.43   10.0 -0.411 -1.64 -20.5
+15   98.0  -8793.0   0.79   18.4  -0.14 -0.68 -13.8
+16  116.0  28910.0    1.7   44.8  0.295  1.72  34.2
+17   47.0    832.0   1.04   40.4   0.11  0.46   5.1
+18    6.0   2790.0   3.17   66.7  1.374  1.31   8.2
+19    3.0   4283.0  12.43   66.7   1.56  0.92   4.7
+20    6.0    435.0   1.29   33.3  0.638  0.55   3.8
+21    7.0  -2468.0   0.01   14.3  -0.71 -3.16  -5.0
+22   24.0    520.0   1.08   33.3  0.039  0.13   0.9
+              n    P&L $    PF gagn %  R moy     t R tot
+jour_sem                                                
+jeu       133.0  -8690.0  0.84   24.8  -0.08 -0.44 -10.6
+lun       142.0   -892.0  0.98   26.8 -0.021 -0.12  -3.0
+mar       120.0  27271.0   1.7   30.8  0.295  1.22  35.4
+mer       138.0 -10455.0  0.81   22.5   0.07  0.29   9.7
+ven       128.0   7410.0  1.17   27.3  0.073  0.33   9.3
+            n     P&L $     PF gagn %  R moy       t  R tot
+duree                                                      
+0-1      71.0  -38778.0    0.0    0.0 -1.053  -61.24  -74.7
+2-3      99.0  -52772.0    0.0    0.0 -1.038 -526.76 -102.7
+4-10    139.0  -74348.0    0.0    0.7 -1.007  -66.22 -140.0
+11-30   167.0  -58515.0   0.07   13.8 -0.722  -17.21 -120.5
+31-100  168.0  170411.0  15.28   79.2  2.024    9.75  340.0
+>100     17.0   68645.0    NaN  100.0  8.171    6.23  138.9
+                        n     P&L $     PF gagn %  R moy       t  R tot
+stop_c                                                                 
+changement couleur  242.0  234695.0  12.33   71.9  1.978    9.44  478.7
+stop                419.0 -220051.0    0.0    0.0 -1.045 -310.83 -437.8
+   Asie (00-08) par moitié : H1: +0.020 R (n=24) | H2: -0.636 R (n=18)
+   Londres (08-14h30) par moitié : H1: +0.414 R (n=156) | H2: -0.285 R (n=139)
+   Soir (22-23) par moitié : H1: -0.036 R (n=15) | H2: +0.165 R (n=9)
+   US (14h30-22) par moitié : H1: -0.111 R (n=149) | H2: +0.282 R (n=151)
+
+====================================================================================================
+3. EXCURSIONS ET VARIANTES DE SORTIE (en R ; R = 2 ATR)
+====================================================================================================
+
+--- NQ --- gagnants 158 : MAE/R quantiles 50/75/90/95 % = [0.46, 0.77, 0.99, 1.06]
+   stop 0.500 R (1.00 ATR) : garde 53 % des gagnants (+243.7 R de gagnants perdus)
+   stop 0.625 R (1.25 ATR) : garde 63 % des gagnants (+212.9 R de gagnants perdus)
+   stop 0.750 R (1.50 ATR) : garde 73 % des gagnants (+139.8 R de gagnants perdus)
+   stop 0.875 R (1.75 ATR) : garde 82 % des gagnants (+93.5 R de gagnants perdus)
+   MFE/R tous trades : % atteignant 0,5/1/2/3/5 R = [63, 49, 30, 20, 12]
+   gagnants : MFE médian 4.55 R, sortie médiane 2.24 R (capté 62 % du MFE) ; perdants non stoppés : 75 (moy -0.39 R)
+   stoppés ayant d'abord atteint +1 R : 113 / 399
+
+--- ES --- gagnants 174 : MAE/R quantiles 50/75/90/95 % = [0.47, 0.69, 0.92, 1.06]
+   stop 0.500 R (1.00 ATR) : garde 55 % des gagnants (+215.5 R de gagnants perdus)
+   stop 0.625 R (1.25 ATR) : garde 66 % des gagnants (+163.6 R de gagnants perdus)
+   stop 0.750 R (1.50 ATR) : garde 79 % des gagnants (+102.1 R de gagnants perdus)
+   stop 0.875 R (1.75 ATR) : garde 85 % des gagnants (+78.3 R de gagnants perdus)
+   MFE/R tous trades : % atteignant 0,5/1/2/3/5 R = [66, 50, 31, 19, 10]
+   gagnants : MFE médian 3.91 R, sortie médiane 1.77 R (capté 56 % du MFE) ; perdants non stoppés : 68 (moy -0.54 R)
+   stoppés ayant d'abord atteint +1 R : 121 / 419
+
+Espérance (R/trade) par variante — prudent | optimiste (identiques quand l'issue est certaine) :
+                              NQ tout          NQ H1          NQ H2        ES tout          ES H1          ES H2
+variante                                                                                                        
+actuel                         +0.160         +0.202         +0.117         +0.062         +0.140         -0.022
+stop 0.875 R                   +0.041         +0.092         -0.011         -0.019         +0.062         -0.106
+stop 0.75 R                    +0.030         +0.089         -0.030         +0.019         +0.101         -0.070
+stop 0.625 R                   -0.010         -0.028         +0.009         -0.006         +0.072         -0.091
+stop 0.5 R                     +0.027         -0.001         +0.057         -0.003         +0.049         -0.059
+objectif 1 R                   +0.008         -0.001         +0.017         -0.002         +0.016         -0.021
+objectif 1.5 R                 -0.006         -0.005         -0.008         +0.024         +0.030         +0.018
+objectif 2 R                   +0.008         +0.000         +0.016         -0.015         -0.013         -0.017
+objectif 3 R                   +0.021         +0.024         +0.019         -0.055         -0.010         -0.104
+objectif 4 R                   +0.074         +0.083         +0.064         +0.004         +0.072         -0.070
+objectif 6 R                   +0.109         +0.152         +0.065         +0.008         +0.058         -0.046
+objectif 8 R                   +0.132         +0.189         +0.073         +0.037         +0.073         -0.002
+objectif 10 R                  +0.156         +0.224         +0.087         +0.034         +0.093         -0.030
+objectif 15 R                  +0.157         +0.196         +0.117         +0.047         +0.112         -0.022
+BE 0.5 R                -0.333|+0.482  -0.308|+0.559  -0.358|+0.403  -0.312|+0.425  -0.273|+0.522  -0.354|+0.320
+BE 1 R                  -0.450|+0.365  -0.435|+0.432  -0.464|+0.297  -0.460|+0.277  -0.417|+0.377  -0.507|+0.168
+BE 1.5 R                -0.538|+0.274  -0.523|+0.343  -0.554|+0.204  -0.533|+0.200  -0.505|+0.288  -0.564|+0.105
+BE 2 R                  -0.567|+0.235  -0.572|+0.290  -0.562|+0.179  -0.582|+0.139  -0.556|+0.226  -0.610|+0.044
+BE 3 R                  -0.558|+0.193  -0.570|+0.247  -0.546|+0.139  -0.583|+0.086  -0.570|+0.175  -0.596|-0.009
+BE 5 R                  -0.491|+0.165  -0.539|+0.212  -0.441|+0.117  -0.419|+0.073  -0.435|+0.158  -0.401|-0.019
+objectif 2 + BE 1       -0.476|+0.138  -0.482|+0.142  -0.470|+0.133  -0.495|+0.123  -0.484|+0.138  -0.507|+0.107
+objectif 3 + BE 1       -0.473|+0.193  -0.479|+0.209  -0.467|+0.177  -0.490|+0.135  -0.475|+0.193  -0.507|+0.073
+objectif 4 + BE 2       -0.587|+0.132  -0.612|+0.145  -0.561|+0.119  -0.608|+0.066  -0.606|+0.135  -0.610|-0.010
+stop 0.75 + objectif 2  -0.263|+0.130  -0.271|+0.134  -0.254|+0.126  -0.235|+0.123  -0.261|+0.129  -0.207|+0.117
+stop 0.75 + objectif 4  -0.111|+0.168  -0.116|+0.211  -0.106|+0.123  -0.107|+0.095  -0.078|+0.173  -0.139|+0.011
+stop 0.5 + objectif 3   -0.118|+0.271  -0.153|+0.296  -0.081|+0.244  -0.162|+0.212  -0.190|+0.263  -0.132|+0.157
+
+====================================================================================================
+4/5. BOOTSTRAP PAR MOIS (IC 95 %, 4000 tirages ; p = part des tirages ≤ 0)
+====================================================================================================
+NQ brut (export) : R moy +0.182  IC95 [+0.013 ; +0.367]  p(≤0) 0.015
+NQ corrigé       : R moy +0.160  IC95 [-0.008 ; +0.355]  p(≤0) 0.032
+   P&L total corrigé +80,406 $ IC95 [-6,616 ; +171,537] ; PF 1.18 IC95 [0.99 ; 1.40]
+   excédent sur la dérive +34.7 $/trade IC95 [-91.6 ; +173.2]
+   filtre « pas d'entrée 00-08 h Paris » : +0.199 R/trade (n=595) IC95 [+0.019 ; +0.415] ; gain vs actuel +0.039 IC95 [+0.008 ; +0.068] ; P&L +97,439 $
+   objectif 4 R  : écart vs actuel prudent -0.087 IC95 [-0.179 ; +0.002] | optimiste -0.087 IC95 [-0.179 ; +0.002]
+   objectif 10 R : écart vs actuel prudent -0.004 IC95 [-0.041 ; +0.035] | optimiste -0.004 IC95 [-0.041 ; +0.035]
+   stop 0.75 R   : écart vs actuel prudent -0.130 IC95 [-0.228 ; -0.042] | optimiste -0.130 IC95 [-0.228 ; -0.042]
+   stop 0.875 R  : écart vs actuel prudent -0.120 IC95 [-0.211 ; -0.042] | optimiste -0.120 IC95 [-0.211 ; -0.042]
+   BE 2 R        : écart vs actuel prudent -0.727 IC95 [-0.894 ; -0.583] | optimiste +0.075 IC95 [+0.056 ; +0.095]
+   BE 3 R        : écart vs actuel prudent -0.719 IC95 [-0.876 ; -0.577] | optimiste +0.033 IC95 [+0.021 ; +0.045]
+ES brut (export) : R moy +0.087  IC95 [-0.062 ; +0.252]  p(≤0) 0.137
+ES corrigé       : R moy +0.062  IC95 [-0.102 ; +0.236]  p(≤0) 0.223
+   P&L total corrigé +14,644 $ IC95 [-32,251 ; +60,106] ; PF 1.06 IC95 [0.88 ; 1.26]
+   excédent sur la dérive -29.0 $/trade IC95 [-92.4 ; +34.9]
+   filtre « pas d'entrée 00-08 h Paris » : +0.084 R/trade (n=619) IC95 [-0.074 ; +0.257] ; gain vs actuel +0.021 IC95 [-0.030 ; +0.060] ; P&L +19,112 $
+   objectif 4 R  : écart vs actuel prudent -0.058 IC95 [-0.149 ; +0.031] | optimiste -0.058 IC95 [-0.149 ; +0.031]
+   objectif 10 R : écart vs actuel prudent -0.028 IC95 [-0.071 ; +0.008] | optimiste -0.028 IC95 [-0.071 ; +0.008]
+   stop 0.75 R   : écart vs actuel prudent -0.043 IC95 [-0.122 ; +0.029] | optimiste -0.043 IC95 [-0.122 ; +0.029]
+   stop 0.875 R  : écart vs actuel prudent -0.080 IC95 [-0.154 ; -0.017] | optimiste -0.080 IC95 [-0.154 ; -0.017]
+   BE 2 R        : écart vs actuel prudent -0.644 IC95 [-0.784 ; -0.510] | optimiste +0.077 IC95 [+0.058 ; +0.095]
+   BE 3 R        : écart vs actuel prudent -0.645 IC95 [-0.791 ; -0.513] | optimiste +0.025 IC95 [+0.014 ; +0.037]
+
+--- NQ vs ES ---
+corrélation des R mensuels NQ/ES : +0.50 ; mois où les deux gagnent 38%, les deux perdent 35%
+entrées NQ avec une entrée ES à ±30 min : 53% (332/632)
+   R moyen NQ quand ES entre aussi : +0.199 (n=332) ; seul : +0.118 (n=300)
