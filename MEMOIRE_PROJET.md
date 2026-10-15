@@ -665,3 +665,29 @@ multi-unités d'un coup.
   2. en faire une **version optimisée** avec toutes les améliorations que Claude proposerait pour
      le trading (à garder séparée de la version fidèle) ;
   3. puis une **stratégie de bot** sur l'ensemble des indicateurs.
+
+### Bilan des 4 agents de validation (15/10)
+
+- **Trendlines + Breakator : 8/8 droites et 8/8 cassures sur l'API** (objets `trl_*`, `trl_bo`), à
+  condition de pivots STRICTS des deux côtés. Seul écart : marqueur triangle chez l'original, cercle chez nous.
+- **Fibonator (`FIBONACCI_AUTO.pine`) : NIVEAUX À L'ENVERS.** Chez l'original 0 = swing récent, 1 = swing
+  ancien (comme l'outil Fib de TradingView). Corrigé en simulation : 4/4 sur l'API (`fib_75`, `fib_zone`)
+  au centième ; 0/4 sans la correction. Défaut de l'original : niveau 75 % + zone 0,618-0,75.
+- **Monday High Low : 12/12 sur l'API en lundi calendaire UTC** (devenu le défaut de COMPLETV2). À
+  confirmer sur un future (MNQ) : les définitions y divergent.
+- **Rondator** (`rnl_*` de l'API) : centre = arrondi INFÉRIEUR à 100 du dernier close, ±10 niveaux, pas de
+  100 ; visible en 2m, jamais en 15m. Les `rnq_*` sont propres au site, à ignorer. Non codé.
+- **Rangeator : CALABLE SUR L'API** (contredit §13 pour la géométrie) : 54 boîtes (49 distinctes) avec
+  début, fin, haut, bas, médiane = (haut+bas)/2, couleur. Les bornes ne sont pas le max/min de la boîte.
+- **ALLUMAGE / CONTINUATION** : 50 + 5 cibles dans l'API, mais absents des 98 CSV et des alertes connues.
+- **Signator Fort/Moyen** : les 6 MOYEN ont un score 4 termes entre 54,5 et 83,8 → aucun seuil ne les
+  sépare. Score sur bougies réelles : réfuté (24/100 FORT passeraient sous 50). Les 2 MOYEN intraday
+  n'existent pas du tout dans les exports de l'ancienne version (729bf, cc4cf, 874b6, bbc75) : l'original
+  y appliquait un filtre qui supprimait les MOYEN.
+- **Feu de Confluence** : part = voix / 29. Le 14/10 (SHORT) impose au moins 7 short sur les 10 voix du bloc
+  SuperTrader ; lecture « sens » : Trend, CCI, RSI, MACD, Gap, PA2, PA3 obligatoires. Plusieurs couleurs
+  Midgar ne sont pas directionnelles (YoYo, VIX, volumes, Gap↓, Bull/Bear Score). Règle candidate : Trend,
+  Cross, CCI, RSI, MACD 10m, Gap (Bull% ≥ Bear%), TF1/TF2/TF3 PA, Divergence, vote par le SENS. MAIS
+  contradiction avec l'API du 12/10 11:00 UTC 15m (7L/20S/2N) : aucune combinaison ne satisfait les deux
+  → soit le Feu web ≠ TradingView, soit la règle Dashator (bougie HA haussière) est fausse.
+- **ORB** : hypothèse nouvelle, « In Range » = état par défaut tant que l'ORB du jour n'est pas formé.
