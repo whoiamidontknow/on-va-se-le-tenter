@@ -1,0 +1,84 @@
+
+== LONG profondeur 2
+  pli 1 : SI sess_AS_dist_bas <= -1.05 ET piv_dist_P > -0.672  (train 0.693 vs base 0.497, n=309) | cible OOS 0.261 vs 0.569 (n=245)
+          règle   n=272 gain   37% moyR -0.109 PF 0.51 DD 40.0R totR  -29.6 $/trade   -36.1
+          réf.    n=681 gain   44% moyR +0.000 PF 1.00 DD 64.5R totR   +0.1 $/trade   +58.2
+  pli 2 : SI sess_US_dist_haut > 1.72 ET sig_age_long <= 3.94  (train 0.770 vs base 0.517, n=356) | cible OOS 0.238 vs 0.477 (n=21)
+          règle   n=  5 gain   20% moyR -0.414 PF 0.49 DD  2.1R totR   -2.1 $/trade  -465.8
+          réf.    n=841 gain   44% moyR -0.052 PF 0.77 DD 54.8R totR  -43.4 $/trade    -5.9
+  pli 3 : SI sess_US_dist_haut > 2.91  (train 0.662 vs base 0.510, n=482) | cible OOS 0.197 vs 0.503 (n=71)
+          règle   n= 14 gain   21% moyR -0.395 PF 0.43 DD  6.7R totR   -5.5 $/trade  -156.5
+          réf.    n=946 gain   39% moyR -0.089 PF 0.65 DD 125.8R totR  -84.0 $/trade   -14.3
+  pli 4 : SI sess_LD_dist_haut > -0.256 ET heure_sin > 0.91  (train 0.766 vs base 0.507, n=384) | cible OOS 0.339 vs 0.509 (n=62)
+          règle   n=  4 gain    0% moyR -0.840 PF 0.00 DD  3.4R totR   -3.4 $/trade   -46.2
+          réf.    n=831 gain   36% moyR -0.125 PF 0.52 DD 124.6R totR -103.9 $/trade   -34.6
+  pli 5 : SI jour > 3.5 ET clx_age_buy > 2.01  (train 0.663 vs base 0.506, n=1358) | cible OOS nan vs 0.435 (n=0)
+          règle   n=0
+          réf.    n=1084 gain   36% moyR -0.106 PF 0.54 DD 123.0R totR -115.1 $/trade   -61.2
+  TOTAL OOS RÈGLE                      n=295 gain   36% moyR -0.138 PF 0.48 DD 46.6R totR  -40.6 $/trade   -49.2  t=-4.47
+     par série : MES 15 n86 -0.22, MES 30 n39 -0.20, MES 5 n1 -0.13, MES 60 n17 -0.34, NQZ 15 n95 -0.04, NQZ 30 n41 -0.07, NQZ 60 n16 -0.12
+  TOTAL OOS RÉFÉRENCE (toutes barres)  n=4383 gain   39% moyR -0.079 PF 0.68 DD 400.7R totR -346.3 $/trade   -16.9  t=-9.14
+     par série : MES 15 n828 -0.10, MES 30 n391 -0.06, MES 5 n754 -0.21, MES 60 n256 -0.05, NQZ 15 n830 -0.04, NQZ 30 n406 -0.01, NQZ 5 n687 -0.04, NQZ 60 n231 -0.02
+
+== LONG profondeur 3
+  pli 1 : SI sess_AS_dist_bas <= -1.05 ET piv_dist_P > -0.672  (train 0.693 vs base 0.497, n=309) | cible OOS 0.261 vs 0.569 (n=245)
+          règle   n=272 gain   37% moyR -0.109 PF 0.51 DD 40.0R totR  -29.6 $/trade   -36.1
+          réf.    n=681 gain   44% moyR +0.000 PF 1.00 DD 64.5R totR   +0.1 $/trade   +58.2
+  pli 2 : SI sess_US_dist_haut > 1.72 ET sig_age_long <= 3.94  (train 0.770 vs base 0.517, n=356) | cible OOS 0.238 vs 0.477 (n=21)
+          règle   n=  5 gain   20% moyR -0.414 PF 0.49 DD  2.1R totR   -2.1 $/trade  -465.8
+          réf.    n=841 gain   44% moyR -0.052 PF 0.77 DD 54.8R totR  -43.4 $/trade    -5.9
+  pli 3 : SI sess_US_dist_haut > 2.91  (train 0.662 vs base 0.510, n=482) | cible OOS 0.197 vs 0.503 (n=71)
+          règle   n= 14 gain   21% moyR -0.395 PF 0.43 DD  6.7R totR   -5.5 $/trade  -156.5
+          réf.    n=946 gain   39% moyR -0.089 PF 0.65 DD 125.8R totR  -84.0 $/trade   -14.3
+  pli 4 : SI sess_LD_dist_haut > -0.256 ET heure_sin > 0.91  (train 0.766 vs base 0.507, n=384) | cible OOS 0.339 vs 0.509 (n=62)
+          règle   n=  4 gain    0% moyR -0.840 PF 0.00 DD  3.4R totR   -3.4 $/trade   -46.2
+          réf.    n=831 gain   36% moyR -0.125 PF 0.52 DD 124.6R totR -103.9 $/trade   -34.6
+  pli 5 : SI jour > 3.5 ET clx_age_buy > 2.01 ET heure_cos > -0.634  (train 0.773 vs base 0.506, n=942) | cible OOS nan vs 0.435 (n=0)
+          règle   n=0
+          réf.    n=1084 gain   36% moyR -0.106 PF 0.54 DD 123.0R totR -115.1 $/trade   -61.2
+  TOTAL OOS RÈGLE                      n=295 gain   36% moyR -0.138 PF 0.48 DD 46.6R totR  -40.6 $/trade   -49.2  t=-4.47
+     par série : MES 15 n86 -0.22, MES 30 n39 -0.20, MES 5 n1 -0.13, MES 60 n17 -0.34, NQZ 15 n95 -0.04, NQZ 30 n41 -0.07, NQZ 60 n16 -0.12
+  TOTAL OOS RÉFÉRENCE (toutes barres)  n=4383 gain   39% moyR -0.079 PF 0.68 DD 400.7R totR -346.3 $/trade   -16.9  t=-9.14
+     par série : MES 15 n828 -0.10, MES 30 n391 -0.06, MES 5 n754 -0.21, MES 60 n256 -0.05, NQZ 15 n830 -0.04, NQZ 30 n406 -0.01, NQZ 5 n687 -0.04, NQZ 60 n231 -0.02
+
+== SHORT profondeur 2
+  pli 1 : SI sess_AS_dist_bas > -1.05 ET sess_US_dist_bas <= 6.66  (train 0.536 vs base 0.489, n=2677) | cible OOS 0.373 vs 0.419 (n=767)
+          règle   n=585 gain   35% moyR -0.081 PF 0.62 DD 52.5R totR  -47.6 $/trade   -56.5
+          réf.    n=1219 gain   35% moyR -0.094 PF 0.58 DD 128.6R totR -115.0 $/trade   -44.5
+  pli 2 : SI sess_US_dist_haut <= 1.72 ET adx > 50.1  (train 0.655 vs base 0.469, n=444) | cible OOS nan vs 0.513 (n=0)
+          règle   n=0
+          réf.    n=1050 gain   41% moyR -0.034 PF 0.83 DD 62.6R totR  -36.0 $/trade   -10.5
+  pli 3 : SI sess_US_dist_haut <= 4.41 ET adx > 49.5  (train 0.634 vs base 0.477, n=514) | cible OOS 0.429 vs 0.485 (n=140)
+          règle   n= 90 gain   36% moyR -0.180 PF 0.39 DD 16.2R totR  -16.2 $/trade   -54.8
+          réf.    n=965 gain   38% moyR -0.050 PF 0.77 DD 72.8R totR  -47.8 $/trade    -7.7
+  pli 4 : SI sess_LD_dist_haut <= -0.321 ET piv_dist_P > 9.15  (train 0.612 vs base 0.480, n=1763) | cible OOS 0.431 vs 0.486 (n=58)
+          règle   n= 51 gain   35% moyR -0.155 PF 0.33 DD  7.9R totR   -7.9 $/trade    +4.2
+          réf.    n=1064 gain   32% moyR -0.119 PF 0.53 DD 150.1R totR -126.8 $/trade    +6.0
+  pli 5 : SI jour <= 3.5 ET sess_LD_dist_haut <= -0.256  (train 0.528 vs base 0.482, n=6447) | cible OOS 0.541 vs 0.550 (n=1342)
+          règle   n=526 gain   33% moyR -0.080 PF 0.72 DD 78.2R totR  -42.1 $/trade   +74.1
+          réf.    n=789 gain   34% moyR -0.069 PF 0.74 DD 99.4R totR  -54.2 $/trade   +71.3
+  TOTAL OOS RÈGLE                      n=1252 gain   35% moyR -0.091 PF 0.63 DD 153.4R totR -113.8 $/trade    +0.9  t=-5.42
+     par série : MES 15 n224 -0.13, MES 30 n136 -0.14, MES 5 n255 -0.20, MES 60 n138 -0.08, NQZ 15 n140 +0.02, NQZ 30 n123 -0.06, NQZ 5 n103 +0.01, NQZ 60 n133 -0.01
+  TOTAL OOS RÉFÉRENCE (toutes barres)  n=5087 gain   36% moyR -0.075 PF 0.68 DD 428.5R totR -379.9 $/trade    -2.0  t=-9.37
+     par série : MES 15 n1146 -0.12, MES 30 n513 -0.09, MES 5 n839 -0.22, MES 60 n291 -0.05, NQZ 15 n838 +0.01, NQZ 30 n554 -0.01, NQZ 5 n593 +0.01, NQZ 60 n313 -0.01
+
+== SHORT profondeur 3
+  pli 1 : SI sess_AS_dist_bas > -1.05 ET sess_US_dist_bas <= 6.66 ET piv_dist_P > 10  (train 0.620 vs base 0.489, n=726) | cible OOS 0.476 vs 0.419 (n=307)
+          règle   n=267 gain   42% moyR -0.015 PF 0.91 DD 13.4R totR   -4.1 $/trade    -4.6
+          réf.    n=1219 gain   35% moyR -0.094 PF 0.58 DD 128.6R totR -115.0 $/trade   -44.5
+  pli 2 : SI sess_US_dist_haut <= 1.72 ET adx > 50.1  (train 0.655 vs base 0.469, n=444) | cible OOS nan vs 0.513 (n=0)
+          règle   n=0
+          réf.    n=1050 gain   41% moyR -0.034 PF 0.83 DD 62.6R totR  -36.0 $/trade   -10.5
+  pli 3 : SI sess_US_dist_haut <= 4.41 ET adx > 49.5  (train 0.634 vs base 0.477, n=514) | cible OOS 0.429 vs 0.485 (n=140)
+          règle   n= 90 gain   36% moyR -0.180 PF 0.39 DD 16.2R totR  -16.2 $/trade   -54.8
+          réf.    n=965 gain   38% moyR -0.050 PF 0.77 DD 72.8R totR  -47.8 $/trade    -7.7
+  pli 4 : SI sess_LD_dist_haut <= -0.321 ET piv_dist_P > 9.15 ET sig_age_long > 4.65  (train 0.710 vs base 0.480, n=855) | cible OOS 0.500 vs 0.486 (n=2)
+          règle   n=  2 gain  100% moyR +0.292 PF 99.00 DD  0.0R totR   +0.6 $/trade   +17.7
+          réf.    n=1064 gain   32% moyR -0.119 PF 0.53 DD 150.1R totR -126.8 $/trade    +6.0
+  pli 5 : SI jour <= 3.5 ET sess_LD_dist_haut <= -0.256 ET monday_dist_haut > 1.89  (train 0.790 vs base 0.482, n=324) | cible OOS nan vs 0.550 (n=0)
+          règle   n=0
+          réf.    n=789 gain   34% moyR -0.069 PF 0.74 DD 99.4R totR  -54.2 $/trade   +71.3
+  TOTAL OOS RÈGLE                      n=359 gain   41% moyR -0.055 PF 0.73 DD 27.2R totR  -19.7 $/trade   -17.1  t=-1.93
+     par série : MES 15 n64 -0.11, MES 30 n64 -0.12, MES 5 n1 -1.17, MES 60 n56 -0.05, NQZ 15 n65 +0.02, NQZ 30 n57 -0.05, NQZ 5 n2 -1.01, NQZ 60 n50 +0.05
+  TOTAL OOS RÉFÉRENCE (toutes barres)  n=5087 gain   36% moyR -0.075 PF 0.68 DD 428.5R totR -379.9 $/trade    -2.0  t=-9.37
+     par série : MES 15 n1146 -0.12, MES 30 n513 -0.09, MES 5 n839 -0.22, MES 60 n291 -0.05, NQZ 15 n838 +0.01, NQZ 30 n554 -0.01, NQZ 5 n593 +0.01, NQZ 60 n313 -0.01

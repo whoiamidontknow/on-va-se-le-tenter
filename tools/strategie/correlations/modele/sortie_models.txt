@@ -1,0 +1,170 @@
+lignes CSV 13915 API 2266 variables 70
+plis : [('09-15 00:00', '09-25 15:00'), ('09-25 15:00', '10-05 05:00'), ('10-05 05:00', '10-09 00:00'), ('10-09 00:00', '10-13 05:45'), ('10-13 05:45', '10-15 11:50')]
+
+######## LONG
+AUC variables seules (OOS, sens brut) : {'heishi_bull': 0.524, 'trend_htf1': 0.502, 'moy_dist50': 0.522, 'ret5': 0.515, 'rsi': 0.519, 'sig_score': 0.476, 'adx': 0.484}
+
+== L logit walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646  0.002 0.500     1.000  0.500        0.5       0.5
+   2 09-25 10-05  6214  1543  0.002 0.500     1.000  0.500        0.5       0.5
+   3 10-05 10-09  7749  1638  0.002 0.500     1.000  0.500        0.5       0.5
+   4 10-09 10-13  9411  1693  0.002 0.500     1.000  0.500        0.5       0.5
+   5 10-13 10-15 11073  1646  0.100 0.487     0.565  0.538        NaN       NaN
+poolé OOS : AUC 0.493  p_hasard 0.648  (95e centile hasard 0.510)  par unité {5: 0.491, 15: 0.493, 30: 0.501, 60: 0.485}
+croisé : {'MES->NQ': {'auc': 0.52, 'p': np.float64(0.008), 'nul95': np.float64(0.513)}, 'NQ->MES': {'auc': 0.5, 'p': np.float64(1.0), 'nul95': np.float64(0.5)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   Volume/ATR relatifs                           +0.0029 | +0.0000
+   Pivots                                        +0.0015 | +0.0000
+   Heishinator                                   +0.0011 | +0.0000
+   ADX                                           +0.0009 | +0.0000
+   Moyenator                                     +0.0008 | +0.0000
+   TREND/Dashator multi-unites                   +0.0006 | +0.0000
+   Signator                                      +0.0002 | +0.0000
+   Prix recent HA                                +0.0001 | +0.0000
+   Unite                                         -0.0001 | -0.0005
+   Detector                                      -0.0005 | -0.0025
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   -0.0006 | -0.0032
+   Heure/seance/jour                             -0.0018 | -0.0092
+   Climax                                        -0.0020 | -0.0098
+   Sessions+Monday                               -0.0023 | -0.0116
+   Trendlines                                    -0.0024 | -0.0119
+top variables : atr_rel +0.0051 (min +0.0000), trend_htf2 +0.0026 (min +0.0000), piv_dist_P +0.0021 (min +0.0000), moy_pente50 +0.0015 (min +0.0000), bear_score +0.0014 (min +0.0000), det_dist_bear +0.0011 (min +0.0000), monday_dist_haut +0.0008 (min +0.0000), sess_AS_dist_bas +0.0008 (min +0.0000), cci +0.0008 (min +0.0000), adx +0.0007 (min +0.0000)
+
+== L logit_fixe walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646   0.03 0.437     1.000  0.591      0.567     0.575
+   2 09-25 10-05  6214  1543   0.03 0.451     0.988  0.514      0.429     0.436
+   3 10-05 10-09  7749  1638   0.03 0.485     0.790  0.539      0.401     0.411
+   4 10-09 10-13  9411  1693   0.03 0.537     0.293  0.562      0.639     0.618
+   5 10-13 10-15 11073  1646   0.03 0.476     0.790  0.539        NaN       NaN
+poolé OOS : AUC 0.468  p_hasard 0.982  (95e centile hasard 0.513)  par unité {5: 0.502, 15: 0.462, 30: 0.458, 60: 0.398}
+croisé : {'MES->NQ': {'auc': 0.532, 'p': np.float64(0.02), 'nul95': np.float64(0.526)}, 'NQ->MES': {'auc': 0.516, 'p': np.float64(0.09), 'nul95': np.float64(0.518)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   Unite                                         +0.0040 | -0.0019
+   Volume/ATR relatifs                           +0.0037 | -0.0036
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   +0.0030 | -0.0006
+   Detector                                      +0.0026 | -0.0084
+   Heishinator                                   +0.0019 | -0.0007
+   Pivots                                        +0.0012 | -0.0068
+   Moyenator                                     +0.0000 | +0.0000
+   ADX                                           -0.0009 | -0.0118
+   Prix recent HA                                -0.0019 | -0.0101
+   Trendlines                                    -0.0027 | -0.0159
+   Signator                                      -0.0030 | -0.0128
+   TREND/Dashator multi-unites                   -0.0041 | -0.0227
+   Heure/seance/jour                             -0.0043 | -0.0187
+   Climax                                        -0.0078 | -0.0247
+   Sessions+Monday                               -0.0078 | -0.0104
+top variables : trend_htf2 +0.0037 (min -0.0036), atr_rel +0.0030 (min -0.0102), piv_pos_S1R1 +0.0023 (min -0.0011), sess_LD_dist_haut +0.0019 (min -0.0043), monday_dist_bas +0.0017 (min -0.0064), det_dist_bear +0.0015 (min -0.0030), vidya_up +0.0014 (min -0.0062), unite_log +0.0014 (min -0.0065), bear_score +0.0014 (min -0.0020), det_in_bear +0.0013 (min +0.0000)
+
+== L hgb walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646     40 0.420     1.000  0.571      0.487     0.471
+   2 09-25 10-05  6214  1543    300 0.490     0.733  0.542      0.496     0.485
+   3 10-05 10-09  7749  1638    300 0.525     0.030  0.517      0.557     0.558
+   4 10-09 10-13  9411  1693    300 0.564     0.014  0.548      0.580     0.568
+   5 10-13 10-15 11073  1646    300 0.483     0.752  0.529        NaN       NaN
+poolé OOS : AUC 0.492  p_hasard 0.626  (95e centile hasard 0.519)  par unité {5: 0.501, 15: 0.51, 30: 0.482, 60: 0.451}
+croisé : {'MES->NQ': {'auc': 0.544, 'p': np.float64(0.004), 'nul95': np.float64(0.52)}, 'NQ->MES': {'auc': 0.567, 'p': np.float64(0.002), 'nul95': np.float64(0.521)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   Heure/seance/jour                             +0.0074 | -0.0006
+   Signator                                      +0.0040 | -0.0012
+   Detector                                      +0.0039 | -0.0112
+   ADX                                           +0.0038 | -0.0017
+   TREND/Dashator multi-unites                   +0.0033 | -0.0144
+   Trendlines                                    +0.0016 | -0.0032
+   Pivots                                        +0.0015 | -0.0183
+   Moyenator                                     +0.0015 | -0.0032
+   Unite                                         -0.0000 | -0.0002
+   Heishinator                                   -0.0003 | -0.0037
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   -0.0013 | -0.0257
+   Prix recent HA                                -0.0016 | -0.0114
+   Volume/ATR relatifs                           -0.0017 | -0.0112
+   Sessions+Monday                               -0.0047 | -0.0670
+   Climax                                        -0.0102 | -0.0272
+top variables : monday_dist_haut +0.0043 (min -0.0028), det_age_mit_bear +0.0037 (min -0.0047), piv_dist_P +0.0033 (min -0.0000), jour +0.0031 (min -0.0210), trend_dist_htf2 +0.0030 (min -0.0159), sig_age_long +0.0028 (min -0.0005), det_dist_bear +0.0023 (min -0.0026), di_diff +0.0022 (min -0.0018), heure_cos +0.0019 (min -0.0028), det_dist_bull +0.0016 (min -0.0002)
+
+######## SHORT
+AUC variables seules (OOS, sens brut) : {'heishi_bull': 0.479, 'trend_htf1': 0.5, 'moy_dist50': 0.483, 'ret5': 0.49, 'rsi': 0.485, 'sig_score': 0.517, 'adx': 0.516}
+
+== S logit walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646  0.002 0.500     1.000   0.50        0.5       0.5
+   2 09-25 10-05  6214  1543  0.002 0.500     1.000   0.50        0.5       0.5
+   3 10-05 10-09  7749  1638  0.002 0.500     1.000   0.50        0.5       0.5
+   4 10-09 10-13  9411  1693  0.002 0.500     1.000   0.50        0.5       0.5
+   5 10-13 10-15 11073  1646  0.100 0.487     0.503   0.53        NaN       NaN
+poolé OOS : AUC 0.495  p_hasard 0.599  (95e centile hasard 0.512)  par unité {5: 0.492, 15: 0.49, 30: 0.511, 60: 0.489}
+croisé : {'MES->NQ': {'auc': 0.5, 'p': np.float64(1.0), 'nul95': np.float64(0.5)}, 'NQ->MES': {'auc': 0.512, 'p': np.float64(0.174), 'nul95': np.float64(0.516)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   Volume/ATR relatifs                           +0.0063 | +0.0000
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   +0.0016 | +0.0000
+   Pivots                                        +0.0015 | +0.0000
+   ADX                                           +0.0007 | +0.0000
+   Moyenator                                     +0.0006 | +0.0000
+   Heishinator                                   +0.0005 | +0.0000
+   TREND/Dashator multi-unites                   +0.0005 | +0.0000
+   Detector                                      +0.0003 | +0.0000
+   Signator                                      +0.0002 | +0.0000
+   Climax                                        -0.0018 | -0.0090
+   Prix recent HA                                -0.0019 | -0.0096
+   Sessions+Monday                               -0.0020 | -0.0101
+   Unite                                         -0.0023 | -0.0117
+   Trendlines                                    -0.0028 | -0.0139
+   Heure/seance/jour                             -0.0037 | -0.0187
+top variables : atr_rel +0.0066 (min +0.0000), trend_htf2 +0.0042 (min +0.0000), sess_AS_dist_bas +0.0027 (min +0.0000), piv_dist_P +0.0021 (min +0.0000), cci +0.0018 (min +0.0000), bear_score +0.0013 (min +0.0000), adx +0.0013 (min +0.0000), bull_score +0.0011 (min +0.0000), rsi +0.0008 (min +0.0000), trend_dist_htf1 +0.0008 (min +0.0000)
+
+== S logit_fixe walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646   0.03 0.426     1.000  0.576      0.558     0.567
+   2 09-25 10-05  6214  1543   0.03 0.457     0.966  0.510      0.444     0.454
+   3 10-05 10-09  7749  1638   0.03 0.501     0.429  0.531      0.415     0.423
+   4 10-09 10-13  9411  1693   0.03 0.542     0.120  0.552      0.631     0.603
+   5 10-13 10-15 11073  1646   0.03 0.484     0.731  0.542        NaN       NaN
+poolé OOS : AUC 0.482  p_hasard 0.855  (95e centile hasard 0.514)  par unité {5: 0.505, 15: 0.484, 30: 0.475, 60: 0.418}
+croisé : {'MES->NQ': {'auc': 0.541, 'p': np.float64(0.01), 'nul95': np.float64(0.527)}, 'NQ->MES': {'auc': 0.519, 'p': np.float64(0.036), 'nul95': np.float64(0.518)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   +0.0082 | -0.0053
+   Volume/ATR relatifs                           +0.0038 | -0.0030
+   Detector                                      +0.0022 | -0.0054
+   Heishinator                                   +0.0020 | -0.0006
+   TREND/Dashator multi-unites                   +0.0014 | -0.0144
+   Pivots                                        +0.0008 | -0.0133
+   Moyenator                                     +0.0000 | +0.0000
+   ADX                                           -0.0005 | -0.0114
+   Unite                                         -0.0010 | -0.0072
+   Sessions+Monday                               -0.0017 | -0.0161
+   Signator                                      -0.0024 | -0.0087
+   Heure/seance/jour                             -0.0025 | -0.0163
+   Prix recent HA                                -0.0026 | -0.0109
+   Trendlines                                    -0.0031 | -0.0121
+   Climax                                        -0.0077 | -0.0180
+top variables : trend_htf2 +0.0079 (min +0.0017), atr_rel +0.0049 (min -0.0043), seance_LONDRES +0.0049 (min -0.0051), det_dist_bear +0.0046 (min +0.0013), sess_LD_dist_haut +0.0037 (min +0.0000), cci +0.0036 (min -0.0082), vidya_up +0.0033 (min -0.0046), trend_dist_htf2 +0.0024 (min -0.0148), heure_sin +0.0021 (min +0.0000), monday_dist_bas +0.0021 (min -0.0168)
+
+== S hgb walk-forward
+ pli debut   fin  n_tr  n_te  param   auc  p_hasard  nul95  api_recon  api_vrai
+   1 09-15 09-25  4584  1646     40 0.420     1.000  0.580      0.452     0.438
+   2 09-25 10-05  6214  1543    300 0.498     0.523  0.533      0.501     0.483
+   3 10-05 10-09  7749  1638    300 0.508     0.283  0.533      0.509     0.515
+   4 10-09 10-13  9411  1693    300 0.587     0.002  0.542      0.537     0.524
+   5 10-13 10-15 11073  1646    120 0.462     0.948  0.529        NaN       NaN
+poolé OOS : AUC 0.490  p_hasard 0.754  (95e centile hasard 0.519)  par unité {5: 0.511, 15: 0.505, 30: 0.487, 60: 0.422}
+croisé : {'MES->NQ': {'auc': 0.597, 'p': np.float64(0.002), 'nul95': np.float64(0.524)}, 'NQ->MES': {'auc': 0.563, 'p': np.float64(0.002), 'nul95': np.float64(0.518)}}
+importance par module (baisse AUC moyenne | min sur plis) :
+   ADX                                           +0.0056 | -0.0010
+   Heure/seance/jour                             +0.0051 | -0.0192
+   Signator                                      +0.0049 | -0.0029
+   Heishinator                                   +0.0027 | -0.0016
+   Pivots                                        +0.0022 | -0.0212
+   Moyenator                                     +0.0018 | -0.0014
+   Prix recent HA                                +0.0008 | -0.0059
+   Trendlines                                    +0.0004 | -0.0058
+   Unite                                         -0.0000 | -0.0002
+   Volume/ATR relatifs                           -0.0007 | -0.0132
+   TREND/Dashator multi-unites                   -0.0013 | -0.0087
+   Detector                                      -0.0021 | -0.0112
+   SuperTrader (RSI/CCI/MACD/YoYo/Score/VIDYA)   -0.0056 | -0.0390
+   Sessions+Monday                               -0.0065 | -0.0532
+   Climax                                        -0.0107 | -0.0336
+top variables : piv_dist_P +0.0064 (min -0.0009), adx +0.0039 (min -0.0002), sig_age_long +0.0038 (min -0.0042), heishi_spread +0.0031 (min -0.0017), sess_LD_dist_bas +0.0030 (min -0.0203), pos_range20 +0.0029 (min -0.0002), di_diff +0.0026 (min -0.0005), monday_dist_haut +0.0021 (min -0.0010), det_dist_bear +0.0020 (min -0.0033), macd_rel +0.0019 (min -0.0007)

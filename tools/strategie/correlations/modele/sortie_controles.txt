@@ -1,0 +1,23 @@
+== L
+  heishi_bull    plis 0.576 0.482 0.518 0.506 0.501  poolé 0.524 p_hasard(bilatéral) 0.053
+  heishi_spread  plis 0.575 0.445 0.508 0.480 0.505  poolé 0.522 p_hasard(bilatéral) 0.110
+  moy_dist50     plis 0.571 0.441 0.502 0.481 0.504  poolé 0.522 p_hasard(bilatéral) 0.150
+  trend_htf1     plis 0.544 0.451 0.465 0.471 0.524  poolé 0.502 p_hasard(bilatéral) 0.860
+  trend_htf2     plis 0.486 0.470 nan 0.496 0.554  poolé 0.514 p_hasard(bilatéral) 0.296
+  rsi            plis 0.580 0.451 0.521 0.476 0.494  poolé 0.519 p_hasard(bilatéral) 0.153
+  macd_hist_rel  plis 0.559 0.477 0.540 0.492 0.470  poolé 0.509 p_hasard(bilatéral) 0.488
+  adx            plis 0.395 0.529 0.557 0.449 0.455  poolé 0.484 p_hasard(bilatéral) 0.286
+  atr_rel        plis 0.486 0.517 0.508 0.538 0.455  poolé 0.496 p_hasard(bilatéral) 0.801
+  piv_dist_P     plis 0.410 0.434 0.340 0.529 0.538  poolé 0.500 p_hasard(bilatéral) 0.993
+== S
+  heishi_bull    plis 0.429 0.517 0.483 0.498 0.503  poolé 0.479 p_hasard(bilatéral) 0.093
+  heishi_spread  plis 0.431 0.553 0.494 0.524 0.498  poolé 0.482 p_hasard(bilatéral) 0.186
+  moy_dist50     plis 0.437 0.556 0.501 0.524 0.499  poolé 0.483 p_hasard(bilatéral) 0.196
+  trend_htf1     plis 0.459 0.547 0.539 0.533 0.475  poolé 0.500 p_hasard(bilatéral) 0.967
+  trend_htf2     plis 0.514 0.528 nan 0.502 0.441  poolé 0.484 p_hasard(bilatéral) 0.206
+  rsi            plis 0.427 0.548 0.480 0.529 0.512  poolé 0.485 p_hasard(bilatéral) 0.296
+  macd_hist_rel  plis 0.448 0.522 0.456 0.509 0.536  poolé 0.493 p_hasard(bilatéral) 0.578
+  adx            plis 0.611 0.464 0.440 0.553 0.547  poolé 0.516 p_hasard(bilatéral) 0.246
+  atr_rel        plis 0.516 0.483 0.486 0.461 0.546  poolé 0.503 p_hasard(bilatéral) 0.854
+  piv_dist_P     plis 0.595 0.560 0.664 0.472 0.462  poolé 0.502 p_hasard(bilatéral) 0.900
+issues long MES/NQ au même instant : n=3901, accord 0.827, corrélation 0.654

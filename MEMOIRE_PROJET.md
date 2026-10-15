@@ -738,3 +738,23 @@ multi-unités d'un coup.
 - Ne marchent pas : Signator seul, flip Heishinator, rebond Detector, cassure sessions/Monday, Climax SELL, shorts.
 - Pour conclure : backtest TradingView historique profond, ou 6-12 mois de 15m MES+NQ avec une période
   baissière (export HA avec indicateur + même graphique en bougies standard). ~200 trades par candidat.
+
+### Recherche d'entrée optimale par corrélations (15/10) — `tools/strategie/correlations/`
+
+Trois agents, environnement Python isolé (numpy/pandas/scikit-learn) dans le scratchpad de session.
+**Conclusion commune : sur les données disponibles (≈ 21/08→15/10 + MES avr-juil 15m), AUCUNE entrée
+n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la durée et le régime.
+- **Corrélations** (`paires/`) : 469 tests module→cible, 4 321 paires entrée×filtre : rien après
+  Benjamini-Hochberg qui se réplique. |ρ| ≤ 0,17. Redondances : TREND même unité = Moyenator (ρ 1,00) ;
+  Moyenator, Heishinator, Feu, RSI, CCI, DI, pente EMA50 = un seul facteur « momentum » ; le TREND 1H
+  apporte une info distincte sous 15 min.
+- **Modèle multivarié** (`modele/`, 70 variables, walk-forward 5 plis) : AUC 0,49 (boosting) et 0,47
+  (logistique L1), p 0,63-0,98 → hasard. Le croisement MES→NQ « marche » à tort : même instant, même issue.
+- **Confluence/timing/contexte** (`confluence/`) : le score de confluence ne prédit rien (ρ ≈ 0,05).
+  Tient sur plusieurs régimes : **Signator perd en séance de Londres** (aussi avr-juil), **éviter la
+  volatilité basse** (ATR14/moy100 < 0,9) et le **TREND 2 unités au-dessus contraire**. Climax BUY :
+  **entrée à cours limité au milieu de la bougie climax** (4 barres) meilleure que l'immédiate, mais
+  seulement testable sur sep-oct. Attendre une 2e bougie de confirmation n'aide jamais. Préréglage C
+  (trendline hors Londres) ne tient PAS hors sep-oct.
+- **Prochaine étape** : backtest TradingView en historique profond, ou 6-12 mois de 15m MES+NQ avec baisse ;
+  ou idées de Jeremy à tester une par une.
