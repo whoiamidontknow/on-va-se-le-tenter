@@ -2355,7 +2355,8 @@ if mhl_on and (timeframe.isintraday or timeframe.isdaily)
 // puis restent tracés jusqu'à la même session le lendemain (option).
 grp_ses   = "=== SESSIONS : HIGH / LOW (Asie, Londres, US) ==="
 ses_on    = input.bool(true, "Afficher les sessions", group=grp_ses)
-ses_days  = input.int(3, "Nombre de jours affichés", group=grp_ses, minval=1, maxval=20)
+ses_days  = input.int(1, "Nombre de jours affichés", group=grp_ses, minval=1, maxval=20,
+     tooltip="1 = seulement le dernier haut et le dernier bas de chaque session (choix de Jeremy).")
 ses_ext   = input.bool(true, "Prolonger jusqu'à la même session le lendemain", group=grp_ses,
      tooltip="Décoché : les lignes s'arrêtent à la fin de la session.")
 ses_lbl   = input.bool(true, "Étiquettes (Asie H, Londres L…)", group=grp_ses)
