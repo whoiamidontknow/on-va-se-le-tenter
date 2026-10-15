@@ -716,3 +716,11 @@ multi-unités d'un coup.
 - **Groupé par couleur** : 3 camps de 2 colonnes, ligne par ligne ; ordre Dashator → SuperTrader (ordre
   Midgar) → SIGNAL → TREND/STRENGTH par unité. Codé en V6.
 - **REA** : inutile pour ce travail (cible = binaires et sites web, pas des CSV) et bloqué par Node 20.
+
+### FICHIER DE TRAVAIL : `CompletV3.pine` (à partir du 15/10)
+
+- Demande de Jeremy : **on travaille désormais sur `CompletV3.pine`**. `COMPLETV2.pine` (V6) est figé.
+- **Aucune mention d'« Ephore » ne doit figurer dans `CompletV3.pine`** (titre, groupes, infobulles,
+  commentaires). Dire « l'original » ou « l'indicateur d'origine ». Vérifier avec
+  `grep -ci ephore CompletV3.pine` → 0 avant chaque commit.
+- Titre de l'indicateur dans TradingView : « Complet V3 ».
