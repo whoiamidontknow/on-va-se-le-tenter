@@ -758,3 +758,18 @@ n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la du
   (trendline hors Londres) ne tient PAS hors sep-oct.
 - **Prochaine étape** : backtest TradingView en historique profond, ou 6-12 mois de 15m MES+NQ avec baisse ;
   ou idées de Jeremy à tester une par une.
+
+### Outils d'optimisation prêts (15/10) — à relancer dès qu'un long historique arrive
+
+- **Optimiseur walk-forward** `tools/strategie/optim/` (run.py, config.toml, README) : entrée × filtres ×
+  stop × sortie ensemble, zone stable, Deflated Sharpe + White/SPA, bootstrap, ≥ 100 trades OOS.
+  Concorde trade par trade avec engine.py (préréglages A, B, C). Verdict actuel : NON CONCLUANT.
+- **Étude MAE/MFE** `tools/strategie/maemfe/` : stops et sorties par déclencheur vs hasard. Actuel :
+  aucun déclencheur ne bat le hasard ; stop utile 2,25-4 ATR ; MFE vers 20-26 barres ; rebond Detector
+  pire que le hasard en 15m.
+- **Environnement Python** : `~/venv-quant` (numpy, pandas, scipy, scikit-learn, statsmodels, matplotlib).
+- **Nouvel agent d'équipe** `~/.claude/agents/optimiseur-strategie.md` : lance tout le processus sur un
+  dossier d'exports et rend un verdict honnête.
+- **Données à obtenir** : 6-12 mois de 15m MES + NQ avec une phase baissière, idéalement le même graphique
+  en Heiken Ashi (avec CompletV3 + Volume) ET en bougies standard ; ou le backtest TradingView sur
+  historique profond.
