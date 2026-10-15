@@ -1,91 +1,117 @@
 //@version=6
 // ═══════════════════════════════════════════════════════════════════
-// FIBONACCI AUTO — Ephore (reverse-engineering Fibonator v4)
-// Détecte le dernier swing (high/low) et trace les niveaux Fib
-// Tendance baissière : 0 = swing high (ancien), 1 = swing low (récent)
-// Tendance haussière : 0 = swing low (ancien),  1 = swing high (récent)
+// FIBONACCI AUTO — Ephore (reverse-engineering « Ephore Market Fibonator v4 »)
+// VERSION : V2 (15/10/2026)
+//
+// Détecte le dernier swing (pivot high / pivot low STRICTS, 10/10) et trace
+// les niveaux Fib comme l'outil Fib de TradingView :
+//   0 = swing RÉCENT, 1 = swing ANCIEN.
+//   Mouvement baissier (bas récent)  : 0 = swing low,  1 = swing high
+//   Mouvement haussier (haut récent) : 0 = swing high, 1 = swing low
+//
+// JOURNAL
+//   V1 — UI du Fibonator v4 + rendu (niveaux À L'ENVERS : 0 = swing ancien).
+//   V2 — Sens corrigé (0 = swing récent, 1 = swing ancien) : 4/4 sur l'API
+//        Ephore (fib_75 + fib_zone, 15m/2m, 2 copies), 0/4 avec l'ancien sens.
+//        Pivots STRICTS des deux côtés, codés à la main (égalités tolérées :
+//        1/4 seulement ; strict d'un seul côté : 2/4). Tracé ancré sur le swing récent,
+//        lignes jusqu'à la barre courante + 10, zone + 50 (comme l'API).
+//        Panneau aligné sur les captures du 15/10 : libellés, valeurs par
+//        défaut, couleurs, étoile sur le 75 % OPTIMAL, extensions 127.2/161.8
+//        sous « Afficher Extensions », zone optimale 0.618-0.75 (box).
+//        Toujours 3 inputs non booléens (10 1 small) = légende de l'original.
 // ═══════════════════════════════════════════════════════════════════
 indicator("Fibonacci Auto - Ephore", overlay=true,
-     max_lines_count=50, max_labels_count=50, max_bars_back=500)
+     max_lines_count=50, max_labels_count=50, max_boxes_count=10, max_bars_back=500)
 
 // ── INPUTS ───────────────────────────────────────────────────────
-grp_gen  = "AUTO-FIBONACCI"
-activate = input.bool(true,  "Activer Auto-Fibonacci",          group=grp_gen)
-piv_len  = input.int(10,     "Longueur Pivot (Sensibilité)",    minval=2, maxval=50, group=grp_gen)
-extend_r = input.bool(false, "Étendre les lignes à droite",     group=grp_gen)
-show_lbl = input.bool(true,  "Afficher les labels",             group=grp_gen)
-show_prc = input.bool(false, "Afficher les prix",               group=grp_gen)
-show_str = input.bool(false, "★ Afficher l'étoile sur niveau optimal", group=grp_gen)
-ln_width = input.int(1,      "Épaisseur des lignes",            minval=1, maxval=4, group=grp_gen)
-lbl_size = input.string("small", "Taille des labels", options=["tiny","small","normal","large"], group=grp_gen)
+grp_gen  = "────────── 📐 AUTO-FIBONACCI ──────────"
+activate = input.bool(true,  "🔘 Activer Auto-Fibonacci",                group=grp_gen)
+piv_len  = input.int(10,     "Longueur Pivot (Sensibilité)",            minval=2, maxval=50, group=grp_gen)
+extend_r = input.bool(false, "Étendre les lignes à droite",             group=grp_gen)
+show_lbl = input.bool(true,  "Afficher les labels",                     group=grp_gen)
+show_prc = input.bool(false, "Afficher les prix",                       group=grp_gen)
+show_str = input.bool(false, "⭐ Afficher l'étoile sur niveau optimal", group=grp_gen)
+ln_width = input.int(1,      "Épaisseur des lignes",                    minval=1, maxval=4, group=grp_gen)
+lbl_size = input.string("small", "Taille des labels", options=["tiny", "small", "normal", "large"], group=grp_gen)
 
 grp_lvl  = "--- NIVEAUX FIBONACCI ---"
-show_000 = input.bool(false, "0% (Swing Low/High)",  inline="000", group=grp_lvl)
-col_000  = input.color(#B0B0B0, "",                  inline="000", group=grp_lvl)
-show_236 = input.bool(false, "23.6%",                inline="236", group=grp_lvl)
-col_236  = input.color(#B0B0B0, "",                  inline="236", group=grp_lvl)
-show_382 = input.bool(false, "38.2%",                inline="382", group=grp_lvl)
-col_382  = input.color(#7CB342, "",                  inline="382", group=grp_lvl)
-show_500 = input.bool(false, "50%",                  inline="500", group=grp_lvl)
-col_500  = input.color(#FFC107, "",                  inline="500", group=grp_lvl)
-show_618 = input.bool(true,  "61.8% (Golden Ratio)", inline="618", group=grp_lvl)
-col_618  = input.color(#FF6F00, "",                  inline="618", group=grp_lvl)
-show_750 = input.bool(false, "75% OPTIMAL",          inline="750", group=grp_lvl)
-col_750  = input.color(#505050, "",                  inline="750", group=grp_lvl)
-show_786 = input.bool(false, "78.6%",                inline="786", group=grp_lvl)
-col_786  = input.color(#9C27B0, "",                  inline="786", group=grp_lvl)
-show_100 = input.bool(false, "100% (Swing High/Low)",inline="100", group=grp_lvl)
-col_100  = input.color(#B0B0B0, "",                  inline="100", group=grp_lvl)
+show_000 = input.bool(false, "0% (Swing Low/High)",   inline="000", group=grp_lvl)
+col_000  = input.color(#787B86, "",                   inline="000", group=grp_lvl)
+show_236 = input.bool(false, "23.6%",                 inline="236", group=grp_lvl)
+col_236  = input.color(#787B86, "",                   inline="236", group=grp_lvl)
+show_382 = input.bool(false, "38.2%",                 inline="382", group=grp_lvl)
+col_382  = input.color(#79AA5E, "",                   inline="382", group=grp_lvl)
+show_500 = input.bool(false, "50%",                   inline="500", group=grp_lvl)
+col_500  = input.color(#DEA23B, "",                   inline="500", group=grp_lvl)
+show_618 = input.bool(true,  "61.8% (Golden Ratio)",  inline="618", group=grp_lvl)
+col_618  = input.color(#CA5F41, "",                   inline="618", group=grp_lvl)
+show_750 = input.bool(false, "75% OPTIMAL",           inline="750", group=grp_lvl)
+col_750  = input.color(#363A45, "",                   inline="750", group=grp_lvl)
+show_786 = input.bool(false, "78.6%",                 inline="786", group=grp_lvl)
+col_786  = input.color(#6A319B, "",                   inline="786", group=grp_lvl)
+show_100 = input.bool(false, "100% (Swing High/Low)", inline="100", group=grp_lvl)
+col_100  = input.color(#787B86, "",                   inline="100", group=grp_lvl)
 
-grp_ext  = "--- EXTENSIONS FIBONACCI ---"
-show_ext  = input.bool(false, "Afficher Extensions",     group=grp_ext)
-show_1272 = input.bool(true,  "127.2%",      inline="1272", group=grp_ext)
-col_1272  = input.color(#9C27B0, "",         inline="1272", group=grp_ext)
-show_1618 = input.bool(true,  "161.8%",      inline="1618", group=grp_ext)
-col_1618  = input.color(#E91E63, "",         inline="1618", group=grp_ext)
+grp_ext   = "--- EXTENSIONS FIBONACCI ---"
+show_ext  = input.bool(false, "Afficher Extensions",       group=grp_ext)
+show_1272 = input.bool(true,  "127.2%", inline="1272",     group=grp_ext)
+col_1272  = input.color(#853DA9, "",    inline="1272",     group=grp_ext)
+show_1618 = input.bool(true,  "161.8%", inline="1618",     group=grp_ext)
+col_1618  = input.color(#BF4B64, "",    inline="1618",     group=grp_ext)
 
-grp_zone = "--- ZONE OPTIMALE ---"
+grp_zone  = "--- ZONE OPTIMALE ---"
 show_zone = input.bool(false, "Afficher Zone Optimale (0.618-0.75)", group=grp_zone)
-col_zone  = input.color(color.new(#FFC107, 80), "Couleur de la zone", group=grp_zone)
+col_zone  = input.color(color.new(#141A5C, 50), "Couleur de la zone", group=grp_zone)
 
 // ── DÉTECTION DU SWING ────────────────────────────────────────────
-// On cherche le dernier pivot high et le dernier pivot low confirmés
-ph = ta.pivothigh(high, piv_len, piv_len)
-pl = ta.pivotlow (low,  piv_len, piv_len)
+// Pivot STRICT des deux côtés : src[len] strictement au-dessus (high) ou
+// au-dessous (low) des len barres de gauche ET des len barres de droite.
+// Validé 4/4 sur l'API ; la version large (égalités tolérées) donne 1/4.
+f_piv_strict(src, len, is_high) =>
+    bool ok = bar_index >= 2 * len
+    if ok
+        c = src[len]
+        for i = 0 to 2 * len
+            if i != len
+                v = src[i]
+                if is_high ? v >= c : v <= c
+                    ok := false
+                    break
+    ok
+
+ph_found = f_piv_strict(high, piv_len, true)
+pl_found = f_piv_strict(low,  piv_len, false)
 
 var float last_ph_price = na
 var int   last_ph_bar   = na
 var float last_pl_price = na
 var int   last_pl_bar   = na
 
-if not na(ph)
-    last_ph_price := ph
+if ph_found
+    last_ph_price := high[piv_len]
     last_ph_bar   := bar_index - piv_len
-if not na(pl)
-    last_pl_price := pl
+if pl_found
+    last_pl_price := low[piv_len]
     last_pl_bar   := bar_index - piv_len
 
-// Sens : le pivot le plus récent (en bar_index) définit la fin du mouvement
-// Baissier : pivot_low plus récent que pivot_high  → 0=ph (haut ancien), 1=pl (bas récent)
-// Haussier : pivot_high plus récent que pivot_low → 0=pl (bas ancien), 1=ph (haut récent)
-valid = not na(last_ph_bar) and not na(last_pl_bar)
-bearish = valid and last_pl_bar > last_ph_bar
+// Sens (comme l'outil Fib de TradingView) : 0 = swing le plus récent,
+// 1 = swing le plus ancien. Le tracé part du swing récent.
+valid   = not na(last_ph_bar) and not na(last_pl_bar)
+bearish = valid and last_pl_bar > last_ph_bar   // bas plus récent que le haut
 
-float p0    = na
-float p100  = na
-int   bar0  = na
-int   bar100= na
+float p0   = na     // niveau 0   = swing récent
+float p100 = na     // niveau 100 = swing ancien
+int   bar0 = na     // barre du swing récent (ancrage du tracé)
 if valid
     if bearish
-        p0    := last_ph_price
-        p100  := last_pl_price
-        bar0  := last_ph_bar
-        bar100:= last_pl_bar
+        p0   := last_pl_price
+        p100 := last_ph_price
+        bar0 := last_pl_bar
     else
-        p0    := last_pl_price
-        p100  := last_ph_price
-        bar0  := last_pl_bar
-        bar100:= last_ph_bar
+        p0   := last_ph_price
+        p100 := last_pl_price
+        bar0 := last_ph_bar
 
 // ── DESSIN ────────────────────────────────────────────────────────
 f_lvl(p_0, p_1, r) => p_0 + (p_1 - p_0) * r
@@ -97,37 +123,31 @@ f_size(s) =>
 
 var line[]  lns = array.new<line>()
 var label[] lbs = array.new<label>()
-var linefill[] lfs = array.new<linefill>()
+var box[]   bxs = array.new<box>()
 
 clear_all() =>
     while array.size(lns) > 0
         line.delete(array.pop(lns))
     while array.size(lbs) > 0
         label.delete(array.pop(lbs))
-    while array.size(lfs) > 0
-        linefill.delete(array.pop(lfs))
+    while array.size(bxs) > 0
+        box.delete(array.pop(bxs))
 
 f_fmt_price(p) =>
-    // format français : virgule décimale, espace milliers
-    s = str.tostring(p, format.mintick)
-    str.replace_all(s, ".", ",")
+    // format français : virgule décimale
+    str.replace_all(str.tostring(p, format.mintick), ".", ",")
 
-f_fmt_ratio(r) =>
-    // 0,xxx
-    s = str.tostring(r, "0.###")
-    str.replace_all(s, ".", ",")
-
-draw_level(p_0, p_1, ratio, col, b0, is_star) =>
+draw_level(p_0, p_1, ratio, txt_lvl, col, b0, is_star) =>
     price = f_lvl(p_0, p_1, ratio)
     xr = extend_r ? extend.right : extend.none
-    ln = line.new(b0, price, bar_index, price,
+    ln = line.new(b0, price, bar_index + 10, price,
          color = col, width = ln_width,
          style = line.style_solid, extend = xr)
     array.push(lns, ln)
     if show_lbl
-        txt = f_fmt_ratio(ratio) + (show_prc ? " (" + f_fmt_price(price) + ")" : "")
+        txt = txt_lvl + (show_prc ? " (" + f_fmt_price(price) + ")" : "")
         if is_star and show_str
-            txt := "★ " + txt
+            txt := "⭐ " + txt
         lb = label.new(b0, price, txt,
              color     = color.new(color.white, 100),
              textcolor = col,
@@ -139,36 +159,36 @@ draw_level(p_0, p_1, ratio, col, b0, is_star) =>
 draw_fibs(p_0, p_1, b0) =>
     clear_all()
     if show_000
-        draw_level(p_0, p_1, 0.000, col_000, b0, false)
+        draw_level(p_0, p_1, 0.000, "0%",     col_000, b0, false)
     if show_236
-        draw_level(p_0, p_1, 0.236, col_236, b0, false)
+        draw_level(p_0, p_1, 0.236, "23.6%",  col_236, b0, false)
     if show_382
-        draw_level(p_0, p_1, 0.382, col_382, b0, false)
+        draw_level(p_0, p_1, 0.382, "38.2%",  col_382, b0, false)
     if show_500
-        draw_level(p_0, p_1, 0.500, col_500, b0, false)
+        draw_level(p_0, p_1, 0.500, "50%",    col_500, b0, false)
     if show_618
-        draw_level(p_0, p_1, 0.618, col_618, b0, true)
+        draw_level(p_0, p_1, 0.618, "61.8%",  col_618, b0, false)
     if show_750
-        draw_level(p_0, p_1, 0.750, col_750, b0, false)
+        draw_level(p_0, p_1, 0.750, "75%",    col_750, b0, true)
     if show_786
-        draw_level(p_0, p_1, 0.786, col_786, b0, false)
+        draw_level(p_0, p_1, 0.786, "78.6%",  col_786, b0, false)
     if show_100
-        draw_level(p_0, p_1, 1.000, col_100, b0, false)
+        draw_level(p_0, p_1, 1.000, "100%",   col_100, b0, false)
     if show_ext and show_1272
-        draw_level(p_0, p_1, 1.272, col_1272, b0, false)
+        draw_level(p_0, p_1, 1.272, "127.2%", col_1272, b0, false)
     if show_ext and show_1618
-        draw_level(p_0, p_1, 1.618, col_1618, b0, false)
+        draw_level(p_0, p_1, 1.618, "161.8%", col_1618, b0, false)
     if show_zone
         pa = f_lvl(p_0, p_1, 0.618)
         pb = f_lvl(p_0, p_1, 0.750)
-        xr = extend_r ? extend.right : extend.none
-        la = line.new(b0, pa, bar_index, pa, color=color.new(col_zone,100), extend=xr)
-        lb = line.new(b0, pb, bar_index, pb, color=color.new(col_zone,100), extend=xr)
-        array.push(lns, la)
-        array.push(lns, lb)
-        lf = linefill.new(la, lb, col_zone)
-        array.push(lfs, lf)
+        bx = box.new(b0, math.max(pa, pb), bar_index + 50, math.min(pa, pb),
+             border_color = color.new(#363A45, 50), border_width = 1,
+             bgcolor = col_zone, extend = extend_r ? extend.right : extend.none)
+        array.push(bxs, bx)
 
 // ── EXÉCUTION SUR DERNIÈRE BARRE ─────────────────────────────────
-if barstate.islast and activate and valid
-    draw_fibs(p0, p100, bar0)
+if barstate.islast
+    if activate and valid
+        draw_fibs(p0, p100, bar0)
+    else
+        clear_all()
