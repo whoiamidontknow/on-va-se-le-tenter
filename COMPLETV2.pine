@@ -1,6 +1,6 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE COMPLET V2 — VERSION V4 (2026-10-14)
+// EPHORE COMPLET V2 — VERSION V5 (2026-10-15)
 // Indicateur unique regroupant TOUT ce qui est validé sur données.
 // PORSCHEONARRIVE.pine et TABLEAU.pine restent inchangés : ce fichier
 // les consolide, il ne les remplace pas tant que Jeremy n'a pas tranché.
@@ -11,7 +11,8 @@
 //                       2600/2600 sur l'API (ancienne formule en option)
 //   Moyenator V5        EMA50/EMA60 du close, exact
 //   Pivator V3          3 sets Annuel/Mensuel/Weekly, validé par Jeremy
-//   Detector            order blocks (LuxAlgo), repris de PorscheOnArrive
+//   Detector            order blocks (LuxAlgo) : 19/19 zones identiques à
+//                       l'API (t0 + bornes, 2 copies, 15m et 2m), 15/10
 //   Trendlines V2       règle Amphibiantrading, 38/38 en simulation,
 //                       validé par Jeremy sur toutes les unités de temps
 //   Tableau principal   réplique du dashboard Midgar-, « tout coïncide »
@@ -86,6 +87,15 @@
 //                   99.5 % pour l'ancienne (0.42/0.44 vs EMA33). C'est la
 //                   formule des flèches Signator : bougies et flèches sont
 //                   désormais cohérentes. L'ancienne reste en option.
+//
+//   V5  2026-10-15  Deux modules ajoutés en fin de fichier :
+//                   - MONDAY HIGH LOW, module de l'original (4 réglages lus
+//                     sur son panneau). Tracé non encore comparé.
+//                   - SESSIONS HIGH / LOW Asie, Londres, US, demandé par
+//                     Jeremy (pas dans l'original). Fuseau propre à chaque
+//                     session, heures d'été gérées.
+//                   Detector : comparé pour la première fois aux zones de
+//                   l'original (API) : 19/19, aucune correction nécessaire.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet V2", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -2236,3 +2246,135 @@ if barstate.islast and t3_on
 
 alertcondition(t3_pLong  >= t3_seuil, "Feu LONG",  "Feu de Confluence passe au vert long")
 alertcondition(t3_pShort >= t3_seuil, "Feu SHORT", "Feu de Confluence passe au rouge short")
+
+// ══════════════════════════════════════════════════════════════
+// MONDAY HIGH LOW — module de l'original (ajouté le 15/10)
+// ══════════════════════════════════════════════════════════════
+// Réglages lus sur le panneau d'Ephore (12/10) : « Afficher Monday High Low »,
+// « Couleur des lignes » = bleu, « Épaisseur » = 1, « Historique (semaines) » = 26.
+// Le plus haut et le plus bas du lundi, tracés sur toute la semaine.
+// NON VALIDÉ contre l'original : on n'a jamais vu son tracé. Le seul point
+// ouvert est la définition du lundi pour un future, dont la journée
+// TradingView commence le dimanche à 18:00 New York. Par défaut on prend la
+// journée de trading (la bougie journalière du lundi) ; l'autre lecture,
+// le lundi calendaire à Paris, est en option.
+grp_mhl  = "=== MONDAY HIGH LOW ==="
+mhl_on   = input.bool(true, "Afficher Monday High Low", group=grp_mhl)
+mhl_col  = input.color(color.blue, "Couleur des lignes", group=grp_mhl)
+mhl_w    = input.int(1, "Épaisseur", group=grp_mhl, minval=1, maxval=5)
+mhl_hist = input.int(26, "Historique (semaines)", group=grp_mhl, minval=1, maxval=52)
+mhl_def  = input.string("Journée de trading (bougie journalière du lundi)", "Définition du lundi", group=grp_mhl,
+     options=["Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
+     tooltip="Pour un future, la journée de trading du lundi commence le dimanche à 18:00 New York. La seconde option prend le lundi de 00:00 à 24:00, heure de Paris.")
+
+mhl_isMon = mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
+mhl_new   = mhl_isMon and not mhl_isMon[1]
+var float mhl_h = na
+var float mhl_l = na
+var line  mhl_lh = na
+var line  mhl_ll = na
+var array<line> mhl_lines = array.new_line()
+if mhl_on and (timeframe.isintraday or timeframe.isdaily)
+    if mhl_new
+        mhl_h  := high
+        mhl_l  := low
+        mhl_lh := line.new(time, mhl_h, time + 7 * 86400000, mhl_h, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
+        mhl_ll := line.new(time, mhl_l, time + 7 * 86400000, mhl_l, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
+        array.push(mhl_lines, mhl_lh)
+        array.push(mhl_lines, mhl_ll)
+        while array.size(mhl_lines) > 2 * mhl_hist
+            line.delete(array.shift(mhl_lines))
+    else if mhl_isMon and not na(mhl_h)
+        mhl_h := math.max(mhl_h, high)
+        mhl_l := math.min(mhl_l, low)
+        line.set_y1(mhl_lh, mhl_h)
+        line.set_y2(mhl_lh, mhl_h)
+        line.set_y1(mhl_ll, mhl_l)
+        line.set_y2(mhl_ll, mhl_l)
+
+// ══════════════════════════════════════════════════════════════
+// SESSIONS : HIGH / LOW ASIE, LONDRES, US — module ajouté par Jeremy (15/10)
+// ══════════════════════════════════════════════════════════════
+// Pas dans l'original : rien à valider contre Ephore. Chaque session a son
+// fuseau, donc les changements d'heure (Europe, US, Japon n'en ont pas) se
+// règlent tout seuls. Horaires par défaut = heures d'ouverture des bourses
+// au comptant : Tokyo 09:00-15:30, Londres 08:00-16:30, New York 09:30-16:00.
+// Le plus haut et le plus bas se construisent en direct pendant la session,
+// puis restent tracés jusqu'à la même session le lendemain (option).
+grp_ses   = "=== SESSIONS : HIGH / LOW (Asie, Londres, US) ==="
+ses_on    = input.bool(true, "Afficher les sessions", group=grp_ses)
+ses_days  = input.int(3, "Nombre de jours affichés", group=grp_ses, minval=1, maxval=20)
+ses_ext   = input.bool(true, "Prolonger jusqu'à la même session le lendemain", group=grp_ses,
+     tooltip="Décoché : les lignes s'arrêtent à la fin de la session.")
+ses_lbl   = input.bool(true, "Étiquettes (Asie H, Londres L…)", group=grp_ses)
+ses_bg    = input.bool(false, "Fond coloré pendant la session", group=grp_ses)
+ses_w     = input.int(1, "Épaisseur", group=grp_ses, minval=1, maxval=5)
+ses_sty   = input.string("Tirets", "Style des lignes", group=grp_ses, options=["Plein", "Tirets", "Pointillés"])
+ses_asOn  = input.bool(true, "Asie", group=grp_ses, inline="as")
+ses_asSes = input.session("0900-1530", "", group=grp_ses, inline="as", tooltip="Heure de Tokyo")
+ses_asCol = input.color(#AB47BC, "", group=grp_ses, inline="as")
+ses_ldOn  = input.bool(true, "Londres", group=grp_ses, inline="ld")
+ses_ldSes = input.session("0800-1630", "", group=grp_ses, inline="ld", tooltip="Heure de Londres")
+ses_ldCol = input.color(#FF9800, "", group=grp_ses, inline="ld")
+ses_usOn  = input.bool(true, "US", group=grp_ses, inline="us")
+ses_usSes = input.session("0930-1600", "", group=grp_ses, inline="us", tooltip="Heure de New York")
+ses_usCol = input.color(#26A69A, "", group=grp_ses, inline="us")
+
+ses_style = ses_sty == "Plein" ? line.style_solid : ses_sty == "Pointillés" ? line.style_dotted : line.style_dashed
+
+// Une session : chaque appel garde son propre état (les `var` d'une fonction
+// sont propres à l'endroit où elle est appelée).
+f_ses(_on, _sess, _tz, _col, _nom) =>
+    inS = not na(time(timeframe.period, _sess, _tz))
+    var float h = na
+    var float l = na
+    var int   t0 = na
+    var line  lh = na
+    var line  ll = na
+    var label bh = na
+    var label bl = na
+    var array<line>  lns = array.new_line()
+    var array<label> lbs = array.new_label()
+    actif = _on and ses_on and timeframe.isintraday
+    if actif and inS and not inS[1]
+        h  := high
+        l  := low
+        t0 := time
+        x2 = ses_ext ? time + 86400000 : time_close
+        lh := line.new(time, h, x2, h, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
+        ll := line.new(time, l, x2, l, xloc=xloc.bar_time, color=_col, width=ses_w, style=ses_style)
+        array.push(lns, lh)
+        array.push(lns, ll)
+        while array.size(lns) > 2 * ses_days
+            line.delete(array.shift(lns))
+        if ses_lbl
+            bh := label.new(x2, h, _nom + " H", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small)
+            bl := label.new(x2, l, _nom + " L", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(_col, 100), textcolor=_col, size=size.small)
+            array.push(lbs, bh)
+            array.push(lbs, bl)
+            while array.size(lbs) > 2 * ses_days
+                label.delete(array.shift(lbs))
+    else if actif and inS and not na(t0)
+        h := math.max(h, high)
+        l := math.min(l, low)
+        line.set_y1(lh, h)
+        line.set_y2(lh, h)
+        line.set_y1(ll, l)
+        line.set_y2(ll, l)
+        if not ses_ext
+            line.set_x2(lh, time_close)
+            line.set_x2(ll, time_close)
+        if ses_lbl
+            label.set_y(bh, h)
+            label.set_y(bl, l)
+            if not ses_ext
+                label.set_x(bh, time_close)
+                label.set_x(bl, time_close)
+    actif and inS
+
+ses_inAs = f_ses(ses_asOn, ses_asSes, "Asia/Tokyo",       ses_asCol, "Asie")
+ses_inLd = f_ses(ses_ldOn, ses_ldSes, "Europe/London",    ses_ldCol, "Londres")
+ses_inUs = f_ses(ses_usOn, ses_usSes, "America/New_York", ses_usCol, "US")
+bgcolor(ses_bg and ses_inAs ? color.new(ses_asCol, 92) : na, title="Fond session Asie")
+bgcolor(ses_bg and ses_inLd ? color.new(ses_ldCol, 92) : na, title="Fond session Londres")
+bgcolor(ses_bg and ses_inUs ? color.new(ses_usCol, 92) : na, title="Fond session US")

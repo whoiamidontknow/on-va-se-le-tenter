@@ -641,3 +641,27 @@ ce qui ferait émettre beaucoup plus de MOYEN.
 
 Et un seul **screen du Feu de Confluence au moment d'une flèche MOYEN** trancherait l'hypothèse
 multi-unités d'un coup.
+
+---
+
+## 15. DÉCISIONS ET FEUILLE DE ROUTE (15/10)
+
+- **Climator : on le garde à ~90 %.** Décision de Jeremy : il le trouve meilleur que l'original.
+  Ne plus chercher à le caler à 100 %.
+- **Heishinator : couleur des bougies à 100 %** (EMA(ohlc4,4) > EMA(ohlc4,32), 5200/5200 sur les
+  deux copies de l'API, `tools/ephore_api/verif_heishinator.py`). L'ancienne formule reste en option.
+- **Detector : 19/19 zones identiques à l'API** (t0 + bornes, 2 copies × 15m/2m, sans ajustement,
+  `tools/ephore_api/sim_detector_zones.py`). Sources HA obligatoires, longueur 5, mitigation mèche,
+  3 zones par côté : chaque variante testée fait moins bien.
+- **Breakator = les ronds verts/rouges de cassure des trendlines** : déjà fait (Trendlines V2).
+- **Rangeator : à faire en DERNIER** (demande de Jeremy).
+- **Feu de Confluence** : Jeremy pense que l'erreur vient de la lecture des COULEURS des cellules
+  (quelles cellules votent, et comment). Capture du 14/10 : l'original dit SHORT, donc au moins
+  7 des 10 voix du bloc SuperTrader sont rouges ; nos 6 voix choisies sont presque toutes bleues.
+- **Modules ajoutés le 15/10 dans COMPLETV2 (V5)** : Monday High Low (original) et Sessions
+  High/Low Asie/Londres/US (ajout de Jeremy, hors original).
+- **Feuille de route voulue par Jeremy** :
+  1. finir les modules manquants et s'accorder sur une **version finale fidèle** ;
+  2. en faire une **version optimisée** avec toutes les améliorations que Claude proposerait pour
+     le trading (à garder séparée de la version fidèle) ;
+  3. puis une **stratégie de bot** sur l'ensemble des indicateurs.
