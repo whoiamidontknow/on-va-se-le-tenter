@@ -2316,34 +2316,58 @@ mhl_col  = input.color(color.blue, "Couleur des lignes", group=grp_mhl)
 mhl_w    = input.int(1, "Épaisseur", group=grp_mhl, minval=1, maxval=5)
 mhl_hist = input.int(1, "Historique (semaines)", group=grp_mhl, minval=1, maxval=52,
      tooltip="1 = seulement le lundi de la semaine en cours (choix de Jeremy). L'original est réglé sur 26.")
-mhl_def  = input.string("Lundi calendaire (UTC)", "Définition du lundi", group=grp_mhl,
-     options=["Lundi calendaire (UTC)", "Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
-     tooltip="UTC = la seule définition vérifiée (12/12 sur l'API d'Ephore). Pour un future, la journée de trading du lundi commence le dimanche à 18:00 New York. Paris = le lundi de 00:00 à 24:00, heure de Paris.")
+mhl_def  = input.string("Lundi 00:00 → mardi 07:30 (Paris)", "Définition du lundi", group=grp_mhl,
+     options=["Lundi 00:00 → mardi 07:30 (Paris)", "Lundi calendaire (UTC)", "Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
+     tooltip="Par défaut (choix de Jeremy, 15/10) : haut et bas mesurés du lundi 00:00 au mardi 07:30, heure de Paris ; les lignes n'apparaissent qu'à la fin de cette fenêtre. UTC = la définition de l'original, vérifiée 12/12 sur l'API d'Ephore ; les lignes s'y construisent en direct pendant le lundi.")
+mhl_finH = input.int(7,  "Fin de la fenêtre : heure (mardi, Paris)",  group=grp_mhl, minval=0, maxval=23)
+mhl_finM = input.int(30, "Fin de la fenêtre : minute (mardi, Paris)", group=grp_mhl, minval=0, maxval=59,
+     tooltip="Prends une unité de temps de 30 min ou moins : sur une bougie d'1 h, la bougie 07:00-08:00 est comptée en entier.")
 
-mhl_isMon = mhl_def == "Lundi calendaire (UTC)" ? dayofweek(time, "UTC") == dayofweek.monday : mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
+// Fenêtre Jeremy : la bougie qui OUVRE avant mardi 07:30 (Paris) en fait partie.
+mhl_fen   = mhl_def == "Lundi 00:00 → mardi 07:30 (Paris)"
+mhl_dowP  = dayofweek(time, "Europe/Paris")
+mhl_minP  = hour(time, "Europe/Paris") * 60 + minute(time, "Europe/Paris")
+mhl_inFen = mhl_dowP == dayofweek.monday or (mhl_dowP == dayofweek.tuesday and mhl_minP < mhl_finH * 60 + mhl_finM)
+mhl_isMon = mhl_fen ? mhl_inFen : mhl_def == "Lundi calendaire (UTC)" ? dayofweek(time, "UTC") == dayofweek.monday : mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
 mhl_new   = mhl_isMon and not mhl_isMon[1]
+mhl_fin   = not mhl_isMon and mhl_isMon[1]
 var float mhl_h = na
 var float mhl_l = na
+var int   mhl_t0 = na
 var line  mhl_lh = na
 var line  mhl_ll = na
 var array<line> mhl_lines = array.new_line()
+f_mhl_trace(t0) =>
+    lh = line.new(t0, mhl_h, t0 + 7 * 86400000, mhl_h, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
+    ll = line.new(t0, mhl_l, t0 + 7 * 86400000, mhl_l, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
+    array.push(mhl_lines, lh)
+    array.push(mhl_lines, ll)
+    while array.size(mhl_lines) > 2 * mhl_hist
+        line.delete(array.shift(mhl_lines))
+    [lh, ll]
 if mhl_on and (timeframe.isintraday or timeframe.isdaily)
     if mhl_new
         mhl_h  := high
         mhl_l  := low
-        mhl_lh := line.new(time, mhl_h, time + 7 * 86400000, mhl_h, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
-        mhl_ll := line.new(time, mhl_l, time + 7 * 86400000, mhl_l, xloc=xloc.bar_time, color=mhl_col, width=mhl_w)
-        array.push(mhl_lines, mhl_lh)
-        array.push(mhl_lines, mhl_ll)
-        while array.size(mhl_lines) > 2 * mhl_hist
-            line.delete(array.shift(mhl_lines))
+        mhl_t0 := time
+        // Définitions de l'original : lignes tracées tout de suite, puis ajustées.
+        if not mhl_fen
+            [a, b] = f_mhl_trace(mhl_t0)
+            mhl_lh := a
+            mhl_ll := b
     else if mhl_isMon and not na(mhl_h)
         mhl_h := math.max(mhl_h, high)
         mhl_l := math.min(mhl_l, low)
-        line.set_y1(mhl_lh, mhl_h)
-        line.set_y2(mhl_lh, mhl_h)
-        line.set_y1(mhl_ll, mhl_l)
-        line.set_y2(mhl_ll, mhl_l)
+        if not mhl_fen
+            line.set_y1(mhl_lh, mhl_h)
+            line.set_y2(mhl_lh, mhl_h)
+            line.set_y1(mhl_ll, mhl_l)
+            line.set_y2(mhl_ll, mhl_l)
+    // Fenêtre Jeremy : les lignes n'apparaissent qu'une fois la fenêtre close.
+    if mhl_fen and mhl_fin and not na(mhl_h)
+        [a, b] = f_mhl_trace(mhl_t0)
+        mhl_lh := a
+        mhl_ll := b
 
 // ══════════════════════════════════════════════════════════════
 // SESSIONS : HIGH / LOW ASIE, LONDRES, US — module ajouté par Jeremy (15/10)
