@@ -90,7 +90,8 @@
 //
 //   V5  2026-10-15  Deux modules ajoutés en fin de fichier :
 //                   - MONDAY HIGH LOW, module de l'original (4 réglages lus
-//                     sur son panneau). Tracé non encore comparé.
+//                     sur son panneau). Lundi calendaire UTC par défaut :
+//                     12/12 sur l'API (à confirmer sur un future).
 //                   - SESSIONS HIGH / LOW Asie, Londres, US, demandé par
 //                     Jeremy (pas dans l'original). Fuseau propre à chaque
 //                     session, heures d'été gérées.
@@ -2253,21 +2254,23 @@ alertcondition(t3_pShort >= t3_seuil, "Feu SHORT", "Feu de Confluence passe au r
 // Réglages lus sur le panneau d'Ephore (12/10) : « Afficher Monday High Low »,
 // « Couleur des lignes » = bleu, « Épaisseur » = 1, « Historique (semaines) » = 26.
 // Le plus haut et le plus bas du lundi, tracés sur toute la semaine.
-// NON VALIDÉ contre l'original : on n'a jamais vu son tracé. Le seul point
-// ouvert est la définition du lundi pour un future, dont la journée
-// TradingView commence le dimanche à 18:00 New York. Par défaut on prend la
-// journée de trading (la bougie journalière du lundi) ; l'autre lecture,
-// le lundi calendaire à Paris, est en option.
+// 15/10 : sur l'API du terminal web, les lignes mhl_* correspondent 12/12 au
+// lundi calendaire 00:00-24:00 UTC (2 copies, 15m et 2m), lignes prolongées
+// jusqu'à la fin de la semaine. C'est donc le défaut. RÉSERVE : l'API cote un
+// marché ouvert en continu ; sur un future, dont la journée commence le
+// dimanche 18:00 New York, les définitions divergent (jusqu'à 302 points sur
+// ces semaines). Les deux autres lectures restent en option, à trancher sur
+// une capture TradingView.
 grp_mhl  = "=== MONDAY HIGH LOW ==="
 mhl_on   = input.bool(true, "Afficher Monday High Low", group=grp_mhl)
 mhl_col  = input.color(color.blue, "Couleur des lignes", group=grp_mhl)
 mhl_w    = input.int(1, "Épaisseur", group=grp_mhl, minval=1, maxval=5)
 mhl_hist = input.int(26, "Historique (semaines)", group=grp_mhl, minval=1, maxval=52)
-mhl_def  = input.string("Journée de trading (bougie journalière du lundi)", "Définition du lundi", group=grp_mhl,
-     options=["Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
-     tooltip="Pour un future, la journée de trading du lundi commence le dimanche à 18:00 New York. La seconde option prend le lundi de 00:00 à 24:00, heure de Paris.")
+mhl_def  = input.string("Lundi calendaire (UTC)", "Définition du lundi", group=grp_mhl,
+     options=["Lundi calendaire (UTC)", "Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
+     tooltip="UTC = la seule définition vérifiée (12/12 sur l'API d'Ephore). Pour un future, la journée de trading du lundi commence le dimanche à 18:00 New York. Paris = le lundi de 00:00 à 24:00, heure de Paris.")
 
-mhl_isMon = mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
+mhl_isMon = mhl_def == "Lundi calendaire (UTC)" ? dayofweek(time, "UTC") == dayofweek.monday : mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
 mhl_new   = mhl_isMon and not mhl_isMon[1]
 var float mhl_h = na
 var float mhl_l = na
