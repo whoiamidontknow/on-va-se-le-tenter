@@ -691,3 +691,28 @@ multi-unités d'un coup.
   contradiction avec l'API du 12/10 11:00 UTC 15m (7L/20S/2N) : aucune combinaison ne satisfait les deux
   → soit le Feu web ≠ TradingView, soit la règle Dashator (bougie HA haussière) est fausse.
 - **ORB** : hypothèse nouvelle, « In Range » = état par défaut tant que l'ORB du jour n'est pas formé.
+
+### Exports « Jeu 15:10 » (dossier `~/Jeu 15:10`, 23 CSV NQ+MES, 1m→1D) — bilan du 15/10
+
+- **Cartographie (58 colonnes, par index)** : notre COMPLETV2 = 18-25 ; notre Climator = 5-7 ; Climax
+  original confirmed = 56-57 ; original **Vb** (avec blackout) = 34-41 ; original **Vd** (sans blackout)
+  = 50-55 ; blocs morts 26-33 et 42-49. Scripts : `tools/jeu1510/`.
+- **Flèches** : contre Vd **229/0/18** (les 11 premières manquées = heures de blackout, normal) ; contre Vb
+  **203/10/7** (92 %). Vb a un filtre de plus que nous ne savons pas expliquer (ni score, ni bande, ni
+  volume, ni heure, ni délai). Fort/Moyen : 7 Moyen chez l'original, 0 chez nous, tous à 60 min et plus →
+  piste multi-unités. 41 variantes de conviction testées : la règle actuelle reste la meilleure.
+- **Unité 3 min** : plus de contradiction (NQ3 12/1/1, MES3 12/0/0).
+- **Moyenator** : écart max 0,015. **Climator** : rappel 91 %, précision 83 %. Rangeator : colonnes à 0.
+- **Captures du 15/10 = NQ 15m, bougie 11:45**, retrouvée au centième (RSI 45.40, CCI -27.34).
+- **TREND = bougie CLÔTURÉE** (close[1] > EMA50[1]) et **1re ligne en 3 min** (le « 1m » affiché est le
+  libellé du Dashator) : 22-23/23 relevés. Codé en V6.
+- **ORB = remis à zéro chaque jour, « In Range » tant que la plage 09:30-09:45 NY n'est pas formée** :
+  4 jours sur 4, toutes les autres ancres réfutées. À confirmer par un relevé après 15:45 Paris. Codé en V6.
+- **Dashator : AUCUNE règle « état de bougie » ne marche** (21 testées, 15/22 au mieux). Chez l'original,
+  1H/4H/1D changent de couleur en moins d'une minute → probable état temps réel (`varip`). Pas calable
+  sur CSV : il faut des captures toutes les 10 s pendant 2 min. Ne pas toucher à notre règle d'ici là.
+- **Feu** : 4 cellules sur 43 diffèrent seulement (TREND 1D, TREND 1re ligne, Dashator 1H, ORB). Vote
+  par le SENS codé en V6 (29 voix). Aucune combinaison « par couleur » ne satisfait les 7 relevés.
+- **Groupé par couleur** : 3 camps de 2 colonnes, ligne par ligne ; ordre Dashator → SuperTrader (ordre
+  Midgar) → SIGNAL → TREND/STRENGTH par unité. Codé en V6.
+- **REA** : inutile pour ce travail (cible = binaires et sites web, pas des CSV) et bloqué par Node 20.

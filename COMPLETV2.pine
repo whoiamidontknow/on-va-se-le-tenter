@@ -1,6 +1,6 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// EPHORE COMPLET V2 — VERSION V5 (2026-10-15)
+// EPHORE COMPLET V2 — VERSION V6 (2026-10-15)
 // Indicateur unique regroupant TOUT ce qui est validé sur données.
 // PORSCHEONARRIVE.pine et TABLEAU.pine restent inchangés : ce fichier
 // les consolide, il ne les remplace pas tant que Jeremy n'a pas tranché.
@@ -99,6 +99,17 @@
 //                   l'original (API) : 19/19, aucune correction nécessaire.
 //                   - RONDATOR V1 (niveaux ronds), module de l'original :
 //                     réglages du panneau, règle de l'API (arrondi inférieur).
+//
+//   V6  2026-10-15  Tableau unifié, d'après les exports et captures du 15/10
+//                   (NQ 15m, bougie 11:45, retrouvée au centième) :
+//                   - TREND sur la bougie CLÔTURÉE, 1re ligne en 3 min : 1D
+//                     corrigé (preuve forte), 22 ou 23 relevés sur 23 ;
+//                   - ORB remis à zéro chaque jour, « In Range » tant que la
+//                     plage n'est pas formée : 4 jours sur 4 ;
+//                   - Feu : les 29 voix câblées, vote par le SENS et non par
+//                     la couleur (YoYo, VIX, volumes ne votent plus) ;
+//                   - Groupé par couleur : 3 camps de 2 colonnes dans l'ordre
+//                     de l'original, tableau agrandi pour tout afficher.
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet V2", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -1902,7 +1913,10 @@ t3_puces = input.bool(false, "Puces devant les états", group=grp_t3,
 t3_sz    = input.string("Normal", "Taille du texte", group=grp_t3,
      options=["Tiny", "Small", "Normal", "Large", "Huge"],
      tooltip="Ce réglage ne pilotait rien : les cellules étaient figées en « Small ». Il agit désormais sur tout le tableau unifié.")
-t3_tf1 = input.timeframe("1",   "TIMEFRAME — unité 1", group=grp_t3)
+t3_tf1 = input.timeframe("3",   "TIMEFRAME — unité 1", group=grp_t3,
+     tooltip="15/10 : la 1re ligne TREND/STRENGTH de l'original est calculée en 3 minutes (le libellé « 1m » affiché est celui du Dashator). En 1 minute, la capture du 15/10 est contredite.")
+t3_trClos = input.bool(true, "TREND : bougie clôturée (comme l'original)", group=grp_t3,
+     tooltip="15/10 : l'original compare la clôture de la DERNIÈRE BOUGIE CLÔTURÉE de chaque unité à son EMA50. Preuve forte en 1D (bougie en cours : -284 points, BEARISH ; veille clôturée : +211, BULLISH comme l'original). 22 ou 23 relevés sur 23. Décocher = bougie en cours.")
 t3_tf2 = input.timeframe("5",   "TIMEFRAME — unité 2", group=grp_t3)
 t3_tf3 = input.timeframe("15",  "TIMEFRAME — unité 3", group=grp_t3)
 t3_tf4 = input.timeframe("60",  "TIMEFRAME — unité 4", group=grp_t3)
@@ -1945,7 +1959,7 @@ f_t3_pack() =>
     [m, sg, _h] = ta.macd(close, 12, 26, 9)
     r  = ta.rsi(close, 14)
     // TREND : vérifié 5/5 sur la capture du 12/10
-    tr = close > e50
+    tr = t3_trClos ? close[1] > e50[1] : close > e50
     // STRENGTH : 25 % par test haussier vrai. Structure certaine, choix des tests
     // non démontré (186 combinaisons possibles sur une seule capture).
     st = (close > open ? 1 : 0) + (m > sg ? 1 : 0) + (close > e50 ? 1 : 0) + (r > 50 ? 1 : 0)
@@ -2019,6 +2033,15 @@ t3_sessOpn = t3_orbAnc == "Début de journée TradingView" ? t3_newDay : t3_orbA
 var float t3_orbH = na
 var float t3_orbL = na
 var int   t3_orbT = na
+// 15/10 : chaque nouvelle journée efface la plage de la veille ; tant que la
+// plage du jour n'est pas formée, l'état est « In Range ». C'est la seule
+// lecture qui donne « In Range » sur les 4 jours relevés (12, 13, 14 et 15/10,
+// tous avant 15:30 Paris). Chaque autre ancre est réfutée par au moins un
+// relevé (tools/jeu1510/tableau/s4_orb.py). À confirmer après 15:45 Paris.
+if t3_newDay and t3_orbAnc != "Début de journée TradingView"
+    t3_orbH := na
+    t3_orbL := na
+    t3_orbT := na
 if t3_sessOpn
     t3_orbT := time
     t3_orbH := high
@@ -2027,9 +2050,9 @@ else if not na(t3_orbT) and time - t3_orbT < t3_orbMin * 60 * 1000
     t3_orbH := math.max(t3_orbH, high)
     t3_orbL := math.min(t3_orbL, low)
 t3_orb   = not timeframe.isintraday or na(t3_orbH) ? 0 : close > t3_orbH ? 1 : close < t3_orbL ? -1 : 0
-t3_orbTx = not timeframe.isintraday or na(t3_orbH) ? "N/A" : t3_orb == 1 ? "Above" : t3_orb == -1 ? "Below" : "In Range"
+t3_orbTx = not timeframe.isintraday ? "N/A" : t3_orb == 1 ? "Above" : t3_orb == -1 ? "Below" : "In Range"
 // Bulle de diagnostic : la plage réellement mesurée, à comparer au graphique.
-t3_orbTip = na(t3_orbH) ? "ORB : aucune plage mesurée" : "ORB (" + t3_orbAnc + ") : haut " + str.tostring(t3_orbH, format.mintick) + " / bas " + str.tostring(t3_orbL, format.mintick) + " / clôture " + str.tostring(close, format.mintick) + " — départ " + str.format_time(t3_orbT, "dd/MM HH:mm", "Europe/Paris") + " (Paris)"
+t3_orbTip = na(t3_orbH) ? "ORB : plage du jour pas encore formée (In Range par défaut)" : "ORB (" + t3_orbAnc + ") : haut " + str.tostring(t3_orbH, format.mintick) + " / bas " + str.tostring(t3_orbL, format.mintick) + " / clôture " + str.tostring(close, format.mintick) + " — départ " + str.format_time(t3_orbT, "dd/MM HH:mm", "Europe/Paris") + " (Paris)"
 t3_pd    = close > t3_pdh ? 1 : close < t3_pdl ? -1 : 0
 t3_pdTx  = t3_pd == 1 ? "Above PDH" : t3_pd == -1 ? "Below PDL" : "In Range"
 
@@ -2038,29 +2061,35 @@ t3_pdTx  = t3_pd == 1 ? "Above PDH" : t3_pd == -1 ? "Below PDL" : "In Range"
 //   « Colonne temps (6 voix) » + « Bloc SuperTrader (10 voix) »
 //   + « Colonne SIGNAL (7 voix) » + « Tendances multi-unités (6 voix) » = 29
 // et l'API expose bien 29 votes avec un seuil de 60 %.
-// 19 voix sont identifiées avec certitude ici (Dashator, SIGNAL, TREND).
-// LES 10 DU BLOC SUPERTRADER NE LE SONT PAS : ce qui suit est un choix explicite
-// parmi les cellules du tableau principal qui portent une polarité. À corriger
-// quand on aura plusieurs captures du badge à des valeurs différentes.
-f_t3_vote(sem) =>
-    sem == "bull" or sem == "super" ? 1 : sem == "bear" ? -1 : 0
-
-// On compte les voix POSITIVES et NÉGATIVES séparément (l'original affiche des
-// parts, donc il compte des voix, pas une somme algébrique).
-f_t3_cnt(b) => b ? 1 : 0
-// PIÈGE PINE v6 : une expression ne peut pas se poursuivre sur la ligne suivante
-// avec un opérateur en fin de ligne (erreur CE10156). Chaque somme tient donc
-// sur une seule ligne, aussi longue soit-elle.
-t3_nLong  = f_t3_cnt(t3_tr1) + f_t3_cnt(t3_tr2) + f_t3_cnt(t3_tr3) + f_t3_cnt(t3_tr4) + f_t3_cnt(t3_tr5) + f_t3_cnt(t3_tr6) + f_t3_cnt(t3_d1) + f_t3_cnt(t3_d2) + f_t3_cnt(t3_d3) + f_t3_cnt(t3_d4) + f_t3_cnt(t3_d5) + f_t3_cnt(t3_d6) + f_t3_cnt(t3_sigST) + f_t3_cnt(t3_sigMA) + f_t3_cnt(t3_sigVW) + f_t3_cnt(t3_sigLR) + f_t3_cnt(t3_cpr == 1) + f_t3_cnt(t3_orb == 1) + f_t3_cnt(t3_pd == 1) + f_t3_cnt(f_t3_vote(st_macdSem) == 1) + f_t3_cnt(f_t3_vote(st_crossSem) == 1) + f_t3_cnt(f_t3_vote(st_divShowSem) == 1) + f_t3_cnt(f_t3_vote(st_yoyoSem) == 1) + f_t3_cnt(f_t3_vote(st_vixSem) == 1) + f_t3_cnt(f_t3_vote(st_vixLvlSem) == 1)
-t3_nShort = f_t3_cnt(not t3_tr1) + f_t3_cnt(not t3_tr2) + f_t3_cnt(not t3_tr3) + f_t3_cnt(not t3_tr4) + f_t3_cnt(not t3_tr5) + f_t3_cnt(not t3_tr6) + f_t3_cnt(not t3_d1) + f_t3_cnt(not t3_d2) + f_t3_cnt(not t3_d3) + f_t3_cnt(not t3_d4) + f_t3_cnt(not t3_d5) + f_t3_cnt(not t3_d6) + f_t3_cnt(not t3_sigST) + f_t3_cnt(not t3_sigMA) + f_t3_cnt(not t3_sigVW) + f_t3_cnt(not t3_sigLR) + f_t3_cnt(t3_cpr == -1) + f_t3_cnt(t3_orb == -1) + f_t3_cnt(t3_pd == -1) + f_t3_cnt(f_t3_vote(st_macdSem) == -1) + f_t3_cnt(f_t3_vote(st_crossSem) == -1) + f_t3_cnt(f_t3_vote(st_divShowSem) == -1) + f_t3_cnt(f_t3_vote(st_yoyoSem) == -1) + f_t3_cnt(f_t3_vote(st_vixSem) == -1) + f_t3_cnt(f_t3_vote(st_vixLvlSem) == -1)
-
-// HONNÊTETÉ DU DÉNOMINATEUR. L'original compte 29 voix (6 Dashator + 10 bloc
-// SuperTrader + 7 SIGNAL + 6 TREND). Ici on n'en câble que 25 : les 19 certaines,
-// plus 6 seulement des 10 du bloc SuperTrader, car les 4 autres ne sont pas
-// identifiées. Le dénominateur suit donc le nombre réellement compté, sinon les
-// parts seraient sous-évaluées de 14 %. Le badge affiche le total pour que tu
-// puisses comparer à l'original — s'il affiche 29, il manque 4 voix ici.
-t3_nTot  = 25
+// 15/10 — LES 29 VOIX SONT CÂBLÉES, ET ELLES VOTENT PAR LE SENS, PAS PAR LA COULEUR.
+// Plusieurs cellules du tableau Midgar sont bleues sans dire où va le marché
+// (YoYo, VIX, niveau du VIX, volumes) : nous les faisions voter LONG, et nous
+// ignorions des cellules rouges directionnelles. Bloc SuperTrader retenu
+// (10 voix) : Trend, Cross, CCI, RSI, MACD 10m, Gap (Bull% contre Bear%), PA
+// 1/5/15 min, Divergence. Golden/SUPERBULL/Bullish = long, Death/Bearish =
+// short, « — », Basing, None et cases vides = neutre.
+// PREUVE : solide pour le noyau Trend, CCI, RSI, MACD, Gap, PA2, PA3, imposé par
+// l'arithmétique de la capture du 14/10 (SHORT exige au moins 7 short sur 10).
+// Faible pour Cross, Divergence et PA1. Capture du 14/10 : 62 % SHORT comme
+// l'original ; 15/10 : SHORT comme l'original.
+f_t3_dirSem(sem) => sem == "bull" or sem == "super" ? 1 : sem == "bear" ? -1 : 0
+t3_vMacd  = st_macdTxt == "SUPERBULL" or st_macdTxt == "Bullish" ? 1 : st_macdTxt == "Bearish" ? -1 : 0
+t3_vCross = st_crossTxt == "Golden" ? 1 : st_crossTxt == "Death" ? -1 : 0
+t3_votes  = array.from(t3_d1 ? 1 : -1, t3_d2 ? 1 : -1, t3_d3 ? 1 : -1, t3_d4 ? 1 : -1, t3_d5 ? 1 : -1, t3_d6 ? 1 : -1,
+     st_trendUp ? 1 : -1, t3_vCross, st_cci >= 0 ? 1 : -1, st_rsi >= 50 ? 1 : -1, t3_vMacd,
+     st_bullPct >= st_bearPct ? 1 : -1, f_t3_dirSem(st_pa1s), f_t3_dirSem(st_pa2s), f_t3_dirSem(st_pa3s), f_t3_dirSem(st_divShowSem),
+     t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1, t3_cpr, t3_orb, t3_pd,
+     t3_tr1 ? 1 : -1, t3_tr2 ? 1 : -1, t3_tr3 ? 1 : -1, t3_tr4 ? 1 : -1, t3_tr5 ? 1 : -1, t3_tr6 ? 1 : -1)
+int t3_nLong  = 0
+int t3_nShort = 0
+for v in t3_votes
+    if v == 1
+        t3_nLong += 1
+    else if v == -1
+        t3_nShort += 1
+// Dénominateur : les 29 voix de l'original (6 Dashator + 10 SuperTrader +
+// 7 SIGNAL + 6 TREND), comme le confirme l'API (part = voix / 29).
+t3_nTot  = array.size(t3_votes)
 t3_pLong  = 100.0 * t3_nLong  / t3_nTot
 t3_pShort = 100.0 * t3_nShort / t3_nTot
 t3_feuTxt = t3_pLong >= t3_seuil ? "LONG" : t3_pShort >= t3_seuil ? "SHORT" : "NEUTRE"
@@ -2123,7 +2152,7 @@ if barstate.islast and t3_on
     tfTx   = array.from(f_t3_tfLbl(t3_tf1), f_t3_tfLbl(t3_tf2), f_t3_tfLbl(t3_tf3), f_t3_tfLbl(t3_tf4), f_t3_tfLbl(t3_tf5), f_t3_tfLbl(t3_tf6))
     tfTr   = array.from(t3_tr1, t3_tr2, t3_tr3, t3_tr4, t3_tr5, t3_tr6)
     tfSt   = array.from(t3_st1 * 25, t3_st2 * 25, t3_st3 * 25, t3_st4 * 25, t3_st5 * 25, t3_st6 * 25)
-    ddTx   = array.from(t3_dd1, t3_dd2, t3_dd3, t3_dd4, t3_dd5, t3_dd6)
+    ddTx   = array.from(f_t3_tfLbl(t3_dd1), f_t3_tfLbl(t3_dd2), f_t3_tfLbl(t3_dd3), f_t3_tfLbl(t3_dd4), f_t3_tfLbl(t3_dd5), f_t3_tfLbl(t3_dd6))
     ddB    = array.from(t3_d1, t3_d2, t3_d3, t3_d4, t3_d5, t3_d6)
 
     sep = t3_mode == "Séparés (ancienne version)"
@@ -2173,7 +2202,7 @@ if barstate.islast and t3_on
                  text_size=szU, bgcolor=array.get(tfTr, k) ? t3_cBull : t3_cBear)
             table.cell(t3_tF, 1, k, str.tostring(array.get(tfSt, k)) + "%", text_color=color.white,
                  text_size=szU, bgcolor=f_t3_stCol(array.get(tfSt, k)))
-            table.cell(t3_tF, 2, k, array.get(tfTx, k), text_color=color.white, text_size=szU,
+            table.cell(t3_tF, 2, k, array.get(ddTx, k), text_color=color.white, text_size=szU,
                  bgcolor=array.get(ddB, k) ? t3_cBull : t3_cBear)
             table.cell(t3_tF, 3, k, array.get(mainL, k), text_color=f_t3_semTx(array.get(mainLs, k)),
                  bgcolor=f_t3_semBg(array.get(mainLs, k)), text_size=szU)
@@ -2196,46 +2225,63 @@ if barstate.islast and t3_on
         table.cell(t3_tF, 3, 7, array.get(mainR, 8), text_color=f_t3_semTx(array.get(mainRs, 8)),
              bgcolor=f_t3_semBg(array.get(mainRs, 8)), text_size=szU)
 
-    // -- mode Groupé par couleur : toutes les cellules retriées par camp --
+    // -- mode Groupé par couleur, relevé sur l'original (captures 8, 10 et 11) --
+    // 3 camps de 2 colonnes, remplis ligne par ligne : bleu (et bleu clair) à
+    // gauche, orange ET neutres au centre, rouge à droite. Hauteur = moitié du
+    // plus grand camp, arrondie au-dessus, puis le Feu sur toute la largeur.
+    // Ordre global conservé dans chaque camp :
+    //   1. Dashator 1m..1D ; 2. bloc SuperTrader dans l'ordre du code Midgar
+    //   (Trend, Bull, Bear, YoYo, Gap up, Gap down, Div, Cross, CCI, RSI, MACD,
+    //   PA1, PA2, PA3, VIX, niveau VIX, Vol 1, Vol 2) ; 3. SIGNAL ; 4. unité par
+    //   unité, TREND puis STRENGTH.
+    // L'ancienne version n'avait qu'une colonne par camp et 10 lignes : elle
+    // coupait des cellules et oubliait tout le bloc SuperTrader.
     if grp
-        bl = array.new_string(0)
-        rd = array.new_string(0)
-        or_ = array.new_string(0)
-        // PIÈGE PINE v6 : on ne peut pas appeler une méthode sur un ternaire entre
-        // parenthèses — (cond ? a : b).push(x) donne une erreur CE10156. Il faut
-        // des `if` explicites.
+        gT = array.new_string(0)
+        gB = array.new_color(0)
+        gC = array.new_color(0)
+        gK = array.new_int(0)   // camp : 0 bleu, 1 centre, 2 rouge
         for k = 0 to 5
-            if array.get(tfTr, k)
-                array.push(bl, "BULLISH")
-            else
-                array.push(rd, "BEARISH")
-            v = array.get(tfSt, k)
-            if v >= 75
-                array.push(bl, str.tostring(v) + "%")
-            else if v == 50
-                array.push(or_, str.tostring(v) + "%")
-            else
-                array.push(rd, str.tostring(v) + "%")
-            if array.get(ddB, k)
-                array.push(bl, array.get(ddTx, k))
-            else
-                array.push(rd, array.get(ddTx, k))
+            b = array.get(ddB, k)
+            array.push(gT, array.get(ddTx, k)), array.push(gB, b ? t3_cBull : t3_cBear), array.push(gC, color.white), array.push(gK, b ? 0 : 2)
+        stT = array.concat(array.slice(mainL, 0, 7), array.slice(mainR, 0, 7))
+        stS = array.concat(array.slice(mainLs, 0, 7), array.slice(mainRs, 0, 7))
+        array.push(stT, array.get(mainL, 7)), array.push(stS, array.get(mainLs, 7))
+        array.push(stT, array.get(mainR, 7)), array.push(stS, array.get(mainRs, 7))
+        array.push(stT, array.get(mainL, 8)), array.push(stS, array.get(mainLs, 8))
+        array.push(stT, array.get(mainR, 8)), array.push(stS, array.get(mainRs, 8))
+        for k = 0 to array.size(stT) - 1
+            sm = array.get(stS, k)
+            array.push(gT, array.get(stT, k)), array.push(gB, f_t3_semBg(sm)), array.push(gC, f_t3_semTx(sm))
+            array.push(gK, sm == "bull" or sm == "super" ? 0 : sm == "bear" ? 2 : 1)
         for k = 0 to 6
             pol = array.get(sigPol, k)
-            if pol == 1
-                array.push(bl, array.get(sigVal, k))
-            else if pol == -1
-                array.push(rd, array.get(sigVal, k))
-            else
-                array.push(or_, array.get(sigVal, k))
-        nb = math.max(array.size(bl), math.max(array.size(rd), array.size(or_)))
-        for k = 0 to math.min(nb - 1, 9)
-            if k < array.size(bl)
-                table.cell(t3_tF, 0, k, array.get(bl, k), text_color=color.white, text_size=szU, bgcolor=t3_cBull)
-            if k < array.size(or_)
-                table.cell(t3_tF, 2, k, array.get(or_, k), text_color=color.white, text_size=szU, bgcolor=t3_cOrn)
-            if k < array.size(rd)
-                table.cell(t3_tF, 4, k, array.get(rd, k), text_color=color.white, text_size=szU, bgcolor=t3_cBear)
+            array.push(gT, array.get(sigVal, k)), array.push(gB, f_t3_sigCol(pol)), array.push(gC, color.white)
+            array.push(gK, pol == 1 ? 0 : pol == -1 ? 2 : 1)
+        for k = 0 to 5
+            tb = array.get(tfTr, k)
+            array.push(gT, tb ? "BULLISH" : "BEARISH"), array.push(gB, tb ? t3_cBull : t3_cBear), array.push(gC, color.white), array.push(gK, tb ? 0 : 2)
+            v = array.get(tfSt, k)
+            array.push(gT, str.tostring(v) + "%"), array.push(gB, f_t3_stCol(v)), array.push(gC, color.white)
+            array.push(gK, v >= 75 ? 0 : v == 50 ? 1 : 2)
+        nCamp = array.from(0, 0, 0)
+        for c in gK
+            array.set(nCamp, c, array.get(nCamp, c) + 1)
+        h = int(math.ceil(array.max(nCamp) / 2.0))
+        // Le tableau est recréé à chaque mise à jour : sa hauteur dépend du
+        // marché, et une fusion de cellules ne se défait pas autrement.
+        table.delete(t3_tF)
+        t3_tF := table.new(f_t3_pos(t3_posF), 6, h + 1, bgcolor=t3_cDark, border_width=1, border_color=t3_cBord)
+        pos = array.from(0, 0, 0)
+        for i = 0 to array.size(gT) - 1
+            c = array.get(gK, i)
+            gn = array.get(pos, c)
+            table.cell(t3_tF, c * 2 + gn % 2, int(gn / 2), array.get(gT, i), text_color=array.get(gC, i),
+                 bgcolor=array.get(gB, i), text_size=szU, tooltip=i == 29 ? t3_orbTip : "")
+            array.set(pos, c, gn + 1)
+        table.merge_cells(t3_tF, 0, h, 5, h)
+        table.cell(t3_tF, 0, h, t3_feuTxt, text_color=color.white, text_size=szU, bgcolor=t3_feuCol,
+             tooltip=str.tostring(t3_pLong, "0") + "% long / " + str.tostring(t3_pShort, "0") + "% short  (" + str.tostring(t3_nLong) + "L " + str.tostring(t3_nShort) + "S sur " + str.tostring(t3_nTot) + " voix)")
 
     // -- le badge du Feu, présent dans les 4 modes --
     // En « Normal », l'original n'affiche que le mot (LONG / SHORT / NEUTRE) sur
@@ -2244,7 +2290,7 @@ if barstate.islast and t3_on
     detail = str.tostring(t3_pLong, "0") + "% long / " + str.tostring(t3_pShort, "0") + "% short  (" + str.tostring(t3_nLong) + "L " + str.tostring(t3_nShort) + "S sur " + str.tostring(t3_nTot) + " voix, seuil " + str.tostring(t3_seuil) + "%)"
     if fus
         table.cell(t3_tF, 0, 8, t3_feuTxt, text_color=color.white, text_size=szU, bgcolor=t3_feuCol, tooltip=detail)
-    else
+    else if not grp
         table.cell(t3_tF, 0, 9, t3_feuTxt + "  " + detail, text_color=color.white, text_size=size.normal, bgcolor=t3_feuCol)
 
 alertcondition(t3_pLong  >= t3_seuil, "Feu LONG",  "Feu de Confluence passe au vert long")
