@@ -84,6 +84,15 @@
 //                   AUCUNE stratégie n'est prouvée : t de Student < 2 sur un
 //                   échantillon surtout haussier (sep-oct). Unité conseillée :
 //                   15 min, NQ de préférence (MES seulement en 15m ou plus).
+//   V3  2026-10-15  BUG CRITIQUE CORRIGÉ : les vrais prix venaient de
+//                   ticker.standard(), qui ignore l'ajustement des contrats
+//                   continus (NQ1!, ES1!) : décalage de centaines de points,
+//                   stop/objectif du mauvais côté, sortie à l'ouverture. Le
+//                   préréglage C faisait 0 gagnant sur 300 (NQ) et 409 (ES) au
+//                   testeur ; B et A étaient faussés aussi. Vrais prix désormais
+//                   via ticker.new(..., backadjustment.inherit), et stop/objectif
+//                   posés à l'entrée en ticks relatifs au prix obtenu.
+//                   Nouveau stop : « Zone Detector la plus proche » (repli ATR).
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -153,7 +162,11 @@ f_clxOn_in   = input.bool(false, "Climax : ne jamais trader contre le dernier cl
 f_clxAge  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
 
 grp_x = "=== 3. SORTIES ==="
-x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Dernier swing + marge", "Fixe (points)"])
+x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Dernier swing + marge", "Fixe (points)", "Zone Detector la plus proche"],
+     tooltip="Zone Detector : long = sous le bas de la zone haussière la plus proche sous le prix ; short = au-dessus du haut de la zone baissière la plus proche au-dessus. Sans zone utilisable (absente, trop loin ou trop près), repli sur ATR × k.")
+x_detMarge = input.int(2, "Zone Detector : marge (ticks)", group=grp_x, minval=0)
+x_detMin   = input.float(0.3, "Zone Detector : distance minimum (× ATR)", group=grp_x, minval=0.0, step=0.1)
+x_detMax   = input.float(4.0, "Zone Detector : distance maximum (× ATR)", group=grp_x, minval=0.1, step=0.1)
 x_atrLen  = input.int(14, "ATR (vrais prix) : période", group=grp_x, minval=1)
 x_atrK_in = input.float(1.5, "Stop ATR : k", group=grp_x, minval=0.1, step=0.1)
 x_swL     = input.int(5, "Swing : barres à gauche", group=grp_x, minval=1, maxval=50)
@@ -236,7 +249,15 @@ f_mu_la(tf)  => mu_nr and timeframe.in_seconds(tf) > timeframe.in_seconds(timefr
 // ══════════════════════════════════════════════════════════════
 // VRAIS PRIX (exécution, stops, ATR, swings, taille)
 // ══════════════════════════════════════════════════════════════
-[r_o, r_h, r_l, r_c] = request.security(ticker.standard(syminfo.tickerid), timeframe.period, [open, high, low, close])
+// BUG CORRIGÉ le 15/10 (V3). ticker.standard() retire TOUS les modificateurs du
+// graphique, y compris l'ajustement des contrats continus (NQ1!, ES1!) : les
+// « vrais prix » obtenus étaient alors décalés de centaines de points par
+// rapport au graphique ajusté. Stop et objectif tombaient du mauvais côté et
+// se déclenchaient à l'ouverture : 0 gagnant sur 300 (NQ, C) et 409 (ES, C).
+// ticker.new() garde la séance et l'ajustement du graphique, sans le calcul
+// Heiken Ashi : les vrais prix sont sur la même échelle que le graphique.
+r_tick = ticker.new(syminfo.prefix, syminfo.ticker, syminfo.session, adjustment.none, backadjustment.inherit, settlement_as_close.inherit)
+[r_o, r_h, r_l, r_c] = request.security(r_tick, timeframe.period, [open, high, low, close])
 r_tr  = na(r_c[1]) ? r_h - r_l : math.max(r_h - r_l, math.abs(r_h - r_c[1]), math.abs(r_l - r_c[1]))
 r_atr = ta.rma(r_tr, x_atrLen)
 r_pl  = ta.pivotlow(r_l, x_swL, x_swR)
@@ -1045,6 +1066,23 @@ f_stop(int dir, float e) =>
             s := dir > 0 ? sw - x_swMarge * tick : sw + x_swMarge * tick
     else if x_stopMode == "Fixe (points)" and x_fixPts > 0
         s := e - dir * x_fixPts
+    else if x_stopMode == "Zone Detector la plus proche"
+        // long : zone haussière dont le bas est sous le prix, la plus haute ;
+        // short : zone baissière dont le haut est au-dessus du prix, la plus basse.
+        float best = na
+        if dir > 0 and array.size(bull_btm) > 0
+            for b in bull_btm
+                if b < e and (na(best) or b > best)
+                    best := b
+        if dir < 0 and array.size(bear_top) > 0
+            for t in bear_top
+                if t > e and (na(best) or t < best)
+                    best := t
+        if not na(best)
+            cand = dir > 0 ? best - x_detMarge * tick : best + x_detMarge * tick
+            d0 = math.abs(e - cand)
+            if d0 >= x_detMin * r_atr and d0 <= x_detMax * r_atr
+                s := cand
     // ATR × k, et secours si aucun swing utilisable
     if na(s)
         s := e - dir * x_atrK * r_atr
@@ -1084,8 +1122,8 @@ if pos != 0
     if not tr_fixe
         // Première clôture après le remplissage : on recale sur le VRAI prix d'entrée.
         tr_entry := strategy.position_avg_price
-        if x_stopMode != "Dernier swing + marge"
-            tr_stop := tr_entry - tr_dir * tr_dist
+        // Recalage sur le vrai prix d'entrée : la distance du stop est conservée.
+        tr_stop := tr_entry - tr_dir * tr_dist
         tr_risk := (tr_entry - tr_stop) * tr_dir
         tr_tp   := x_tpOn and tr_risk > 0 ? tr_entry + tr_dir * x_tpR * tr_risk : na
         tr_best := tr_dir > 0 ? r_h : r_l
@@ -1149,13 +1187,18 @@ if pos == 0 and (go_long or go_short)
         tr_best  := e0
         tr_be    := false
         nb_jour  += 1
+        // Stop et objectif en TICKS relatifs au prix réellement obtenu : sur la
+        // bougie de remplissage, ils ne dépendent pas d'une estimation du prix
+        // d'entrée. Dès la clôture suivante, ils sont recalés en prix absolus.
+        lossTk = math.max(1, math.round(dist / tick))
+        profTk = x_tpOn ? math.max(1, math.round(x_tpR * dist / tick)) : na
         if d > 0
             strategy.entry("L", strategy.long, qty=q, comment="L " + str.tostring(q))
-            strategy.exit("XL", "L", stop=tr_stop, limit=tr_tp, comment_loss="Stop L", comment_profit="Obj L")
+            strategy.exit("XL", "L", loss=lossTk, profit=profTk, comment_loss="Stop L", comment_profit="Obj L")
             entree_L := true
         else
             strategy.entry("S", strategy.short, qty=q, comment="S " + str.tostring(q))
-            strategy.exit("XS", "S", stop=tr_stop, limit=tr_tp, comment_loss="Stop S", comment_profit="Obj S")
+            strategy.exit("XS", "S", loss=lossTk, profit=profTk, comment_loss="Stop S", comment_profit="Obj S")
             entree_S := true
 
 // ══════════════════════════════════════════════════════════════
