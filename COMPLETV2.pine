@@ -2313,7 +2313,8 @@ grp_mhl  = "=== MONDAY HIGH LOW ==="
 mhl_on   = input.bool(true, "Afficher Monday High Low", group=grp_mhl)
 mhl_col  = input.color(color.blue, "Couleur des lignes", group=grp_mhl)
 mhl_w    = input.int(1, "Épaisseur", group=grp_mhl, minval=1, maxval=5)
-mhl_hist = input.int(26, "Historique (semaines)", group=grp_mhl, minval=1, maxval=52)
+mhl_hist = input.int(1, "Historique (semaines)", group=grp_mhl, minval=1, maxval=52,
+     tooltip="1 = seulement le lundi de la semaine en cours (choix de Jeremy). L'original est réglé sur 26.")
 mhl_def  = input.string("Lundi calendaire (UTC)", "Définition du lundi", group=grp_mhl,
      options=["Lundi calendaire (UTC)", "Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"],
      tooltip="UTC = la seule définition vérifiée (12/12 sur l'API d'Ephore). Pour un future, la journée de trading du lundi commence le dimanche à 18:00 New York. Paris = le lundi de 00:00 à 24:00, heure de Paris.")

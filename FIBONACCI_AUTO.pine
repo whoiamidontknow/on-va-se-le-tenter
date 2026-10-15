@@ -21,7 +21,7 @@
 //        sous « Afficher Extensions », zone optimale 0.618-0.75 (box).
 //        Toujours 3 inputs non booléens (10 1 small) = légende de l'original.
 // ═══════════════════════════════════════════════════════════════════
-indicator("Fibonacci Auto - Ephore", overlay=true,
+indicator("Ephore Fibonator", overlay=true,
      max_lines_count=50, max_labels_count=50, max_boxes_count=10, max_bars_back=500)
 
 // ── INPUTS ───────────────────────────────────────────────────────
