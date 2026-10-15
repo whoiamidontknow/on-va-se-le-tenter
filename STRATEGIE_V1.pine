@@ -79,6 +79,11 @@
 //                   séance ; taille fixe ou risque fixe en $. Exécution sur
 //                   l'OHLC standard, commission 1,25 $/contrat/côté,
 //                   glissement 1 tick.
+//   V2  2026-10-15  Préréglages A / B / C issus de la recherche sur données
+//                   (tools/strategie/), C par défaut ; entrée sur climax.
+//                   AUCUNE stratégie n'est prouvée : t de Student < 2 sur un
+//                   échantillon surtout haussier (sep-oct). Unité conseillée :
+//                   15 min, NQ de préférence (MES seulement en 15m ou plus).
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -94,13 +99,21 @@ strategy("Stratégie V1", overlay=true,
 // RÉGLAGES DE LA STRATÉGIE
 // ══════════════════════════════════════════════════════════════
 grp_e = "=== 1. ENTRÉES ==="
-e_sens    = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
-e_sigOn   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
-e_sigNiv  = input.string("Fort seulement", "Niveau des flèches", group=grp_e, options=["Fort seulement", "Fort + Moyen"])
-e_heiOn   = input.bool(false, "Entrée sur changement de couleur Heishinator", group=grp_e)
-e_tlOn    = input.bool(false, "Entrée sur cassure de trendline (Breakator)", group=grp_e,
+// Préréglages issus de la recherche sur données du 15/10 (tools/strategie/).
+// AUCUNE N'EST PROUVÉE : échantillon trop court (sep-oct surtout, période
+// haussière), t de Student < 2. À valider au testeur de TradingView sur un
+// historique long. « Personnalisé » = tous les réglages ci-dessous s'appliquent.
+preset    = input.string("C — Cassure de trendline", "Préréglage", group=grp_e,
+     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "Personnalisé"],
+     tooltip="C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. La moins fragile (+0,23 à +0,29 R par trade sur MES/NQ sep-oct, PF 1,4-1,5). A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur (+0,5 R, mais dépend de 1-2 grosses tendances). B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur (suivi de tendance « loterie », 14-26 % de gagnants). Personnalisé : tes réglages.")
+e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
+e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
+e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
+e_sigNiv_in  = input.string("Fort seulement", "Niveau des flèches", group=grp_e, options=["Fort seulement", "Fort + Moyen"])
+e_heiOn_in   = input.bool(false, "Entrée sur changement de couleur Heishinator", group=grp_e)
+e_tlOn_in = input.bool(false, "Entrée sur cassure de trendline (Breakator)", group=grp_e,
      tooltip="Cassure de la résistance descendante = long ; cassure du support ascendant = short. Règle de cassure : réglage « Cassure mesurée sur » du groupe TRENDLINES.")
-e_lvlOn   = input.bool(false, "Entrée sur cassure de niveau (sessions / Monday)", group=grp_e,
+e_lvlOn_in   = input.bool(false, "Entrée sur cassure de niveau (sessions / Monday)", group=grp_e,
      tooltip="Long quand le prix casse le HAUT d'une session terminée (ou le Monday High) ; short quand il casse un BAS. Chaque niveau ne sert qu'une fois.")
 e_lvlAs   = input.bool(true, "Niveaux Asie", group=grp_e, inline="lv")
 e_lvlLd   = input.bool(true, "Londres", group=grp_e, inline="lv")
@@ -111,57 +124,89 @@ e_lvlSrc  = input.string("Heiken Ashi (comme l'indicateur)", "Niveaux mesurés s
      tooltip="Heiken Ashi = les niveaux affichés par CompletV3. Vrais prix = hauts/bas réels des sessions et du lundi, cassure testée sur la vraie bougie.")
 
 grp_f = "=== 2. FILTRES ==="
-f_feuOn   = input.bool(false, "Feu de Confluence dans le sens du trade", group=grp_f)
+f_feuOn_in   = input.bool(false, "Feu de Confluence dans le sens du trade", group=grp_f)
 f_feuMode = input.string("Part dans le sens ≥ seuil", "Feu : règle", group=grp_f,
      options=["Part dans le sens ≥ seuil", "Pas de Feu opposé"],
      tooltip="Part dans le sens ≥ seuil : un long exige au moins « seuil » % de voix long sur 29. Pas de Feu opposé : on bloque seulement si le Feu est franchement dans l'autre sens (au seuil).")
 f_feuSeuil= input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
-f_trOn    = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
+f_trOn_in = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
 f_trTf    = input.timeframe("60", "TREND : unité", group=grp_f,
      tooltip="Règle TREND de l'indicateur : clôture de la dernière bougie clôturée de cette unité au-dessus (long) ou au-dessous (short) de son EMA50.")
-f_emaOn   = input.bool(true, "Clôture du bon côté de l'EMA50 (Moyenator 1)", group=grp_f)
-f_hrOn    = input.bool(true, "Fenêtres horaires (heure de Paris)", group=grp_f,
+f_emaOn_in   = input.bool(true, "Clôture du bon côté de l'EMA50 (Moyenator 1)", group=grp_f)
+f_hrOn_in = input.bool(true, "Fenêtres horaires (heure de Paris)", group=grp_f,
      tooltip="L'entrée n'est permise que si la bougie du signal OUVRE dans une des plages cochées. Aucune plage cochée = pas de restriction.")
-f_hr1On   = input.bool(true, "Plage 1 (Londres)", group=grp_f, inline="h1")
-f_hr1     = input.session("0900-1200", "", group=grp_f, inline="h1")
-f_hr2On   = input.bool(true, "Plage 2 (US)", group=grp_f, inline="h2")
+f_hr1On_in   = input.bool(true, "Plage 1 (Londres)", group=grp_f, inline="h1")
+f_hr1_in  = input.session("0900-1200", "", group=grp_f, inline="h1")
+f_hr2On_in   = input.bool(true, "Plage 2 (US)", group=grp_f, inline="h2")
 f_hr2     = input.session("1530-1800", "", group=grp_f, inline="h2")
 f_boOn    = input.bool(true, "Blackout d'annonces sur TOUTES les entrées", group=grp_f,
      tooltip="Aucune entrée sur une bougie qui ouvre dans un créneau d'annonce (créneaux du groupe BLACKOUT). Les flèches Signator ont en plus leur propre filtre, comme dans l'indicateur.")
-f_adxOn   = input.bool(false, "ADX minimum", group=grp_f, inline="adx")
+f_adxOn_in   = input.bool(false, "ADX minimum", group=grp_f, inline="adx")
 f_adxMin  = input.float(20.0, "", group=grp_f, inline="adx", minval=0.0, maxval=100.0, step=1.0,
      tooltip="ADX(14,14) de l'indicateur, sur bougies HA. La flèche Signator exige déjà ADX ≥ Seuil de Force (18).")
 f_maxJour = input.int(3, "Trades maximum par jour (0 = illimité)", group=grp_f, minval=0, maxval=50)
-f_detOn   = input.bool(false, "Detector : place jusqu'à la zone opposée", group=grp_f,
+f_detOn_in   = input.bool(false, "Detector : place jusqu'à la zone opposée", group=grp_f,
      tooltip="Pas de long si une zone baissière (order block) est à moins de k × ATR au-dessus du prix, ou si le prix est dedans ; miroir pour le short. Le Detector sert de CIBLE, pas de sens.")
 f_detK    = input.float(1.0, "Detector : distance minimum (× ATR14)", group=grp_f, minval=0.0, step=0.1)
-f_clxOn   = input.bool(false, "Climax : ne jamais trader contre le dernier climax", group=grp_f,
+f_clxOn_in   = input.bool(false, "Climax : ne jamais trader contre le dernier climax", group=grp_f,
      tooltip="Règle de la méthode : le dernier climax donne le biais. Long bloqué si le dernier climax est vendeur, short bloqué s'il est acheteur.")
 f_clxAge  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
 
 grp_x = "=== 3. SORTIES ==="
-x_stopMode= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Dernier swing + marge", "Fixe (points)"])
+x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Dernier swing + marge", "Fixe (points)"])
 x_atrLen  = input.int(14, "ATR (vrais prix) : période", group=grp_x, minval=1)
-x_atrK    = input.float(1.5, "Stop ATR : k", group=grp_x, minval=0.1, step=0.1)
+x_atrK_in = input.float(1.5, "Stop ATR : k", group=grp_x, minval=0.1, step=0.1)
 x_swL     = input.int(5, "Swing : barres à gauche", group=grp_x, minval=1, maxval=50)
 x_swR     = input.int(2, "Swing : barres à droite (confirmation)", group=grp_x, minval=1, maxval=50)
 x_swMarge = input.int(2, "Swing : marge (ticks)", group=grp_x, minval=0)
 x_fixPts  = input.float(10.0, "Stop fixe (points)", group=grp_x, minval=0.0, step=0.25)
-x_tpOn    = input.bool(true, "Objectif en R", group=grp_x, inline="tp")
-x_tpR     = input.float(2.0, "", group=grp_x, inline="tp", minval=0.1, step=0.1)
-x_trMode  = input.string("Aucun", "Stop suiveur", group=grp_x, options=["Aucun", "ATR", "Sous chaque nouveau swing"])
+x_tpOn_in = input.bool(true, "Objectif en R", group=grp_x, inline="tp")
+x_tpR_in  = input.float(2.0, "", group=grp_x, inline="tp", minval=0.1, step=0.1)
+x_trMode_in  = input.string("Aucun", "Stop suiveur", group=grp_x, options=["Aucun", "ATR", "Sous chaque nouveau swing"])
 x_trK     = input.float(2.0, "Suiveur ATR : k", group=grp_x, minval=0.1, step=0.1)
 x_trAct   = input.float(0.0, "Suiveur actif après (R)", group=grp_x, minval=0.0, step=0.1,
      tooltip="0 = actif dès l'entrée.")
-x_beOn    = input.bool(true, "Break-even après X R", group=grp_x, inline="be")
+x_beOn_in = input.bool(true, "Break-even après X R", group=grp_x, inline="be")
 x_beR     = input.float(1.0, "", group=grp_x, inline="be", minval=0.1, step=0.1)
 x_beTk    = input.int(1, "Break-even : ticks au-delà du prix d'entrée", group=grp_x, minval=0)
-x_oppArr  = input.bool(true, "Sortie sur flèche Signator opposée (Fort ou Moyen)", group=grp_x)
-x_oppHei  = input.bool(false, "Sortie sur changement Heishinator opposé", group=grp_x)
-x_finOn   = input.bool(true, "Sortie en fin de séance (heure de Paris)", group=grp_x, inline="fin",
+x_oppArr_in  = input.bool(true, "Sortie sur flèche Signator opposée (Fort ou Moyen)", group=grp_x)
+x_oppHei_in  = input.bool(false, "Sortie sur changement Heishinator opposé", group=grp_x)
+x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", group=grp_x, inline="fin",
      tooltip="Ferme la position à la clôture de la bougie qui finit à cette heure ou après, et interdit toute nouvelle entrée ensuite jusqu'à minuit (Paris).")
 x_finH    = input.int(21, "h", group=grp_x, inline="fin", minval=0, maxval=23)
 x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
+
+// ─── Préréglage : valeurs effectives ───
+pC = preset == "C — Cassure de trendline"
+pA = preset == "A — Climax BUY dans la tendance"
+pB = preset == "B — Signator Fort + TREND"
+pP = not (pC or pA or pB)
+e_sens     = pA ? "Long seulement" : pP ? e_sens_in : "Les deux"
+e_sigOn    = pB ? true : pP ? e_sigOn_in : false
+e_sigNiv   = pP ? e_sigNiv_in : "Fort seulement"
+e_heiOn    = pP ? e_heiOn_in : false
+e_tlOn     = pC ? true : pP ? e_tlOn_in : false
+e_lvlOn    = pP ? e_lvlOn_in : false
+e_clxOn    = pA ? true : pP ? e_clxOn_in : false
+f_feuOn    = pP ? f_feuOn_in : false
+f_trOn     = pA or pB ? true : pP ? f_trOn_in : false
+f_emaOn    = pP ? f_emaOn_in : false
+f_hrOn     = pC or pB ? true : pP ? f_hrOn_in : false
+f_hr1On    = pC or pB ? true : f_hr1On_in
+f_hr1      = pC or pB ? "1430-0800" : f_hr1_in
+f_hr2On    = pC or pB ? false : f_hr2On_in
+f_adxOn    = pP ? f_adxOn_in : false
+f_detOn    = pP ? f_detOn_in : false
+f_clxOn    = pP ? f_clxOn_in : false
+x_stopMode = pP ? x_stopMode_in : "ATR × k"
+x_atrK     = pC ? 1.5 : pA ? 2.0 : pB ? 1.0 : x_atrK_in
+x_tpOn     = pC ? true : pP ? x_tpOn_in : false
+x_tpR      = pC ? 2.0 : x_tpR_in
+x_trMode   = pP ? x_trMode_in : "Aucun"
+x_beOn     = pP ? x_beOn_in : false
+x_oppArr   = pP ? x_oppArr_in : false
+x_oppHei   = pA or pB ? true : pP ? x_oppHei_in : false
+x_finOn    = pP ? x_finOn_in : false
 
 grp_q = "=== 4. TAILLE ==="
 q_mode    = input.string("Contrats fixes", "Taille de position", group=grp_q, options=["Contrats fixes", "Risque fixe en $"])
@@ -933,8 +978,8 @@ lvl_dn = ses_asDn or ses_ldDn or ses_usDn or (e_lvlMon and mhl_brkDn)
 // SIGNAUX D'ENTRÉE
 // ══════════════════════════════════════════════════════════════
 e_moyen  = e_sigNiv == "Fort + Moyen"
-sig_long  = (e_sigOn and (sg_long  or (e_moyen and sg_longM)))  or (e_heiOn and hei_bull_flip) or (e_tlOn and tl_rBreak) or (e_lvlOn and lvl_up)
-sig_short = (e_sigOn and (sg_short or (e_moyen and sg_shortM))) or (e_heiOn and hei_bear_flip) or (e_tlOn and tl_sBreak) or (e_lvlOn and lvl_dn)
+sig_long  = (e_sigOn and (sg_long  or (e_moyen and sg_longM)))  or (e_heiOn and hei_bull_flip) or (e_tlOn and tl_rBreak) or (e_lvlOn and lvl_up) or (e_clxOn and clx_buy)
+sig_short = (e_sigOn and (sg_short or (e_moyen and sg_shortM))) or (e_heiOn and hei_bear_flip) or (e_tlOn and tl_sBreak) or (e_lvlOn and lvl_dn) or (e_clxOn and clx_sell)
 
 // ══════════════════════════════════════════════════════════════
 // FILTRES

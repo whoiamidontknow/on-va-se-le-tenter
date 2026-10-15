@@ -724,3 +724,17 @@ multi-unités d'un coup.
   commentaires). Dire « l'original » ou « l'indicateur d'origine ». Vérifier avec
   `grep -ci ephore CompletV3.pine` → 0 avant chaque commit.
 - Titre de l'indicateur dans TradingView : « Complet V3 ».
+
+### STRATÉGIE (15/10) — `STRATEGIE_V1.pine` + recherche `tools/strategie/`
+
+- Stratégie Pine sur les signaux de CompletV3 : signaux en HA, **ordres aux vrais prix**
+  (`fill_orders_on_standard_ohlc=true`), anti-repaint (clôture → ouverture suivante), 27 request.security.
+- **Verdict de la recherche : AUCUNE stratégie prouvée** (t < 2 ; données surtout sep-oct, haussières).
+  Reconstitution des vrais prix depuis le HA (`recon.py`) : fiable en 15m (±0,1-0,2 R), pas en 1-3m.
+  Coûts : MES non tradable sous 15m. Signator perd pendant la séance de Londres (08:00-14:30) 4 jeux sur 5.
+- 3 préréglages : **C cassure de trendline** hors Londres, stop 1,5 ATR, objectif 2R (+0,23/+0,29 R,
+  PF 1,4-1,5, le moins fragile) ; **A climax BUY** + TREND 1H, long seul, stop 2 ATR, sortie Heishinator
+  (+0,5 R mais 1-2 grosses tendances) ; **B Signator Fort** + TREND 1H hors Londres (loterie).
+- Ne marchent pas : Signator seul, flip Heishinator, rebond Detector, cassure sessions/Monday, Climax SELL, shorts.
+- Pour conclure : backtest TradingView historique profond, ou 6-12 mois de 15m MES+NQ avec une période
+  baissière (export HA avec indicateur + même graphique en bougies standard). ~200 trades par candidat.
