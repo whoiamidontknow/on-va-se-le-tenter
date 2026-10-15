@@ -237,7 +237,8 @@ piv_s3_lbl_col = input.color(color.blue, "Couleur labels Set 3", group=grp_piv)
 piv_lbl_bold   = input.bool(false, "Labels en gras", group=grp_piv)
 piv_tz         = input.string("Europe/Paris", "Fuseau horaire des débuts/fins de période", group=grp_piv,
      tooltip="Weekly : lundi 00:00 → lundi suivant 00:00. Mensuel : jusqu'au 1er du mois suivant 11:00. Annuel : jusqu'au 4 janvier de l'année suivante.")
-piv_lbl_pos    = input.string("Près du prix", "Position des étiquettes (mensuel, weekly)", group=grp_piv, options=["Près du prix", "Fin de la ligne"])
+piv_lbl_pos    = input.string("Fin de la ligne", "Position des étiquettes (mensuel, weekly)", group=grp_piv, options=["Fin de la ligne", "Près du prix"],
+     tooltip="Fin de la ligne = à droite du bout de chaque ligne, comme l'annuel (choix de Jeremy, 15/10).")
 piv_lbl_pos1   = input.string("Fin de la ligne", "Position des étiquettes (annuel)", group=grp_piv, options=["Fin de la ligne", "Près du prix"])
 
 // --- SET 1 (Annuel) ---
