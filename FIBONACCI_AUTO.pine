@@ -1,7 +1,7 @@
 //@version=6
 // ═══════════════════════════════════════════════════════════════════
 // FIBONACCI AUTO — Ephore (reverse-engineering « Ephore Market Fibonator v4 »)
-// VERSION : V2 (15/10/2026)
+// VERSION : V3 (15/10/2026)
 //
 // Détecte le dernier swing (pivot high / pivot low STRICTS, 10/10) et trace
 // les niveaux Fib comme l'outil Fib de TradingView :
@@ -20,6 +20,8 @@
 //        défaut, couleurs, étoile sur le 75 % OPTIMAL, extensions 127.2/161.8
 //        sous « Afficher Extensions », zone optimale 0.618-0.75 (box).
 //        Toujours 3 inputs non booléens (10 1 small) = légende de l'original.
+//   V3 — Étiquettes à droite, au bout de chaque ligne (barre courante + 10),
+//        au lieu de la gauche, au départ du swing. Demande de Jeremy.
 // ═══════════════════════════════════════════════════════════════════
 indicator("Ephore Fibonator", overlay=true,
      max_lines_count=50, max_labels_count=50, max_boxes_count=10, max_bars_back=500)
@@ -148,10 +150,11 @@ draw_level(p_0, p_1, ratio, txt_lvl, col, b0, is_star) =>
         txt = txt_lvl + (show_prc ? " (" + f_fmt_price(price) + ")" : "")
         if is_star and show_str
             txt := "⭐ " + txt
-        lb = label.new(b0, price, txt,
+        // Étiquette à DROITE, au bout de la ligne (demande de Jeremy, 15/10).
+        lb = label.new(bar_index + 10, price, txt,
              color     = color.new(color.white, 100),
              textcolor = col,
-             style     = label.style_label_right,
+             style     = label.style_label_left,
              size      = f_size(lbl_size),
              xloc      = xloc.bar_index)
         array.push(lbs, lb)
