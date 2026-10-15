@@ -1,0 +1,130 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# OPTIMISEUR CONJOINT ENTRÉE × FILTRES × STOP × SORTIE — espace de recherche
+# ══════════════════════════════════════════════════════════════════════════════
+# Les clés portent le NOM EXACT de la variable Pine de STRATEGIE_V1.pine quand le réglage existe
+# (ex. x_atrK_in = « Stop ATR : k »). Les réglages qui n'existent PAS (encore) dans STRATEGIE_V1 sont
+# listés dans [recherche].non_pine : un résultat qui les utilise n'est pas transposable tel quel.
+# Chaque liste est ORDONNÉE : deux valeurs voisines dans la liste sont « voisines » pour la recherche
+# de zone stable (plateau), sauf pour les paramètres catégoriels.
+
+[donnees]
+warmup_barres = 150          # chauffe des indicateurs coupée au début de chaque série (EMA50, ADX, HA)
+min_barres_serie = 300       # série plus courte : ignorée
+unites_trend = [60, 240]     # unités supérieures calculées pour le filtre TREND (minutes, 1440 = 1D)
+
+[couts]
+glissement_ticks_par_cote = 1
+commission_par_cote = 1.25   # $ par contrat et par côté
+
+# valeur du point ($) et tick ; « API » = Nasdaq 100 de l'API du terminal web (vrais prix)
+[instruments.MES]
+point = 5.0
+tick = 0.25
+[instruments.NQ]
+point = 20.0
+tick = 0.25
+[instruments.MNQ]
+point = 2.0
+tick = 0.25
+[instruments.ES]
+point = 50.0
+tick = 0.25
+[instruments.API]
+point = 20.0
+tick = 0.25
+
+# Stop fixe (« Stop fixe (points) », x_fixPts) : dépend de l'instrument -> on cherche un RANG dans ces listes
+[stop_fixe_points]
+MES = [6.0, 12.0]
+NQ = [25.0, 50.0]
+MNQ = [25.0, 50.0]
+ES = [6.0, 12.0]
+API = [25.0, 50.0]
+
+# Fenêtres horaires (heure de Paris), au format session Pine. 1 ou 2 plages (Plage 1, Plage 2).
+[fenetres]
+aucune = []
+hors_londres = ["1430-0800"]          # = préréglages B et C
+londres = ["0800-1430"]
+us = ["1530-2200"]
+defaut_pine = ["0900-1200", "1530-1800"]
+
+[execution]
+remplissage = "prudent"      # « prudent » (objectif dépassé d'un tick, comme engine.py) ou « tradingview »
+heishi_sortie = "flip"       # « flip » = changement de couleur (Pine) ; « etat » = couleur opposée (engine.py)
+plafond_barres = 2000        # sécurité : durée maximale absolue d'un trade
+
+[walkforward]
+apprentissage_jours = 60     # jours de bourse (toutes séries confondues)
+test_jours = 10
+ancre = false                # true = fenêtre d'apprentissage croissante (ancrée au début)
+auto = true                  # données trop courtes : ajuste automatiquement (50 % / 12 % des jours)
+
+[recherche]
+graine = 7
+n_aleatoire = 2500           # combinaisons tirées au hasard dans l'espace complet
+pool_entrees = 600           # dont : configurations « signal » (déclencheur + filtres) distinctes
+pool_sorties = 250           #        configurations « trade » (entrée + stop + sortie) distinctes
+grille_declencheurs = true   # en plus : chaque déclencheur × configurations de sortie de référence
+top_k_plateau = 25           # par fenêtre : les K meilleurs reçoivent tous leurs voisins
+quantile_plateau = 0.25      # score de plateau = ce quantile du score sur {réglage + voisins}
+min_voisins = 3
+objectif = "t"               # « t » (moyenne/écart-type x racine(n)), « moyR », « pf »
+min_trades_apprentissage = 30
+pine_seulement = false       # true = n'explore que des réglages présents dans STRATEGIE_V1
+parametres_categoriels = ["declencheur", "e_sens_in", "fenetre", "entree", "x_stopMode_in", "x_trMode_in"]
+non_pine = ["entree", "limite_validite", "atr_rel_min", "temps_max_barres", "rebond_detector"]
+
+[robustesse]
+min_trades = 100             # en dessous (hors échantillon) : verdict « NON CONCLUANT »
+bootstrap = 2000             # tirages du bootstrap par jour (IC 95 %)
+bloc_moyen_jours = 5         # bootstrap stationnaire (White / SPA) : longueur moyenne des blocs
+spa_tirages = 1000
+seuil_p = 0.05               # p de White/SPA maximum
+seuil_dsr = 0.95             # Deflated Sharpe minimum (probabilité)
+risque_par_trade_pct = 1.0   # Monte Carlo : risque de 1 R = 1 % du capital
+ruine_pct = 30.0             # ruine = capital en baisse de 30 %
+horizon_trades = 250         # Monte Carlo : horizon en nombre de trades
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ESPACE DE RECHERCHE
+# ══════════════════════════════════════════════════════════════════════════════
+[espace]
+# --- 1. ENTRÉES (un déclencheur par réglage)
+# fleche_fort / fleche_fort_moyen -> e_sigOn_in + e_sigNiv_in ; heishi -> e_heiOn_in ; trendline -> e_tlOn_in ;
+# niveau -> e_lvlOn_in (sessions Asie/Londres/US + Monday, clôture HA) ; climax -> e_clxOn_in ;
+# rebond_detector : NON PINE (mèche dans une zone Detector, clôture hors zone).
+declencheur = ["fleche_fort", "fleche_fort_moyen", "heishi", "trendline", "niveau", "climax", "rebond_detector"]
+e_sens_in = ["Les deux", "Long seulement", "Short seulement"]
+# --- 2. FILTRES
+f_trTf = ["aucun", "60", "240"]          # « aucun » = f_trOn_in false ; sinon TREND de cette unité dans le sens
+f_emaOn_in = [false, true]               # clôture HA du bon côté de l'EMA50
+fenetre = ["aucune", "hors_londres", "londres", "us"]
+f_boOn = [true]                          # blackout d'annonces sur toutes les entrées
+f_adxMin = [0, 20, 25]                   # 0 = f_adxOn_in false
+atr_rel_min = [0.0, 0.9]                 # NON PINE : ATR14 / moyenne100(ATR14) minimum (0 = sans)
+f_maxJour = [0, 3]                       # 0 = illimité
+f_detK = [0.0, 1.0]                      # 0 = f_detOn_in false (Detector : place jusqu'à la zone opposée)
+f_clxOn_in = [false, true]               # ne jamais trader contre le dernier climax
+f_clxAge = [0]
+f_feuSeuil = [0]                         # 0 = f_feuOn_in false. ATTENTION : Feu = PROXY à 12 voix, pas les 29 du Pine
+# --- entrée (NON PINE pour « limite_milieu »)
+entree = ["marche", "limite_milieu"]
+limite_validite = [2, 4]
+# --- 3. SORTIES
+x_stopMode_in = ["ATR × k", "Dernier swing + marge", "Fixe (points)"]
+x_atrK_in = [1.0, 1.5, 2.0, 3.0]
+x_swL = [5]
+x_swR = [2]
+x_swMarge = [2]
+x_fixPts = [0, 1]                        # RANG dans [stop_fixe_points]
+x_tpR_in = [0.0, 1.0, 1.5, 2.0, 3.0]     # 0 = x_tpOn_in false
+x_trMode_in = ["Aucun", "ATR", "Sous chaque nouveau swing"]
+x_trK = [2.0, 3.0]
+x_trAct = [0.0, 1.0]
+x_beR = [0.0, 1.0]                       # 0 = x_beOn_in false
+x_beTk = [1]
+x_oppArr_in = [false, true]
+x_oppHei_in = [false, true]
+x_fin = ["aucune", "21:45"]              # « aucune » = x_finOn_in false ; sinon x_finH:x_finM (Paris)
+temps_max_barres = [0, 16, 32]           # NON PINE : sortie après N barres (0 = sans)
