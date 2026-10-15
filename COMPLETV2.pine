@@ -97,6 +97,8 @@
 //                     session, heures d'été gérées.
 //                   Detector : comparé pour la première fois aux zones de
 //                   l'original (API) : 19/19, aucune correction nécessaire.
+//                   - RONDATOR V1 (niveaux ronds), module de l'original :
+//                     réglages du panneau, règle de l'API (arrondi inférieur).
 // ══════════════════════════════════════════════════════════════
 indicator("Ephore Complet V2", overlay=true, max_lines_count=500,
      max_labels_count=500, max_boxes_count=500)
@@ -2381,3 +2383,53 @@ ses_inUs = f_ses(ses_usOn, ses_usSes, "America/New_York", ses_usCol, "US")
 bgcolor(ses_bg and ses_inAs ? color.new(ses_asCol, 92) : na, title="Fond session Asie")
 bgcolor(ses_bg and ses_inLd ? color.new(ses_ldCol, 92) : na, title="Fond session Londres")
 bgcolor(ses_bg and ses_inUs ? color.new(ses_usCol, 92) : na, title="Fond session US")
+
+// ══════════════════════════════════════════════════════════════
+// RONDATOR V1 — niveaux ronds (module de l'original, ajouté le 15/10)
+// ══════════════════════════════════════════════════════════════
+// Réglages lus sur le panneau d'Ephore (capture du 15/10) : intervalle 100
+// (Réglage 28), 10 niveaux de part et d'autre (Réglage 29), épaisseur 1,
+// style solide, labels de prix décochés, position gauche, décalage 150
+// barres, taille small. Couleur : damier = couleur transparente chez Ephore.
+// Règle vérifiée sur l'API du terminal web (objets rnl_*) : le centre est
+// l'arrondi INFÉRIEUR à l'intervalle du dernier cours, puis ±10 niveaux.
+// Réserve : sur l'API, les niveaux n'apparaissent qu'en 2m, jamais en 15m.
+// On les affiche sur toutes les unités ; une capture tranchera.
+grp_rnd    = "=== EPHORE RONDATOR V1 ==="
+rnd_on     = input.bool(true, "Activer Niveaux Ronds", group=grp_rnd)
+rnd_custom = input.bool(true, "Personnaliser Couleurs", group=grp_rnd)
+rnd_step   = input.float(100, "Intervalle entre les niveaux", group=grp_rnd, minval=0.25)
+rnd_n      = input.int(10, "Nombre de niveaux au-dessus/en dessous", group=grp_rnd, minval=1, maxval=50)
+rnd_colIn  = input.color(color.new(color.gray, 70), "Couleur des lignes", group=grp_rnd)
+rnd_w      = input.int(1, "Épaisseur des lignes", group=grp_rnd, minval=1, maxval=5)
+rnd_sty    = input.string("Solide", "Style des lignes", group=grp_rnd, options=["Solide", "Tirets", "Pointillés"])
+rnd_lbl    = input.bool(false, "Afficher les labels de prix", group=grp_rnd)
+rnd_pos    = input.string("Gauche", "Position des labels", group=grp_rnd, options=["Gauche", "Droite"])
+rnd_off    = input.int(150, "Décalage des labels (barres)", group=grp_rnd, minval=0, maxval=490)
+rnd_lsz    = input.string("small", "Taille des labels", group=grp_rnd, options=["tiny", "small", "normal", "large"])
+
+rnd_col   = rnd_custom ? rnd_colIn : color.new(color.gray, 70)
+rnd_style = rnd_sty == "Tirets" ? line.style_dashed : rnd_sty == "Pointillés" ? line.style_dotted : line.style_solid
+rnd_size  = rnd_lsz == "tiny" ? size.tiny : rnd_lsz == "normal" ? size.normal : rnd_lsz == "large" ? size.large : size.small
+
+var array<line>  rnd_lines  = array.new_line()
+var array<label> rnd_labels = array.new_label()
+var float rnd_center = na
+if barstate.islast and rnd_on
+    rnd_c = math.floor(close / rnd_step) * rnd_step
+    rnd_x = rnd_pos == "Gauche" ? bar_index - rnd_off : bar_index + rnd_off
+    // On ne redessine que quand le prix change de tranche.
+    if rnd_c != rnd_center
+        while array.size(rnd_lines) > 0
+            line.delete(array.pop(rnd_lines))
+        while array.size(rnd_labels) > 0
+            label.delete(array.pop(rnd_labels))
+        for k = -rnd_n to rnd_n
+            lvl = rnd_c + k * rnd_step
+            array.push(rnd_lines, line.new(bar_index - 1, lvl, bar_index, lvl, extend=extend.both, color=rnd_col, width=rnd_w, style=rnd_style))
+            if rnd_lbl
+                array.push(rnd_labels, label.new(rnd_x, lvl, str.tostring(lvl, format.mintick), style=label.style_none, textcolor=color.new(rnd_col, 0), size=rnd_size))
+        rnd_center := rnd_c
+    else if rnd_lbl
+        for lb in rnd_labels
+            label.set_x(lb, rnd_x)
