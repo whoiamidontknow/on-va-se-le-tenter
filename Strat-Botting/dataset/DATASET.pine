@@ -1,0 +1,896 @@
+//@version=6
+// ══════════════════════════════════════════════════════════════
+// DATASET STRAT-BOTTING — VERSION V1 (2026-10-16)
+// Indicateur d'EXPORT : il ne dessine rien. Il sort, bougie par bougie, toutes
+// les confluences de CompletV3 (copiées de STRATEGIE_V1.pine, elles-mêmes
+// copiées de CompletV3) + les VRAIS prix, pour la recherche Python.
+// Usage : graphique Heiken Ashi, seul indicateur sur le graphique, puis menu
+// du graphique → « Exporter les données du graphique ». Voir EXPORT.md.
+//
+// FORMAT DE L'EXPORT
+//   Chaque plot() = une colonne du CSV ; le TITRE du plot = l'en-tête.
+//   Les titres sont courts, uniques et STABLES : charger.py s'appuie dessus.
+//   Ne JAMAIS renommer un titre sans mettre charger.py à jour.
+//   Tous les plots sont en display.data_window : ils figurent dans l'export
+//   (doc TradingView, FAQ « export indicator data ») sans encombrer l'échelle.
+//   (display.none : absent des exports réels du projet, ex. « SHA close » de
+//   CompletV3 n'apparaît dans aucun CSV du dossier Jeu 15:10.)
+//   Booléens et états EMPAQUETÉS en entiers (≤ 20 bits par colonne, donc exacts
+//   en flottant) ; décodage dans charger.py. Détail des bits : INVENTAIRE.md.
+//
+// AUCUNE DONNÉE FUTURE
+//   - Multi-unités (TREND, Dashator, SuperTrader) : par défaut « Bougie clôturée
+//     (sans repaint) » : pour une unité PLUS GRANDE que le graphique, on lit la
+//     dernière bougie clôturée (expr[1] + lookahead_on, idiome officiel).
+//   - Pivots W / M / Y : période PRÉCÉDENTE ([1] + lookahead_on).
+//   - Trendlines, divergences : pivots CONFIRMÉS uniquement.
+//   - Vrais prix : request.security(ticker.new(..., backadjustment.inherit),
+//     timeframe.period, ...) : la bougie COURANTE, même unité, sans lookahead.
+//     ticker.new garde la séance et l'ajustement du contrat continu (le bug
+//     ticker.standard() de STRATEGIE_V1 V2 ne peut pas se reproduire ici).
+//
+// SOURCES DES NIVEAUX
+//   Sessions, Monday, ORB, Detector, pivots « P*_ » : sur le HA (= ce que
+//   l'indicateur affiche). Pivots « P*R_ » : sur les VRAIS prix. Les versions
+//   vrais prix des sessions / Monday / ORB se recalculent dans charger.py à
+//   partir de RH / RL (données intraday entièrement présentes dans l'export).
+//
+// BUDGET : 63 plots sur 64 ; 32 request.security sur 40.
+//
+// JOURNAL DES VERSIONS
+//   V1  2026-10-16  Première version, dérivée de STRATEGIE_V1.pine V6 :
+//                   modules Heishinator, Moyenator, blackout, Signator V9,
+//                   Trendlines V2 + cassures, Detector, Climax, SuperTrader,
+//                   TREND / STRENGTH / Dashator, SIGNAL, Feu (29 voix),
+//                   Monday, sessions, Pivator, Rondator. Code des modules
+//                   inchangé ; ajouts : drapeaux de disponibilité des données
+//                   multi-unités, zones Detector les plus proches, pivots sur
+//                   vrais prix, empaquetage par bits.
+// ══════════════════════════════════════════════════════════════
+indicator("Dataset Strat-Botting", overlay=true, max_bars_back=5000)
+
+DW = display.data_window
+
+// ══════════════════════════════════════════════════════════════
+// RÉGLAGES GÉNÉRAUX
+// ══════════════════════════════════════════════════════════════
+grp_mu = "=== DONNÉES MULTI-UNITÉS ==="
+mu_mode = input.string("Bougie clôturée (sans repaint)", "Données multi-unités", group=grp_mu,
+     options=["Bougie clôturée (sans repaint)", "Comme l'indicateur (bougie en cours)"],
+     tooltip="Laisser « Bougie clôturée » pour le dataset : aucune donnée future.")
+mu_nr = mu_mode == "Bougie clôturée (sans repaint)"
+f_mu_off(tf) => mu_nr and timeframe.in_seconds(tf) > timeframe.in_seconds(timeframe.period) ? 1 : 0
+f_mu_la(tf)  => mu_nr and timeframe.in_seconds(tf) > timeframe.in_seconds(timeframe.period) ? barmerge.lookahead_on : barmerge.lookahead_off
+
+grp_g    = "=== DATASET ==="
+r_atrLen = input.int(14, "ATR des vrais prix : période", group=grp_g, minval=1)
+rnd_step = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_g, minval=0.25)
+
+// Empaquetage : bit k (k ≤ 19) et vote ternaire sur 2 bits (0 neutre, 1 long, 2 short).
+f_b(bool c, int k) => c ? int(math.pow(2, k)) : 0
+f_v(int v, int k) => v == 1 ? int(math.pow(4, k)) : v == -1 ? 2 * int(math.pow(4, k)) : 0
+
+// ══════════════════════════════════════════════════════════════
+// VRAIS PRIX (copie de STRATEGIE_V1 V3+) — 1 request.security
+// ══════════════════════════════════════════════════════════════
+r_tick = ticker.new(syminfo.prefix, syminfo.ticker, syminfo.session, adjustment.none, backadjustment.inherit, settlement_as_close.inherit)
+[r_o, r_h, r_l, r_c, r_v] = request.security(r_tick, timeframe.period, [open, high, low, close, volume])
+r_tr  = na(r_c[1]) ? r_h - r_l : math.max(r_h - r_l, math.abs(r_h - r_c[1]), math.abs(r_l - r_c[1]))
+r_atr = ta.rma(r_tr, r_atrLen)
+
+// ══════════════════════════════════════════════════════════════
+// PIVATOR — période précédente, HA (comme l'indicateur) et vrais prix — 6 appels
+// La formule « Traditionnel » (P, R1-R5, S1-S5) est appliquée dans charger.py
+// à partir du haut / bas / clôture exportés.
+// ══════════════════════════════════════════════════════════════
+[pvW_h, pvW_l, pvW_c] = request.security(syminfo.tickerid, "W",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvM_h, pvM_l, pvM_c] = request.security(syminfo.tickerid, "M",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvA_h, pvA_l, pvA_c] = request.security(syminfo.tickerid, "12M", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[prW_h, prW_l, prW_c] = request.security(r_tick, "W",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[prM_h, prM_l, prM_c] = request.security(r_tick, "M",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[prA_h, prA_l, prA_c] = request.security(r_tick, "12M", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+
+// ══════════════════════════════════════════════════════════════
+// HEISHINATOR — formule exacte EMA(ohlc4,4) > EMA(ohlc4,32)
+// ══════════════════════════════════════════════════════════════
+hei_ohlc4_src = (open + high + low + close) / 4
+col_bull      = ta.ema(hei_ohlc4_src, 4) > ta.ema(hei_ohlc4_src, 32)
+hei_bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+hei_bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+
+// ══════════════════════════════════════════════════════════════
+// MOYENATOR — EMA50 / EMA60 du close
+// ══════════════════════════════════════════════════════════════
+ema_m1 = ta.ema(close, 50)
+ema_m2 = ta.ema(close, 60)
+
+// ══════════════════════════════════════════════════════════════
+// BLACKOUT NO-TRADE (heure d'OUVERTURE de la bougie, fuseau New York)
+// ══════════════════════════════════════════════════════════════
+grp_bo    = "=== BLACKOUT NO-TRADE ==="
+bo_marge  = input.int(3, "Minutes avant / après", group=grp_bo, minval=0, maxval=60)
+bo_us830  = input.bool(true,  "Données US 08:30 ET", group=grp_bo)
+bo_us1000 = input.bool(true,  "Données 10:00 ET", group=grp_bo)
+bo_openUS = input.bool(false, "Ouverture US 09:30 ET", group=grp_bo)
+bo_openEU = input.bool(false, "Ouverture Europe 09:00 Paris", group=grp_bo)
+bo_fomc   = input.bool(false, "FOMC, mercredi 14:00 ET", group=grp_bo)
+
+f_bo_pres(tz, hh, mm) =>
+    math.abs((hour(time, tz) * 60 + minute(time, tz)) - (hh * 60 + mm)) <= bo_marge
+
+f_sg_news() =>
+    ny = "America/New_York"
+    bool hit = false
+    if timeframe.isintraday
+        if bo_us830 and f_bo_pres(ny, 8, 30)
+            hit := true
+        if bo_us1000 and f_bo_pres(ny, 10, 0)
+            hit := true
+        if bo_openUS and f_bo_pres(ny, 9, 30)
+            hit := true
+        if bo_openEU and f_bo_pres("Europe/Paris", 9, 0)
+            hit := true
+        if bo_fomc and dayofweek(time, ny) == dayofweek.wednesday and f_bo_pres(ny, 14, 0)
+            hit := true
+    hit
+bo_flag = f_sg_news()
+
+// ══════════════════════════════════════════════════════════════
+// SIGNATOR V9 — flèches Fort / Moyen
+// ══════════════════════════════════════════════════════════════
+grp_sg    = "=== SIGNATOR ==="
+sg_force  = input.int(18, "Seuil de Force (Min) — ADX 14", group=grp_sg, minval=0, maxval=100)
+sg_filter = input.bool(true, "Activer Filtre (Blackout no-trade) sur les flèches", group=grp_sg)
+sg_v9     = input.bool(true, "Conviction V9 : exiger momentum OU clôture saturés", group=grp_sg)
+
+sg_sha = ta.ema(ohlc4, 4)
+sg_heiBull = sg_sha > ta.ema(ohlc4, 32)
+sg_ema50 = ta.ema(close, 50)
+[sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
+
+sg_scoreMin = 50
+sg_atr   = ta.atr(14)
+sg_rng   = high - low
+sg_rngS  = math.max(sg_rng, syminfo.mintick)
+sg_br    = math.min(math.abs(close - open) / sg_rngS / 0.5, 1.0)
+sg_cpos  = sg_heiBull ? (close - low) / sg_rngS : (high - close) / sg_rngS
+sg_awick = sg_heiBull ? (high - close) / sg_rngS : (close - low) / sg_rngS
+sg_sStr  = (sg_br + (1.0 - math.min(sg_awick / 0.35, 1.0)) + math.min(sg_cpos / 0.67, 1.0)) / 3.0
+sg_sMom  = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0)
+sg_volMa = ta.sma(volume, 20)
+sg_sVol  = sg_volMa > 0 ? math.min(volume / sg_volMa, 1.0) : 0.0
+sg_sGap  = math.min(math.abs(open - close[1]) / math.max(0.3 * sg_atr, syminfo.mintick), 1.0)
+sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap) / 4.0 * 100.0
+
+sg_newsBar = sg_filter and bo_flag
+
+var int sg_run = 0
+sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
+sg_ema60  = ta.ema(close, 60)
+sg_dBand  = sg_heiBull ? (close - math.max(sg_ema50, sg_ema60)) / sg_atr : (math.min(sg_ema50, sg_ema60) - close) / sg_atr
+sg_conv   = sg_dBand >= 0.3 or volume >= sg_volMa
+sg_satur  = sg_rng >= 0.5 * sg_atr or sg_cpos >= 0.67
+
+sg_base   = sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and (not sg_v9 or sg_satur) and not sg_newsBar
+sg_isFort = sg_score >= sg_scoreMin
+sg_long   = sg_base and sg_heiBull and sg_isFort
+sg_short  = sg_base and not sg_heiBull and sg_isFort
+sg_longM  = sg_base and sg_heiBull and not sg_isFort and sg_score >= sg_force
+sg_shortM = sg_base and not sg_heiBull and not sg_isFort and sg_score >= sg_force
+
+// ══════════════════════════════════════════════════════════════
+// TRENDLINES V2 + CASSURES (Breakator)
+// ══════════════════════════════════════════════════════════════
+max_bars_back(high, 5000)
+max_bars_back(low, 5000)
+
+tl_grp    = "=== TRENDLINES V2 ==="
+tl_bars   = input.int(10,    "Pivot : barres de chaque côté", group=tl_grp, minval=1, maxval=50)
+tl_bufPct = input.float(0.1, "Tampon %", group=tl_grp, minval=0.0, step=0.05)
+tl_nT     = input.int(3,     "Touches minimum", group=tl_grp, minval=1, maxval=10)
+tl_newH   = input.int(100,   "Nouvelle ancre après X barres", group=tl_grp, minval=1, maxval=1000)
+tl_brkSrc = input.string("Mèche + tampon", "Cassure mesurée sur", group=tl_grp,
+     options=["Clôture (corps au-delà)", "Corps entier au-delà", "Mèche + tampon"])
+
+tl_buf    = tl_bufPct / 100.0
+tl_usePiv = true
+tl_everyB = true
+
+tl_f_val(x1, y1, x2, y2, x) =>
+    y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+
+// --- résistance descendante (pivots hauts) ---
+tl_ph = ta.pivothigh(high, tl_bars, tl_bars)
+
+var float tl_rAncH = na
+var int   tl_rAncB = na
+var float tl_rX1 = na
+var float tl_rY1 = na
+var float tl_rX2 = na
+var float tl_rY2 = na
+var int   tl_rTouch = 0
+var int   tl_rValidAt = na
+var bool  tl_rActive = false
+var float tl_rLastH = na
+var int   tl_rLastB = na
+bool tl_rNewPiv = false
+
+if not na(tl_ph) and (na(tl_rAncH) or tl_ph > tl_rAncH or bar_index - tl_rAncB > tl_newH)
+    tl_rAncH := tl_ph
+    tl_rAncB := bar_index - tl_bars
+    tl_rLastH := na
+    tl_rLastB := na
+else if not na(tl_ph) and bar_index - tl_bars > tl_rAncB and tl_ph < tl_rAncH
+    tl_rLastH := tl_ph
+    tl_rLastB := bar_index - tl_bars
+    tl_rNewPiv := true
+
+float tl_rCH = na
+int   tl_rCB = na
+if not na(tl_rAncH)
+    if tl_usePiv
+        if not na(tl_rLastB) and (tl_everyB ? high < tl_rAncH : tl_rNewPiv)
+            tl_rCH := tl_rLastH
+            tl_rCB := tl_rLastB
+    else
+        if high < tl_rAncH and bar_index > tl_rAncB
+            tl_rCH := high
+            tl_rCB := bar_index
+
+if not na(tl_rCB) and bar_index - tl_rAncB < 4900
+    int  tl_tc = 0
+    bool tl_ok = true
+    for i = 0 to bar_index - tl_rAncB
+        tl_p = tl_f_val(float(tl_rAncB), tl_rAncH, float(tl_rCB), tl_rCH, float(bar_index - i))
+        if high[i] > tl_p * (1 + tl_buf)
+            tl_ok := false
+            break
+        if high[i] >= tl_p * (1 - tl_buf)
+            tl_tc += 1
+    if tl_ok and tl_tc >= tl_nT and (na(tl_rX1) or tl_rX1 != float(tl_rAncB) or tl_rX2 != float(tl_rCB))
+        tl_rX1 := float(tl_rAncB)
+        tl_rY1 := tl_rAncH
+        tl_rX2 := float(tl_rCB)
+        tl_rY2 := tl_rCH
+        tl_rTouch := tl_tc
+        tl_rValidAt := bar_index
+        tl_rActive := true
+
+// --- support ascendant (pivots bas) — miroir exact ---
+tl_pl = ta.pivotlow(low, tl_bars, tl_bars)
+
+var float tl_sAncL = na
+var int   tl_sAncB = na
+var float tl_sX1 = na
+var float tl_sY1 = na
+var float tl_sX2 = na
+var float tl_sY2 = na
+var int   tl_sTouch = 0
+var int   tl_sValidAt = na
+var bool  tl_sActive = false
+var float tl_sLastL = na
+var int   tl_sLastB = na
+bool tl_sNewPiv = false
+
+if not na(tl_pl) and (na(tl_sAncL) or tl_pl < tl_sAncL or bar_index - tl_sAncB > tl_newH)
+    tl_sAncL := tl_pl
+    tl_sAncB := bar_index - tl_bars
+    tl_sLastL := na
+    tl_sLastB := na
+else if not na(tl_pl) and bar_index - tl_bars > tl_sAncB and tl_pl > tl_sAncL
+    tl_sLastL := tl_pl
+    tl_sLastB := bar_index - tl_bars
+    tl_sNewPiv := true
+
+float tl_sCL = na
+int   tl_sCB = na
+if not na(tl_sAncL)
+    if tl_usePiv
+        if not na(tl_sLastB) and (tl_everyB ? low > tl_sAncL : tl_sNewPiv)
+            tl_sCL := tl_sLastL
+            tl_sCB := tl_sLastB
+    else
+        if low > tl_sAncL and bar_index > tl_sAncB
+            tl_sCL := low
+            tl_sCB := bar_index
+
+if not na(tl_sCB) and bar_index - tl_sAncB < 4900
+    int  tl_tc2 = 0
+    bool tl_ok2 = true
+    for i = 0 to bar_index - tl_sAncB
+        tl_p = tl_f_val(float(tl_sAncB), tl_sAncL, float(tl_sCB), tl_sCL, float(bar_index - i))
+        if low[i] < tl_p * (1 - tl_buf)
+            tl_ok2 := false
+            break
+        if low[i] <= tl_p * (1 + tl_buf)
+            tl_tc2 += 1
+    if tl_ok2 and tl_tc2 >= tl_nT and (na(tl_sX1) or tl_sX1 != float(tl_sAncB) or tl_sX2 != float(tl_sCB))
+        tl_sX1 := float(tl_sAncB)
+        tl_sY1 := tl_sAncL
+        tl_sX2 := float(tl_sCB)
+        tl_sY2 := tl_sCL
+        tl_sTouch := tl_tc2
+        tl_sValidAt := bar_index
+        tl_sActive := true
+
+// --- cassures ---
+bool tl_rBreak = false
+bool tl_sBreak = false
+if tl_rActive and not na(tl_rX1) and bar_index > tl_rValidAt
+    tl_rv = tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? high > tl_rv * (1 + tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.min(open, close) > tl_rv : close > tl_rv)
+        tl_rBreak := true
+        tl_rActive := false
+if tl_sActive and not na(tl_sX1) and bar_index > tl_sValidAt
+    tl_sv = tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? low < tl_sv * (1 - tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.max(open, close) < tl_sv : close < tl_sv)
+        tl_sBreak := true
+        tl_sActive := false
+
+// Prix courant des droites (la droite reste affichée après sa cassure, comme
+// dans l'indicateur ; l'état actif / cassé est dans la colonne ETAT).
+tl_resNow = na(tl_rX1) ? na : tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index)
+tl_supNow = na(tl_sX1) ? na : tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index)
+tl_rNewLine = not na(tl_rValidAt) and tl_rValidAt == bar_index
+tl_sNewLine = not na(tl_sValidAt) and tl_sValidAt == bar_index
+
+// ══════════════════════════════════════════════════════════════
+// DETECTOR (order blocks)
+// ══════════════════════════════════════════════════════════════
+grp_dt     = "=== DETECTOR ==="
+det_len    = input.int(5, "Volume Pivot Length", group=grp_dt, minval=1)
+det_nZones = input.int(3, "Zones prises en compte par côté", group=grp_dt, minval=1)
+mitigation = input.string('Wick', 'Mitigation Methods', group=grp_dt, options=['Wick', 'Close'])
+
+get_coordinates(condition, top, btm, ob_val)=>
+    var ob_top  = array.new_float(0)
+    var ob_btm  = array.new_float(0)
+    var ob_avg  = array.new_float(0)
+    var ob_left = array.new_int(0)
+    float ob = na
+    if condition
+        avg = math.avg(top, btm)
+        array.unshift(ob_top, top)
+        array.unshift(ob_btm, btm)
+        array.unshift(ob_avg, avg)
+        array.unshift(ob_left, time[det_len])
+        ob := ob_val
+    [ob_top, ob_btm, ob_avg, ob_left, ob]
+
+remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
+    mitigated = false
+    target_array = bull ? ob_btm : ob_top
+    for element in target_array
+        idx = array.indexof(target_array, element)
+        if (bull ? target < element : target > element)
+            mitigated := true
+            array.remove(ob_top, idx)
+            array.remove(ob_btm, idx)
+            array.remove(ob_avg, idx)
+            array.remove(ob_left, idx)
+    mitigated
+
+var os = 0
+var target_bull = 0.
+var target_bear = 0.
+upper = ta.highest(det_len)
+lower = ta.lowest(det_len)
+det_lowC  = ta.lowest(close, det_len)
+det_highC = ta.highest(close, det_len)
+if mitigation == 'Close'
+    target_bull := det_lowC
+    target_bear := det_highC
+else
+    target_bull := lower
+    target_bear := upper
+
+os := high[det_len] > upper ? 0 : low[det_len] < lower ? 1 : os[1]
+phv = not na(ta.pivothigh(volume, det_len, det_len))
+
+[bull_top, bull_btm, bull_avg, bull_left, bull_ob] = get_coordinates(phv and os == 1, hl2[det_len], low[det_len], low[det_len])
+[bear_top, bear_btm, bear_avg, bear_left, bear_ob] = get_coordinates(phv and os == 0, high[det_len], hl2[det_len], high[det_len])
+mitigated_bull = remove_mitigated(bull_top, bull_btm, bull_left, bull_avg, target_bull, true)
+mitigated_bear = remove_mitigated(bear_top, bear_btm, bear_left, bear_avg, target_bear, false)
+
+// Zones les plus proches (parmi les det_nZones plus récentes, celles affichées) :
+// « au-dessus » = milieu de zone ≥ clôture HA, « au-dessous » = milieu < clôture.
+// Proximité mesurée sur le milieu. dedans = la clôture est entre bas et haut.
+f_det_proche(array<float> tops, array<float> btms) =>
+    float upT = na
+    float upB = na
+    float dnT = na
+    float dnB = na
+    bool dedans = false
+    n = math.min(det_nZones, array.size(tops))
+    if n > 0
+        for i = 0 to n - 1
+            t = array.get(tops, i)
+            b = array.get(btms, i)
+            m = (t + b) / 2
+            if b <= close and close <= t
+                dedans := true
+            if m >= close
+                if na(upT) or m < (upT + upB) / 2
+                    upT := t
+                    upB := b
+            else
+                if na(dnT) or m > (dnT + dnB) / 2
+                    dnT := t
+                    dnB := b
+    [upT, upB, dnT, dnB, dedans]
+[zh_upT, zh_upB, zh_dnT, zh_dnB, zh_in] = f_det_proche(bull_top, bull_btm)
+[zb_upT, zb_upB, zb_dnT, zb_dnB, zb_in] = f_det_proche(bear_top, bear_btm)
+
+// ══════════════════════════════════════════════════════════════
+// CLIMAX — règle de CLIMATOR.pine V1
+// ══════════════════════════════════════════════════════════════
+grp_cx      = "=== CLIMAX ==="
+clx_buyBody = input.float(0.55, "Buy — corps minimum", group=grp_cx, minval=0.0, maxval=1.0, step=0.05)
+clx_buyVol  = input.float(1.5,  "Buy — volume minimum (× SMA20)", group=grp_cx, minval=0.0, maxval=10.0, step=0.1)
+clx_selBody = input.float(0.65, "Sell — corps minimum", group=grp_cx, minval=0.0, maxval=1.0, step=0.05)
+clx_selVol  = input.float(2.0,  "Sell — volume minimum (× SMA20)", group=grp_cx, minval=0.0, maxval=10.0, step=0.1)
+clx_volLen  = input.int(20,     "Période de la moyenne de volume", group=grp_cx, minval=1, maxval=200)
+
+clx_rg   = high - low
+clx_eps  = syminfo.mintick / 100.0
+clx_body = clx_rg > 0 ? (close - open) / clx_rg : 0.0
+clx_vma  = ta.sma(volume, clx_volLen)
+clx_vr   = clx_vma > 0 ? volume / clx_vma : 0.0
+clx_ok   = chart.is_heikinashi and barstate.isconfirmed
+clx_buy  = clx_ok and clx_rg > 0 and clx_vma > 0 and (open - low) <= clx_eps
+             and clx_body >= clx_buyBody and clx_vr >= clx_buyVol
+clx_sell = clx_ok and clx_rg > 0 and clx_vma > 0 and (high - open) <= clx_eps
+             and -clx_body >= clx_selBody and clx_vr >= clx_selVol
+
+// ══════════════════════════════════════════════════════════════
+// BLOC SUPERTRADER (10 voix du Feu) — VIX et volumes des tickers omis
+// ══════════════════════════════════════════════════════════════
+st_rsiLen = 14
+st_vidPer = 10
+st_vidMom = 20
+st_band   = 2.0
+st_mFast  = 20
+st_mSlow  = 40
+st_mSig   = 5
+st_bbLen  = 20
+st_bbMult = 2.0
+
+st_macd_o(src, o) =>
+    m = ta.ema(src, st_mFast) - ta.ema(src, st_mSlow)
+    s = ta.ema(m, st_mSig)
+    [m[o], s[o]]
+
+st_oD  = f_mu_off("D")
+st_laD = f_mu_la("D")
+[st_dSma50, st_dSma200] = request.security(syminfo.tickerid, "D", [ta.sma(close, 50)[st_oD], ta.sma(close, 200)[st_oD]], lookahead=st_laD)
+[st_dH, st_dL, st_dO, st_dC] = request.security(syminfo.tickerid, "D", [high[st_oD], low[st_oD], open[st_oD], close[st_oD]], lookahead=st_laD)
+
+st_golden = ta.crossover(st_dSma50, st_dSma200)
+st_death  = ta.crossunder(st_dSma50, st_dSma200)
+st_week   = int(math.floor(time / 604800000))
+var int    st_lastWeek  = na
+var string st_crossTxt  = "—"
+if na(st_lastWeek)
+    st_lastWeek := st_week
+if st_week != st_lastWeek
+    st_crossTxt := "—"
+    st_lastWeek := st_week
+if st_golden
+    st_crossTxt := "Golden"
+if st_death
+    st_crossTxt := "Death"
+
+[st_m10, st_s10] = request.security(syminfo.tickerid, "10", st_macd_o(close, f_mu_off("10")), lookahead=f_mu_la("10"))
+st_mBull   = st_m10 > st_s10
+st_mStrong = st_mBull and st_m10 > -0.25 and st_s10 > -0.25
+st_mBase   = not st_mBull and st_m10 > -0.025 and st_s10 > -0.025
+st_macdTxt = st_mStrong ? "SUPERBULL" : st_mBase ? "Basing" : st_mBull ? "Bullish" : "Bearish"
+
+st_rsi = ta.rsi(close, st_rsiLen)
+st_inRange(cond) =>
+    bb = ta.barssince(cond)
+    5 <= bb and bb <= 60
+st_rsiLBR = st_rsi[5]
+st_plFound = not na(ta.pivotlow(st_rsi, 5, 5))
+st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
+st_inRpl   = st_inRange(st_plFound[1])
+st_inRph   = st_inRange(st_phFound[1])
+st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRpl
+st_priceLL = low[5] < ta.valuewhen(st_plFound, low[5], 1)
+st_bullDiv = st_priceLL and st_rsiHL and st_plFound
+st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRph
+st_priceHH = high[5] > ta.valuewhen(st_phFound, high[5], 1)
+st_bearDiv = st_priceHH and st_rsiLH and st_phFound
+var string st_divSem = "neut"
+var int    st_divTimer = 0
+if st_bullDiv
+    st_divSem := "bull"
+    st_divTimer := 10
+else if st_bearDiv
+    st_divSem := "bear"
+    st_divTimer := 10
+else
+    st_divTimer := math.max(st_divTimer - 1, 0)
+st_divShowSem = st_divTimer > 0 ? st_divSem : "neut"
+
+st_cci    = ta.cci(close, 30)
+st_basis  = ta.sma(close, st_bbLen)
+st_upBB   = st_basis + st_bbMult * ta.stdev(close, st_bbLen)
+st_loBB   = st_basis - st_bbMult * ta.stdev(close, st_bbLen)
+st_emaF   = ta.ema(close, 50)
+st_emaS   = ta.ema(close, 200)
+st_bullCount = (st_emaF > st_emaS ? 1 : 0) + (ta.crossover(st_rsi, 30) ? 1 : 0) + (ta.crossover(close, st_loBB) ? 1 : 0)
+st_buySignal = st_bullCount >= 2
+
+st_vidya_calc(src, len, mom) =>
+    mo = ta.change(src)
+    sp = math.sum(mo >= 0 ? mo : 0.0, mom)
+    sn = math.sum(mo < 0 ? -mo : 0.0, mom)
+    cmo = math.abs(100 * (sp - sn) / math.max(sp + sn, 1))
+    alpha = 2.0 / (len + 1.0)
+    var float v = na
+    v := alpha * cmo / 100 * src + (1 - alpha * cmo / 100) * nz(v[1])
+    v
+st_vidya  = ta.sma(st_vidya_calc(close, st_vidPer, st_vidMom), 15)
+st_atr200 = ta.atr(200)
+st_upBand = st_vidya + st_atr200 * st_band
+st_loBand = st_vidya - st_atr200 * st_band
+st_xUp    = ta.crossover(close, st_upBand)
+st_xDn    = ta.crossunder(close, st_loBand)
+var bool st_trendUp = false
+st_trendUp := st_xUp ? true : st_xDn ? false : st_trendUp[1]
+
+st_smaVol   = ta.sma(volume, 20)
+st_rangePos = st_dH != st_dL ? (st_dC - st_dL) / (st_dH - st_dL) : 0.5
+st_chg      = st_dO != 0 ? (st_dC - st_dO) / st_dO * 100 * 0.5 : 0.0
+st_macdS    = ta.ema(close, 12) - ta.ema(close, 26)
+st_sigS     = ta.ema(st_macdS, 9)
+st_squeeze  = ta.stdev(close, st_bbLen) < ta.lowest(ta.stdev(close, st_bbLen), 20) ? 7 : 0
+st_bullF = st_rangePos * 20 + st_chg + (volume > st_smaVol ? 10 : 0) + (ta.crossover(st_macdS, st_sigS) ? 10 : 0) + (close > ta.ema(close, 20) ? 5 : 0) + (st_buySignal ? 10 : 0) + st_squeeze
+st_bearF = (1 - st_rangePos) * 20 - st_chg + (volume < st_smaVol ? 10 : 0) + (ta.crossunder(st_macdS, st_sigS) ? 10 : 0) + (close < ta.ema(close, 20) ? 5 : 0)
+st_bullT = math.max(0, math.min(100, st_bullF))
+st_bearT = math.max(0, math.min(100, st_bearF))
+st_bullPct = st_bullT / (st_bullT + st_bearT) * 100
+st_bearPct = st_bearT / (st_bullT + st_bearT) * 100
+
+// TF1 / TF2 / TF3 PA : 1, 5, 15 minutes (3 appels chacun). Ajout dataset :
+// le 2e élément dit si l'unité a des données (pT non na).
+st_status(tf) =>
+    o  = f_mu_off(tf)
+    la = f_mu_la(tf)
+    [sH, sL] = request.security(syminfo.tickerid, tf, [ta.sma(high, 20)[o], ta.sma(low, 20)[o]], lookahead=la)
+    [mT, sT] = request.security(syminfo.tickerid, tf, st_macd_o(close, o), lookahead=la)
+    pT = request.security(syminfo.tickerid, tf, close[o], lookahead=la)
+    mb = mT > sT
+    above = pT > sH and pT > sL
+    sem = "neut"
+    if above and mb and mT > -0.025
+        sem := "super"
+    else if mT > -0.025 and not mb
+        sem := "warn"
+    else if above and mb
+        sem := "bull"
+    else if not above and not mb
+        sem := "bear"
+    [sem, not na(pT)]
+[st_pa1s, st_pa1ok] = st_status("1")
+[st_pa2s, st_pa2ok] = st_status("5")
+[st_pa3s, st_pa3ok] = st_status("15")
+
+// ══════════════════════════════════════════════════════════════
+// TREND / STRENGTH / DASHATOR multi-unités + colonne SIGNAL
+// ══════════════════════════════════════════════════════════════
+grp_t3 = "=== FEU DE CONFLUENCE (29 voix) ==="
+t3_tf1 = input.timeframe("3",   "TREND — unité 1", group=grp_t3)
+t3_trClos = input.bool(true, "TREND : bougie clôturée (comme l'original)", group=grp_t3)
+t3_tf2 = input.timeframe("5",   "TREND — unité 2", group=grp_t3)
+t3_tf3 = input.timeframe("15",  "TREND — unité 3", group=grp_t3)
+t3_tf4 = input.timeframe("60",  "TREND — unité 4", group=grp_t3)
+t3_tf5 = input.timeframe("240", "TREND — unité 5", group=grp_t3)
+t3_tf6 = input.timeframe("1D",  "TREND — unité 6", group=grp_t3)
+t3_dd1 = input.timeframe("1",   "Dashator — unité 1", group=grp_t3)
+t3_dd2 = input.timeframe("5",   "Dashator — unité 2", group=grp_t3)
+t3_dd3 = input.timeframe("15",  "Dashator — unité 3", group=grp_t3)
+t3_dd4 = input.timeframe("60",  "Dashator — unité 4", group=grp_t3)
+t3_dd5 = input.timeframe("240", "Dashator — unité 5", group=grp_t3)
+t3_dd6 = input.timeframe("1D",  "Dashator — unité 6", group=grp_t3)
+t3_lrLen  = input.int(100, "Lin Regress — période", group=grp_t3, minval=2)
+t3_lrMode = input.string("Prix au-dessus de la droite", "Lin Regress — critère", group=grp_t3,
+     options=["Prix au-dessus de la droite", "Droite orientée à la hausse"])
+t3_orbSess = input.session("0930-1600", "ORB — séance de référence", group=grp_t3)
+t3_orbMin  = input.int(15, "ORB — durée en minutes", group=grp_t3, minval=1, maxval=240)
+t3_orbAnc  = input.string("Séance US (réglage ci-dessus)", "ORB — ancre", group=grp_t3,
+     options=["Séance US (réglage ci-dessus)", "Début de journée TradingView", "Europe 09:00 Paris"])
+
+// Paquet TREND + STRENGTH (un appel par unité). Ajout dataset : close lu, pour
+// savoir si l'unité a des données (un booléen sans donnée vaut false en v6).
+f_t3_pack(o) =>
+    e50 = ta.ema(close, 50)
+    [m, sg, _h] = ta.macd(close, 12, 26, 9)
+    r  = ta.rsi(close, 14)
+    tr = t3_trClos and o == 0 ? close[1] > e50[1] : close > e50
+    st = (close > open ? 1 : 0) + (m > sg ? 1 : 0) + (close > e50 ? 1 : 0) + (r > 50 ? 1 : 0)
+    [tr[o], st[o], close[o]]
+
+[t3_tr1, t3_st1, t3_c1] = request.security(syminfo.tickerid, t3_tf1, f_t3_pack(f_mu_off(t3_tf1)), lookahead=f_mu_la(t3_tf1))
+[t3_tr2, t3_st2, t3_c2] = request.security(syminfo.tickerid, t3_tf2, f_t3_pack(f_mu_off(t3_tf2)), lookahead=f_mu_la(t3_tf2))
+[t3_tr3, t3_st3, t3_c3] = request.security(syminfo.tickerid, t3_tf3, f_t3_pack(f_mu_off(t3_tf3)), lookahead=f_mu_la(t3_tf3))
+[t3_tr4, t3_st4, t3_c4] = request.security(syminfo.tickerid, t3_tf4, f_t3_pack(f_mu_off(t3_tf4)), lookahead=f_mu_la(t3_tf4))
+[t3_tr5, t3_st5, t3_c5] = request.security(syminfo.tickerid, t3_tf5, f_t3_pack(f_mu_off(t3_tf5)), lookahead=f_mu_la(t3_tf5))
+[t3_tr6, t3_st6, t3_c6] = request.security(syminfo.tickerid, t3_tf6, f_t3_pack(f_mu_off(t3_tf6)), lookahead=f_mu_la(t3_tf6))
+
+// Dashator : bougie HA haussière sur chaque unité (+ close lu, même ajout).
+f_t3_ha(o) =>
+    b = close > open
+    [b[o], close[o]]
+[t3_d1, t3_dc1] = request.security(syminfo.tickerid, t3_dd1, f_t3_ha(f_mu_off(t3_dd1)), lookahead=f_mu_la(t3_dd1))
+[t3_d2, t3_dc2] = request.security(syminfo.tickerid, t3_dd2, f_t3_ha(f_mu_off(t3_dd2)), lookahead=f_mu_la(t3_dd2))
+[t3_d3, t3_dc3] = request.security(syminfo.tickerid, t3_dd3, f_t3_ha(f_mu_off(t3_dd3)), lookahead=f_mu_la(t3_dd3))
+[t3_d4, t3_dc4] = request.security(syminfo.tickerid, t3_dd4, f_t3_ha(f_mu_off(t3_dd4)), lookahead=f_mu_la(t3_dd4))
+[t3_d5, t3_dc5] = request.security(syminfo.tickerid, t3_dd5, f_t3_ha(f_mu_off(t3_dd5)), lookahead=f_mu_la(t3_dd5))
+[t3_d6, t3_dc6] = request.security(syminfo.tickerid, t3_dd6, f_t3_ha(f_mu_off(t3_dd6)), lookahead=f_mu_la(t3_dd6))
+
+// INDICATOR | SIGNAL : 7 lignes
+[t3_stv, t3_std] = ta.supertrend(3, 10)
+t3_sigST  = t3_std < 0
+t3_sigMA  = close > ta.ema(close, 50)
+t3_sigVW  = close > ta.vwap(hlc3)
+t3_lrNow  = ta.linreg(close, t3_lrLen, 0)
+t3_lrPrev = ta.linreg(close, t3_lrLen, 1)
+t3_sigLR  = t3_lrMode == "Prix au-dessus de la droite" ? close > t3_lrNow : t3_lrNow > t3_lrPrev
+[t3_pdh, t3_pdl, t3_pdc] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+t3_cprP  = (t3_pdh + t3_pdl + t3_pdc) / 3
+t3_cprBC = (t3_pdh + t3_pdl) / 2
+t3_cprTC = 2 * t3_cprP - t3_cprBC
+t3_cprHi = math.max(t3_cprTC, t3_cprBC)
+t3_cprLo = math.min(t3_cprTC, t3_cprBC)
+t3_cpr   = close > t3_cprHi ? 1 : close < t3_cprLo ? -1 : 0
+
+t3_inSess  = not na(time(timeframe.period, t3_orbSess, "America/New_York"))
+t3_inEu    = not na(time(timeframe.period, "0900-1730", "Europe/Paris"))
+t3_newDay  = ta.change(time("D")) != 0
+t3_sessOpn = t3_orbAnc == "Début de journée TradingView" ? t3_newDay : t3_orbAnc == "Europe 09:00 Paris" ? t3_inEu and not t3_inEu[1] : t3_inSess and not t3_inSess[1]
+var float t3_orbH = na
+var float t3_orbL = na
+var int   t3_orbT = na
+if t3_newDay and t3_orbAnc != "Début de journée TradingView"
+    t3_orbH := na
+    t3_orbL := na
+    t3_orbT := na
+if t3_sessOpn
+    t3_orbT := time
+    t3_orbH := high
+    t3_orbL := low
+else if not na(t3_orbT) and time - t3_orbT < t3_orbMin * 60 * 1000
+    t3_orbH := math.max(t3_orbH, high)
+    t3_orbL := math.min(t3_orbL, low)
+t3_orb   = not timeframe.isintraday or na(t3_orbH) ? 0 : close > t3_orbH ? 1 : close < t3_orbL ? -1 : 0
+t3_pd    = close > t3_pdh ? 1 : close < t3_pdl ? -1 : 0
+orb_enCours = not na(t3_orbT) and time - t3_orbT < t3_orbMin * 60 * 1000
+orb_forme   = not na(t3_orbT) and not orb_enCours
+
+// LE FEU : 29 voix, vote par le SENS (6 Dashator + 10 SuperTrader + 7 SIGNAL + 6 TREND)
+f_t3_dirSem(sem) => sem == "bull" or sem == "super" ? 1 : sem == "bear" ? -1 : 0
+t3_vMacd  = st_macdTxt == "SUPERBULL" or st_macdTxt == "Bullish" ? 1 : st_macdTxt == "Bearish" ? -1 : 0
+t3_vCross = st_crossTxt == "Golden" ? 1 : st_crossTxt == "Death" ? -1 : 0
+v_trend = st_trendUp ? 1 : -1
+v_cci   = st_cci >= 0 ? 1 : -1
+v_rsi   = st_rsi >= 50 ? 1 : -1
+v_gap   = st_bullPct >= st_bearPct ? 1 : -1
+v_pa1   = f_t3_dirSem(st_pa1s)
+v_pa2   = f_t3_dirSem(st_pa2s)
+v_pa3   = f_t3_dirSem(st_pa3s)
+v_div   = f_t3_dirSem(st_divShowSem)
+t3_votes  = array.from(t3_d1 ? 1 : -1, t3_d2 ? 1 : -1, t3_d3 ? 1 : -1, t3_d4 ? 1 : -1, t3_d5 ? 1 : -1, t3_d6 ? 1 : -1,
+     v_trend, t3_vCross, v_cci, v_rsi, t3_vMacd, v_gap, v_pa1, v_pa2, v_pa3, v_div,
+     t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1, t3_cpr, t3_orb, t3_pd,
+     t3_tr1 ? 1 : -1, t3_tr2 ? 1 : -1, t3_tr3 ? 1 : -1, t3_tr4 ? 1 : -1, t3_tr5 ? 1 : -1, t3_tr6 ? 1 : -1)
+int t3_nLong  = 0
+int t3_nShort = 0
+for v in t3_votes
+    if v == 1
+        t3_nLong += 1
+    else if v == -1
+        t3_nShort += 1
+
+// ══════════════════════════════════════════════════════════════
+// MONDAY HIGH LOW (sur le HA, défaut de CompletV3) + cassure à la clôture
+// ══════════════════════════════════════════════════════════════
+grp_mhl  = "=== MONDAY HIGH LOW ==="
+mhl_def  = input.string("Lundi 00:00 → mardi 07:30 (Paris)", "Définition du lundi", group=grp_mhl,
+     options=["Lundi 00:00 → mardi 07:30 (Paris)", "Lundi calendaire (UTC)", "Journée de trading (bougie journalière du lundi)", "Lundi calendaire (Paris)"])
+mhl_finH = input.int(7,  "Fin de la fenêtre : heure (mardi, Paris)",  group=grp_mhl, minval=0, maxval=23)
+mhl_finM = input.int(30, "Fin de la fenêtre : minute (mardi, Paris)", group=grp_mhl, minval=0, maxval=59)
+
+mhl_fen   = mhl_def == "Lundi 00:00 → mardi 07:30 (Paris)"
+mhl_dowP  = dayofweek(time, "Europe/Paris")
+mhl_minP  = hour(time, "Europe/Paris") * 60 + minute(time, "Europe/Paris")
+mhl_inFen = mhl_dowP == dayofweek.monday or (mhl_dowP == dayofweek.tuesday and mhl_minP < mhl_finH * 60 + mhl_finM)
+mhl_isMon = mhl_fen ? mhl_inFen : mhl_def == "Lundi calendaire (UTC)" ? dayofweek(time, "UTC") == dayofweek.monday : mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
+mhl_new   = mhl_isMon and not mhl_isMon[1]
+mhl_fin   = not mhl_isMon and mhl_isMon[1]
+var float mhl_h = na
+var float mhl_l = na
+var bool  mhl_pret = false
+var bool  mhl_hautFait = false
+var bool  mhl_basFait  = false
+bool mhl_brkUp = false
+bool mhl_brkDn = false
+if timeframe.isintraday
+    if mhl_new
+        mhl_h := high
+        mhl_l := low
+        mhl_pret := false
+    else if mhl_isMon and not na(mhl_h)
+        mhl_h := math.max(mhl_h, high)
+        mhl_l := math.min(mhl_l, low)
+    if mhl_fin and not na(mhl_h)
+        mhl_pret := true
+        mhl_hautFait := false
+        mhl_basFait  := false
+    if mhl_pret and not mhl_isMon
+        if not mhl_hautFait and close > mhl_h
+            mhl_brkUp := true
+            mhl_hautFait := true
+        if not mhl_basFait and close < mhl_l
+            mhl_brkDn := true
+            mhl_basFait := true
+
+// ══════════════════════════════════════════════════════════════
+// SESSIONS HIGH / LOW Asie, Londres, US (sur le HA)
+// Pendant la session : haut / bas en cours ; après : ceux de la dernière
+// session terminée, jusqu'au début de la suivante.
+// ══════════════════════════════════════════════════════════════
+grp_ses   = "=== SESSIONS : HIGH / LOW ==="
+ses_asSes = input.session("0900-1530", "Asie (heure de Tokyo)",      group=grp_ses)
+ses_ldSes = input.session("0800-1630", "Londres (heure de Londres)", group=grp_ses)
+ses_usSes = input.session("0930-1600", "US (heure de New York)",     group=grp_ses)
+
+f_ses_hl(_sess, _tz) =>
+    inS = timeframe.isintraday and not na(time(timeframe.period, _sess, _tz))
+    var float h = na
+    var float l = na
+    if inS and not inS[1]
+        h := high
+        l := low
+    else if inS
+        h := math.max(h, high)
+        l := math.min(l, low)
+    [h, l, inS]
+[as_h, as_l, as_in] = f_ses_hl(ses_asSes, "Asia/Tokyo")
+[ld_h, ld_l, ld_in] = f_ses_hl(ses_ldSes, "Europe/London")
+[us_h, us_l, us_in] = f_ses_hl(ses_usSes, "America/New_York")
+
+// ══════════════════════════════════════════════════════════════
+// RONDATOR — niveau rond inférieur (arrondi inférieur du VRAI close)
+// Niveau supérieur = RND_DN + intervalle (charger.py).
+// ══════════════════════════════════════════════════════════════
+rnd_dn = na(r_c) or rnd_step <= 0 ? na : math.floor(r_c / rnd_step) * rnd_step
+
+// ══════════════════════════════════════════════════════════════
+// EMPAQUETAGE DES BOOLÉENS ET ÉTATS (≤ 20 bits par colonne)
+// ══════════════════════════════════════════════════════════════
+// EVT : événements ponctuels de la bougie
+evt = f_b(sg_long, 0) + f_b(sg_short, 1) + f_b(sg_longM, 2) + f_b(sg_shortM, 3)
+     + f_b(hei_bull_flip, 4) + f_b(hei_bear_flip, 5) + f_b(clx_buy, 6) + f_b(clx_sell, 7)
+     + f_b(tl_rBreak, 8) + f_b(tl_sBreak, 9) + f_b(tl_rNewLine, 10) + f_b(tl_sNewLine, 11)
+     + f_b(not na(bull_ob), 12) + f_b(not na(bear_ob), 13) + f_b(mitigated_bull, 14) + f_b(mitigated_bear, 15)
+     + f_b(mhl_brkUp, 16) + f_b(mhl_brkDn, 17) + f_b(st_bullDiv, 18) + f_b(st_bearDiv, 19)
+
+// ETAT : états de la bougie
+etat = f_b(col_bull, 0) + f_b(bo_flag, 1) + f_b(tl_rActive, 2) + f_b(tl_sActive, 3)
+     + f_b(zh_in, 4) + f_b(zb_in, 5) + f_b(orb_forme, 6) + f_b(orb_enCours, 7)
+     + f_b(as_in, 8) + f_b(ld_in, 9) + f_b(us_in, 10) + f_b(mhl_isMon, 11)
+     + f_b(mhl_pret, 12) + f_b(close > ema_m1, 13) + f_b(sg_conv, 14) + f_b(sg_satur, 15)
+     + f_b(chart.is_heikinashi, 16) + f_b(sg_run == 2, 17)
+
+// TF_TD : TREND unités 1-6 (bits 0-5), Dashator unités 1-6 (bits 6-11)
+tf_td = f_b(t3_tr1, 0) + f_b(t3_tr2, 1) + f_b(t3_tr3, 2) + f_b(t3_tr4, 3) + f_b(t3_tr5, 4) + f_b(t3_tr6, 5)
+     + f_b(t3_d1, 6) + f_b(t3_d2, 7) + f_b(t3_d3, 8) + f_b(t3_d4, 9) + f_b(t3_d5, 10) + f_b(t3_d6, 11)
+
+// TF_OK : données disponibles — TREND 1-6 (bits 0-5), Dashator 1-6 (6-11),
+// PA 1/5/15 min (12-14), MACD 10 min (15), journalier SuperTrader (16)
+tf_ok = f_b(not na(t3_c1), 0) + f_b(not na(t3_c2), 1) + f_b(not na(t3_c3), 2) + f_b(not na(t3_c4), 3) + f_b(not na(t3_c5), 4) + f_b(not na(t3_c6), 5)
+     + f_b(not na(t3_dc1), 6) + f_b(not na(t3_dc2), 7) + f_b(not na(t3_dc3), 8) + f_b(not na(t3_dc4), 9) + f_b(not na(t3_dc5), 10) + f_b(not na(t3_dc6), 11)
+     + f_b(st_pa1ok, 12) + f_b(st_pa2ok, 13) + f_b(st_pa3ok, 14) + f_b(not na(st_m10), 15) + f_b(not na(st_dC), 16)
+
+// TF_STR : STRENGTH (0-4) des unités TREND 1-6, 3 bits chacune ; 7 = pas de donnée
+f_s3(s, k) => (na(s) ? 7 : int(s)) * int(math.pow(8, k))
+tf_str = f_s3(t3_st1, 0) + f_s3(t3_st2, 1) + f_s3(t3_st3, 2) + f_s3(t3_st4, 3) + f_s3(t3_st5, 4) + f_s3(t3_st6, 5)
+
+// V_ST : 10 voix SuperTrader, 2 bits chacune (0 neutre, 1 long, 2 short)
+//   0 Trend VIDYA, 1 Cross, 2 CCI, 3 RSI, 4 MACD 10m, 5 Gap, 6 PA1, 7 PA2, 8 PA3, 9 Divergence
+v_st = f_v(v_trend, 0) + f_v(t3_vCross, 1) + f_v(v_cci, 2) + f_v(v_rsi, 3) + f_v(t3_vMacd, 4)
+     + f_v(v_gap, 5) + f_v(v_pa1, 6) + f_v(v_pa2, 7) + f_v(v_pa3, 8) + f_v(v_div, 9)
+
+// V_SIG : 7 voix SIGNAL, 2 bits chacune
+//   0 SuperTrend, 1 MA (EMA50), 2 VWAP, 3 Lin Regress, 4 CPR, 5 ORB, 6 Jour précédent
+v_sig = f_v(t3_sigST ? 1 : -1, 0) + f_v(t3_sigMA ? 1 : -1, 1) + f_v(t3_sigVW ? 1 : -1, 2) + f_v(t3_sigLR ? 1 : -1, 3)
+     + f_v(t3_cpr, 4) + f_v(t3_orb, 5) + f_v(t3_pd, 6)
+
+// ST_ETAT : états détaillés SuperTrader
+//   bits 0-1 MACD (0 Bearish, 1 Bullish, 2 SUPERBULL, 3 Basing)
+//   bits 2-4 / 5-7 / 8-10 PA1 / PA2 / PA3 (0 neut, 1 super, 2 warn, 3 bull, 4 bear)
+//   bits 11-12 Divergence affichée (0 neut, 1 bull, 2 bear)
+//   bits 13-14 Cross (0 aucun cette semaine, 1 Golden, 2 Death)
+f_semN(s) => s == "super" ? 1 : s == "warn" ? 2 : s == "bull" ? 3 : s == "bear" ? 4 : 0
+m_code = st_macdTxt == "Bullish" ? 1 : st_macdTxt == "SUPERBULL" ? 2 : st_macdTxt == "Basing" ? 3 : 0
+d_code = st_divShowSem == "bull" ? 1 : st_divShowSem == "bear" ? 2 : 0
+c_code = st_crossTxt == "Golden" ? 1 : st_crossTxt == "Death" ? 2 : 0
+st_etat = m_code + f_semN(st_pa1s) * 4 + f_semN(st_pa2s) * 32 + f_semN(st_pa3s) * 256 + d_code * 2048 + c_code * 8192
+
+// ══════════════════════════════════════════════════════════════
+// COLONNES DE L'EXPORT (titres = en-têtes CSV, NE PAS RENOMMER)
+// ══════════════════════════════════════════════════════════════
+// Vrais prix (6)
+plot(r_o,   "RO",   display=DW)
+plot(r_h,   "RH",   display=DW)
+plot(r_l,   "RL",   display=DW)
+plot(r_c,   "RC",   display=DW)
+plot(r_v,   "RV",   display=DW)
+plot(r_atr, "RATR", display=DW)
+// Moyenator, oscillateurs, score Signator (8)
+plot(ema_m1,   "EMA50",  display=DW)
+plot(ema_m2,   "EMA60",  display=DW)
+plot(sg_adx,   "ADX",    display=DW)
+plot(sg_diP,   "DIP",    display=DW)
+plot(sg_diM,   "DIM",    display=DW)
+plot(st_rsi,   "RSI",    display=DW)
+plot(st_cci,   "CCI",    display=DW)
+plot(sg_score, "SCORE",  display=DW)
+// Feu de Confluence (2)
+plot(t3_nLong,  "FEU_L", display=DW)
+plot(t3_nShort, "FEU_S", display=DW)
+// Trendlines (2)
+plot(tl_resNow, "TL_RES", display=DW)
+plot(tl_supNow, "TL_SUP", display=DW)
+// Detector : zones haussières (ZH) / baissières (ZB) les plus proches (8)
+plot(zh_upT, "ZH_SUP_H", display=DW)
+plot(zh_upB, "ZH_SUP_B", display=DW)
+plot(zh_dnT, "ZH_INF_H", display=DW)
+plot(zh_dnB, "ZH_INF_B", display=DW)
+plot(zb_upT, "ZB_SUP_H", display=DW)
+plot(zb_upB, "ZB_SUP_B", display=DW)
+plot(zb_dnT, "ZB_INF_H", display=DW)
+plot(zb_dnB, "ZB_INF_B", display=DW)
+// ORB, sessions, Monday (10)
+plot(t3_orbH, "ORB_H", display=DW)
+plot(t3_orbL, "ORB_L", display=DW)
+plot(as_h,  "AS_H",  display=DW)
+plot(as_l,  "AS_L",  display=DW)
+plot(ld_h,  "LD_H",  display=DW)
+plot(ld_l,  "LD_L",  display=DW)
+plot(us_h,  "US_H",  display=DW)
+plot(us_l,  "US_L",  display=DW)
+plot(mhl_h, "MON_H", display=DW)
+plot(mhl_l, "MON_L", display=DW)
+// Pivots : haut / bas / clôture de la période précédente, HA (9) puis vrais prix (9)
+plot(pvW_h, "PW_H", display=DW)
+plot(pvW_l, "PW_L", display=DW)
+plot(pvW_c, "PW_C", display=DW)
+plot(pvM_h, "PM_H", display=DW)
+plot(pvM_l, "PM_L", display=DW)
+plot(pvM_c, "PM_C", display=DW)
+plot(pvA_h, "PY_H", display=DW)
+plot(pvA_l, "PY_L", display=DW)
+plot(pvA_c, "PY_C", display=DW)
+plot(prW_h, "PWR_H", display=DW)
+plot(prW_l, "PWR_L", display=DW)
+plot(prW_c, "PWR_C", display=DW)
+plot(prM_h, "PMR_H", display=DW)
+plot(prM_l, "PMR_L", display=DW)
+plot(prM_c, "PMR_C", display=DW)
+plot(prA_h, "PYR_H", display=DW)
+plot(prA_l, "PYR_L", display=DW)
+plot(prA_c, "PYR_C", display=DW)
+// Niveau rond inférieur (1)
+plot(rnd_dn, "RND_DN", display=DW)
+// Colonnes empaquetées (8)
+plot(evt,     "EVT",     display=DW)
+plot(etat,    "ETAT",    display=DW)
+plot(tf_td,   "TF_TD",   display=DW)
+plot(tf_ok,   "TF_OK",   display=DW)
+plot(tf_str,  "TF_STR",  display=DW)
+plot(v_st,    "V_ST",    display=DW)
+plot(v_sig,   "V_SIG",   display=DW)
+plot(st_etat, "ST_ETAT", display=DW)
