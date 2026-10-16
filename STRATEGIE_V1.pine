@@ -1,6 +1,6 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// STRATÉGIE V1 — VERSION V1 (2026-10-15)
+// STRATÉGIE V1 — VERSION V4 (2026-10-16)
 // Stratégie pour le testeur de stratégie de TradingView, construite sur les
 // signaux de CompletV3.pine. Graphique en Heiken Ashi OBLIGATOIRE : tous les
 // signaux sont calibrés sur les bougies HA (un avertissement s'affiche sinon).
@@ -18,7 +18,7 @@
 //   Conséquence : un stop ou un objectif doit être exprimé en VRAI prix, sinon
 //   il serait placé à un niveau HA qui n'existe pas sur le marché. Les vraies
 //   bougies sont lues par
-//       request.security(ticker.standard(syminfo.tickerid), timeframe.period,
+//       request.security(ticker.new(..., backadjustment.inherit), timeframe.period,
 //                        [open, high, low, close])
 //   (même unité de temps, sans lookahead : c'est la bougie courante, pas une
 //   bougie future). L'ATR des stops, les swings et la taille de position sont
@@ -40,14 +40,18 @@
 //     se comporte alors exactement comme le temps réel. L'autre option reprend
 //     les appels de l'indicateur tels quels (bougie en cours en temps réel).
 //     Les unités plus petites que le graphique ne sont jamais décalées.
-//   - Pivots, swings, trendlines : uniquement des pivots CONFIRMÉS.
+//   - Pivots, swings, trendlines : uniquement des pivots CONFIRMÉS. Les pivots
+//     annuel / mensuel / weekly sont ceux de la période PRÉCÉDENTE ([1] +
+//     lookahead_on, comme le Pivator de CompletV3) : aucune donnée future.
 //
 // MODULES REPRIS DE CompletV3.pine (code copié, pas réécrit)
 //   Heishinator (formule exacte EMA(ohlc4,4) > EMA(ohlc4,32)), Moyenator
 //   (EMA50/60), Signator V9 (flèches Fort/Moyen + blackout d'annonces),
 //   Trendlines V2 + cassures (Breakator), Detector (order blocks), bloc
 //   SuperTrader, TREND / Dashator multi-unités, colonne SIGNAL et Feu de
-//   Confluence (29 voix), Monday High Low, Sessions Asie/Londres/US.
+//   Confluence (29 voix), Monday High Low, Sessions Asie/Londres/US,
+//   Pivator (annuel, mensuel, weekly, formule Traditionnel), Rondator
+//   (intervalle des niveaux ronds).
 //   Climax repris de CLIMATOR.pine (règle validée, seuils par défaut).
 //   Seules différences, toutes VOULUES et documentées sur place :
 //     - aucun dessin des modules (lignes, boîtes, tableaux de l'indicateur) ;
@@ -55,12 +59,30 @@
 //     - quelques appels ta.* sortis des ternaires (valeur identique, mais
 //       calcul à chaque bougie comme l'exige Pine) ;
 //     - les appels multi-unités acceptent le décalage sans repaint ci-dessus.
-//   request.security : 27 appels sur 40 autorisés.
+//   request.security : 30 appels sur 40 autorisés (27 + 3 pivots).
+//
+// NIVEAUX DE MARCHÉ (V4) — liste commune au stop et à l'objectif
+//   Pivots annuel / mensuel / weekly (P, R1-R5, S1-S5), zones Detector actives
+//   (haut, bas, milieu), hauts / bas des sessions Asie / Londres / US terminées
+//   et encore intactes, Monday High / Low, niveaux ronds. Chaque niveau a un
+//   TYPE (sert à la priorité) et un RÔLE (stop long, stop short, objectif
+//   long, objectif short). Pivots, sessions et Monday : sur le HA comme
+//   l'indicateur (défaut) ou sur les vrais prix (réglage). Detector : toujours
+//   sur le HA (comme l'indicateur). Les COMPARAISONS (au-dessus / au-dessous de
+//   l'entrée, distance en ATR, ratio gain / risque) se font toujours avec le
+//   vrai prix d'entrée et l'ATR des vrais prix.
+//
+// AFFICHAGE DES TRADES (V4) — comme l'outil « position longue / courte »
+//   Boîte rouge entrée → stop initial, verte entrée → objectif, de la barre
+//   d'entrée à la barre de sortie ; ligne pointillée au prix d'entrée ;
+//   étiquettes : sens, entrée, stop et objectif avec le niveau utilisé,
+//   résultat à la sortie (R et $). Le trade en cours est prolongé en direct ;
+//   la ligne en escalier « Stop en cours » suit le break-even et le suiveur.
 //
 // TOUT EST RÉGLABLE. Les défauts sont raisonnables, pas optimisés : la
 // recherche statistique en cours fixera les réglages définitifs.
 //
-// LIMITES CONNUES (V1)
+// LIMITES CONNUES (V4)
 //   - Une seule position à la fois, pas de renversement : un signal opposé
 //     peut FERMER la position, il ne l'inverse pas.
 //   - Stops et objectifs vérifiés au rythme des bougies du graphique : si une
@@ -68,6 +90,12 @@
 //     parcours (activer la loupe de barre « bar magnifier » si disponible).
 //   - Stop suiveur et break-even recalculés à la clôture de chaque bougie.
 //   - Le Feu reste une reconstruction (voir CompletV3 : 29 voix par le sens).
+//   - Stop / objectif sur niveaux : niveaux évalués à la clôture de la bougie
+//     du signal, puis FIXES (pas de recalcul si un pivot change de période en
+//     cours de trade). Le résultat en R des étiquettes ne compte pas les
+//     commissions ; le résultat en $ les compte.
+//   - Sortie partielle : il faut au moins 2 contrats (avec « Contrats fixes »
+//     = 1, elle est ignorée).
 //
 // JOURNAL DES VERSIONS
 //   V1  2026-10-15  Première version. Entrées Signator / Heishinator /
@@ -93,6 +121,23 @@
 //                   via ticker.new(..., backadjustment.inherit), et stop/objectif
 //                   posés à l'entrée en ticks relatifs au prix obtenu.
 //                   Nouveau stop : « Zone Detector la plus proche » (repli ATR).
+//   V4  2026-10-16  (1) DESSIN DES TRADES : boîtes risque / objectif, ligne
+//                   d'entrée, étiquettes (niveau du stop et de l'objectif,
+//                   résultat en R et en $), trade en cours en direct, ligne
+//                   « Stop en cours » ; N derniers trades gardés (défaut 50).
+//                   Remplace « Tracer stop et objectif ».
+//                   (2) NIVEAUX DE MARCHÉ : pivots annuel / mensuel / weekly
+//                   (calcul du Pivator), zones Detector, sessions, Monday,
+//                   niveaux ronds, regroupés en une liste typée.
+//                   (3) Stop « Niveau de protection » : derrière le niveau le
+//                   plus prioritaire dans [min ; max] × ATR, repli ATR × k.
+//                   (4) Objectif « Prochain niveau » : premier niveau offrant le
+//                   ratio gain / risque minimum ; option de ne pas prendre le
+//                   trade ; sortie partielle optionnelle (1er / 2e niveau).
+//                   (5) PRÉRÉGLAGES EXTENSIBLES : une ligne « clé=valeur » par
+//                   préréglage (fonction f_pr_def), A / B / C inchangés.
+//                   A, B et C : mêmes valeurs et même logique d'ordres qu'en
+//                   V3 (mêmes trades attendus ; à confirmer au testeur).
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -102,19 +147,21 @@ strategy("Stratégie V1", overlay=true,
      margin_long=5, margin_short=5,
      process_orders_on_close=false, calc_on_every_tick=false, calc_on_order_fills=false,
      fill_orders_on_standard_ohlc=true,
-     max_labels_count=500, max_lines_count=100, max_boxes_count=50)
+     max_labels_count=500, max_lines_count=500, max_boxes_count=500)
 
 // ══════════════════════════════════════════════════════════════
 // RÉGLAGES DE LA STRATÉGIE
 // ══════════════════════════════════════════════════════════════
 grp_e = "=== 1. ENTRÉES ==="
-// Préréglages issus de la recherche sur données du 15/10 (tools/strategie/).
-// AUCUNE N'EST PROUVÉE : échantillon trop court (sep-oct surtout, période
+// Préréglages : voir f_pr_def() plus bas (une ligne par préréglage).
+// AUCUN N'EST PROUVÉ : échantillon trop court (sep-oct surtout, période
 // haussière), t de Student < 2. À valider au testeur de TradingView sur un
 // historique long. « Personnalisé » = tous les réglages ci-dessous s'appliquent.
+// Pour AJOUTER un préréglage : son nom ici (littéral, cf. piège Pine v6) ET une
+// ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 preset    = input.string("C — Cassure de trendline", "Préréglage", group=grp_e,
      options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "Personnalisé"],
-     tooltip="C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. La moins fragile (+0,23 à +0,29 R par trade sur MES/NQ sep-oct, PF 1,4-1,5). A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur (+0,5 R, mais dépend de 1-2 grosses tendances). B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur (suivi de tendance « loterie », 14-26 % de gagnants). Personnalisé : tes réglages.")
+     tooltip="Un préréglage IMPOSE ses valeurs : les réglages qu'il ne cite pas sont coupés (entrées, filtres, sorties) ou gardent ta valeur (paramètres numériques). C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur. B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur. Personnalisé : tous tes réglages.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -123,47 +170,44 @@ e_heiOn_in   = input.bool(false, "Entrée sur changement de couleur Heishinator"
 e_tlOn_in = input.bool(false, "Entrée sur cassure de trendline (Breakator)", group=grp_e,
      tooltip="Cassure de la résistance descendante = long ; cassure du support ascendant = short. Règle de cassure : réglage « Cassure mesurée sur » du groupe TRENDLINES.")
 e_lvlOn_in   = input.bool(false, "Entrée sur cassure de niveau (sessions / Monday)", group=grp_e,
-     tooltip="Long quand le prix casse le HAUT d'une session terminée (ou le Monday High) ; short quand il casse un BAS. Chaque niveau ne sert qu'une fois.")
+     tooltip="Long quand le prix casse le HAUT d'une session terminée (ou le Monday High) ; short quand il casse un BAS. Chaque niveau ne sert qu'une fois. Source des niveaux : réglage « Niveaux mesurés sur » du groupe 3b.")
 e_lvlAs   = input.bool(true, "Niveaux Asie", group=grp_e, inline="lv")
 e_lvlLd   = input.bool(true, "Londres", group=grp_e, inline="lv")
 e_lvlUs   = input.bool(true, "US", group=grp_e, inline="lv")
 e_lvlMon  = input.bool(true, "Monday", group=grp_e, inline="lv")
-e_lvlSrc  = input.string("Heiken Ashi (comme l'indicateur)", "Niveaux mesurés sur", group=grp_e,
-     options=["Heiken Ashi (comme l'indicateur)", "Vrais prix"],
-     tooltip="Heiken Ashi = les niveaux affichés par CompletV3. Vrais prix = hauts/bas réels des sessions et du lundi, cassure testée sur la vraie bougie.")
 
 grp_f = "=== 2. FILTRES ==="
 f_feuOn_in   = input.bool(false, "Feu de Confluence dans le sens du trade", group=grp_f)
-f_feuMode = input.string("Part dans le sens ≥ seuil", "Feu : règle", group=grp_f,
+f_feuMode_in = input.string("Part dans le sens ≥ seuil", "Feu : règle", group=grp_f,
      options=["Part dans le sens ≥ seuil", "Pas de Feu opposé"],
      tooltip="Part dans le sens ≥ seuil : un long exige au moins « seuil » % de voix long sur 29. Pas de Feu opposé : on bloque seulement si le Feu est franchement dans l'autre sens (au seuil).")
-f_feuSeuil= input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
+f_feuSeuil_in = input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
 f_trOn_in = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
 f_trTf    = input.timeframe("60", "TREND : unité", group=grp_f,
-     tooltip="Règle TREND de l'indicateur : clôture de la dernière bougie clôturée de cette unité au-dessus (long) ou au-dessous (short) de son EMA50.")
+     tooltip="Règle TREND de l'indicateur : clôture de la dernière bougie clôturée de cette unité au-dessus (long) ou au-dessous (short) de son EMA50. (Non modifiable par un préréglage : Pine exige une valeur fixe pour request.security.)")
 f_emaOn_in   = input.bool(true, "Clôture du bon côté de l'EMA50 (Moyenator 1)", group=grp_f)
 f_hrOn_in = input.bool(true, "Fenêtres horaires (heure de Paris)", group=grp_f,
      tooltip="L'entrée n'est permise que si la bougie du signal OUVRE dans une des plages cochées. Aucune plage cochée = pas de restriction.")
 f_hr1On_in   = input.bool(true, "Plage 1 (Londres)", group=grp_f, inline="h1")
 f_hr1_in  = input.session("0900-1200", "", group=grp_f, inline="h1")
 f_hr2On_in   = input.bool(true, "Plage 2 (US)", group=grp_f, inline="h2")
-f_hr2     = input.session("1530-1800", "", group=grp_f, inline="h2")
-f_boOn    = input.bool(true, "Blackout d'annonces sur TOUTES les entrées", group=grp_f,
+f_hr2_in  = input.session("1530-1800", "", group=grp_f, inline="h2")
+f_boOn_in = input.bool(true, "Blackout d'annonces sur TOUTES les entrées", group=grp_f,
      tooltip="Aucune entrée sur une bougie qui ouvre dans un créneau d'annonce (créneaux du groupe BLACKOUT). Les flèches Signator ont en plus leur propre filtre, comme dans l'indicateur.")
 f_adxOn_in   = input.bool(false, "ADX minimum", group=grp_f, inline="adx")
-f_adxMin  = input.float(20.0, "", group=grp_f, inline="adx", minval=0.0, maxval=100.0, step=1.0,
+f_adxMin_in  = input.float(20.0, "", group=grp_f, inline="adx", minval=0.0, maxval=100.0, step=1.0,
      tooltip="ADX(14,14) de l'indicateur, sur bougies HA. La flèche Signator exige déjà ADX ≥ Seuil de Force (18).")
-f_maxJour = input.int(3, "Trades maximum par jour (0 = illimité)", group=grp_f, minval=0, maxval=50)
+f_maxJour_in = input.int(3, "Trades maximum par jour (0 = illimité)", group=grp_f, minval=0, maxval=50)
 f_detOn_in   = input.bool(false, "Detector : place jusqu'à la zone opposée", group=grp_f,
      tooltip="Pas de long si une zone baissière (order block) est à moins de k × ATR au-dessus du prix, ou si le prix est dedans ; miroir pour le short. Le Detector sert de CIBLE, pas de sens.")
-f_detK    = input.float(1.0, "Detector : distance minimum (× ATR14)", group=grp_f, minval=0.0, step=0.1)
+f_detK_in    = input.float(1.0, "Detector : distance minimum (× ATR14)", group=grp_f, minval=0.0, step=0.1)
 f_clxOn_in   = input.bool(false, "Climax : ne jamais trader contre le dernier climax", group=grp_f,
      tooltip="Règle de la méthode : le dernier climax donne le biais. Long bloqué si le dernier climax est vendeur, short bloqué s'il est acheteur.")
-f_clxAge  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
+f_clxAge_in  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
 
 grp_x = "=== 3. SORTIES ==="
-x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Dernier swing + marge", "Fixe (points)", "Zone Detector la plus proche"],
-     tooltip="Zone Detector : long = sous le bas de la zone haussière la plus proche sous le prix ; short = au-dessus du haut de la zone baissière la plus proche au-dessus. Sans zone utilisable (absente, trop loin ou trop près), repli sur ATR × k.")
+x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Niveau de protection", "Dernier swing + marge", "Fixe (points)", "Zone Detector la plus proche"],
+     tooltip="Niveau de protection : derrière le niveau de marché le plus prioritaire (pivots, Detector, Monday, sessions, ronds) situé entre min et max × ATR de l'entrée — réglages du groupe 3b. Zone Detector : long = sous le bas de la zone haussière la plus proche sous le prix ; short = au-dessus du haut de la zone baissière la plus proche au-dessus. Sans niveau utilisable, repli sur ATR × k.")
 x_detMarge = input.int(2, "Zone Detector : marge (ticks)", group=grp_x, minval=0)
 x_detMin   = input.float(0.3, "Zone Detector : distance minimum (× ATR)", group=grp_x, minval=0.0, step=0.1)
 x_detMax   = input.float(4.0, "Zone Detector : distance maximum (× ATR)", group=grp_x, minval=0.1, step=0.1)
@@ -172,15 +216,16 @@ x_atrK_in = input.float(1.5, "Stop ATR : k", group=grp_x, minval=0.1, step=0.1)
 x_swL     = input.int(5, "Swing : barres à gauche", group=grp_x, minval=1, maxval=50)
 x_swR     = input.int(2, "Swing : barres à droite (confirmation)", group=grp_x, minval=1, maxval=50)
 x_swMarge = input.int(2, "Swing : marge (ticks)", group=grp_x, minval=0)
-x_fixPts  = input.float(10.0, "Stop fixe (points)", group=grp_x, minval=0.0, step=0.25)
-x_tpOn_in = input.bool(true, "Objectif en R", group=grp_x, inline="tp")
-x_tpR_in  = input.float(2.0, "", group=grp_x, inline="tp", minval=0.1, step=0.1)
+x_fixPts_in = input.float(10.0, "Stop fixe (points)", group=grp_x, minval=0.0, step=0.25)
+x_tpMode_in = input.string("En R", "Objectif", group=grp_x, options=["Aucun", "En R", "Prochain niveau"],
+     tooltip="En R : objectif à R × la distance du stop. Prochain niveau : juste avant le premier niveau de marché (pivots, zones Detector opposées…) qui offre au moins le ratio gain / risque minimum — réglages du groupe 3b.")
+x_tpR_in  = input.float(2.0, "Objectif en R : R", group=grp_x, minval=0.1, step=0.1)
 x_trMode_in  = input.string("Aucun", "Stop suiveur", group=grp_x, options=["Aucun", "ATR", "Sous chaque nouveau swing"])
-x_trK     = input.float(2.0, "Suiveur ATR : k", group=grp_x, minval=0.1, step=0.1)
-x_trAct   = input.float(0.0, "Suiveur actif après (R)", group=grp_x, minval=0.0, step=0.1,
+x_trK_in  = input.float(2.0, "Suiveur ATR : k", group=grp_x, minval=0.1, step=0.1)
+x_trAct_in = input.float(0.0, "Suiveur actif après (R)", group=grp_x, minval=0.0, step=0.1,
      tooltip="0 = actif dès l'entrée.")
 x_beOn_in = input.bool(true, "Break-even après X R", group=grp_x, inline="be")
-x_beR     = input.float(1.0, "", group=grp_x, inline="be", minval=0.1, step=0.1)
+x_beR_in  = input.float(1.0, "", group=grp_x, inline="be", minval=0.1, step=0.1)
 x_beTk    = input.int(1, "Break-even : ticks au-delà du prix d'entrée", group=grp_x, minval=0)
 x_oppArr_in  = input.bool(true, "Sortie sur flèche Signator opposée (Fort ou Moyen)", group=grp_x)
 x_oppHei_in  = input.bool(false, "Sortie sur changement Heishinator opposé", group=grp_x)
@@ -189,37 +234,178 @@ x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", gro
 x_finH    = input.int(21, "h", group=grp_x, inline="fin", minval=0, maxval=23)
 x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
 
-// ─── Préréglage : valeurs effectives ───
-pC = preset == "C — Cassure de trendline"
-pA = preset == "A — Climax BUY dans la tendance"
-pB = preset == "B — Signator Fort + TREND"
-pP = not (pC or pA or pB)
-e_sens     = pA ? "Long seulement" : pP ? e_sens_in : "Les deux"
-e_sigOn    = pB ? true : pP ? e_sigOn_in : false
-e_sigNiv   = pP ? e_sigNiv_in : "Fort seulement"
-e_heiOn    = pP ? e_heiOn_in : false
-e_tlOn     = pC ? true : pP ? e_tlOn_in : false
-e_lvlOn    = pP ? e_lvlOn_in : false
-e_clxOn    = pA ? true : pP ? e_clxOn_in : false
-f_feuOn    = pP ? f_feuOn_in : false
-f_trOn     = pA or pB ? true : pP ? f_trOn_in : false
-f_emaOn    = pP ? f_emaOn_in : false
-f_hrOn     = pC or pB ? true : pP ? f_hrOn_in : false
-f_hr1On    = pC or pB ? true : f_hr1On_in
-f_hr1      = pC or pB ? "1430-0800" : f_hr1_in
-f_hr2On    = pC or pB ? false : f_hr2On_in
-f_adxOn    = pP ? f_adxOn_in : false
-f_detOn    = pP ? f_detOn_in : false
-f_clxOn    = pP ? f_clxOn_in : false
-x_stopMode = pP ? x_stopMode_in : "ATR × k"
-x_atrK     = pC ? 1.5 : pA ? 2.0 : pB ? 1.0 : x_atrK_in
-x_tpOn     = pC ? true : pP ? x_tpOn_in : false
-x_tpR      = pC ? 2.0 : x_tpR_in
-x_trMode   = pP ? x_trMode_in : "Aucun"
-x_beOn     = pP ? x_beOn_in : false
-x_oppArr   = pP ? x_oppArr_in : false
-x_oppHei   = pA or pB ? true : pP ? x_oppHei_in : false
-x_finOn    = pP ? x_finOn_in : false
+grp_nv = "=== 3b. NIVEAUX : STOP DE PROTECTION ET OBJECTIF ==="
+nv_src    = input.string("Heiken Ashi (comme l'indicateur)", "Niveaux mesurés sur", group=grp_nv,
+     options=["Heiken Ashi (comme l'indicateur)", "Vrais prix"],
+     tooltip="Pivots, sessions et Monday. Heiken Ashi = les niveaux affichés par CompletV3. Vrais prix = calculés sur les vraies bougies (et cassures de niveau testées sur la vraie bougie). Les zones Detector restent sur le HA. (Non modifiable par un préréglage : Pine exige une valeur fixe pour request.security.)")
+x_prio_in = input.string("annuel > mensuel > detector > weekly > monday > session > rond", "Stop : priorité des niveaux", group=grp_nv,
+     tooltip="Ordre de préférence, du plus fort au plus faible : annuel, mensuel, detector, weekly, monday, session, rond. Réordonne les mots à ta guise ; un mot absent = type jamais utilisé pour le stop. À priorité égale, le niveau le plus proche de l'entrée l'emporte.")
+x_slA_in  = input.bool(true, "Stop derrière : pivot annuel", group=grp_nv, inline="sl1")
+x_slM_in  = input.bool(true, "mensuel", group=grp_nv, inline="sl1")
+x_slW_in  = input.bool(true, "weekly", group=grp_nv, inline="sl1")
+x_slD_in  = input.bool(true, "zone Detector", group=grp_nv, inline="sl2")
+x_slMo_in = input.bool(true, "Monday", group=grp_nv, inline="sl2")
+x_slSe_in = input.bool(true, "sessions", group=grp_nv, inline="sl2")
+x_slRo_in = input.bool(true, "ronds", group=grp_nv, inline="sl2")
+x_slMin_in = input.float(0.5, "Stop : distance minimum (× ATR)", group=grp_nv, minval=0.0, step=0.1)
+x_slMax_in = input.float(3.5, "Stop : distance maximum (× ATR)", group=grp_nv, minval=0.1, step=0.1)
+nv_margeU = input.string("Ticks", "Marges : unité", group=grp_nv, options=["Ticks", "× ATR"])
+x_slMarge_in = input.float(4.0, "Stop : marge derrière le niveau", group=grp_nv, minval=0.0, step=0.5,
+     tooltip="Long : stop = niveau − marge ; short : niveau + marge. En ticks ou en fraction d'ATR selon « Marges : unité ».")
+x_tpA_in  = input.bool(true, "Objectif sur : pivot annuel", group=grp_nv, inline="tp1")
+x_tpM_in  = input.bool(true, "mensuel", group=grp_nv, inline="tp1")
+x_tpW_in  = input.bool(true, "weekly", group=grp_nv, inline="tp1")
+x_tpD_in  = input.bool(true, "zone Detector opposée", group=grp_nv, inline="tp2")
+x_tpMo_in = input.bool(false, "Monday", group=grp_nv, inline="tp2")
+x_tpSe_in = input.bool(false, "sessions", group=grp_nv, inline="tp2")
+x_tpRo_in = input.bool(false, "ronds", group=grp_nv, inline="tp2")
+x_rrMin_in = input.float(1.5, "Objectif : ratio gain / risque minimum", group=grp_nv, minval=0.0, step=0.1,
+     tooltip="Si le prochain niveau rapporte moins que ce ratio × le risque, on prend le suivant.")
+x_tpMarge_in = input.float(4.0, "Objectif : marge avant le niveau", group=grp_nv, minval=0.0, step=0.5,
+     tooltip="On sort juste AVANT le niveau : long = niveau − marge ; short = niveau + marge.")
+x_tpSans_in = input.string("Objectif en R", "Objectif : si aucun niveau n'offre le ratio", group=grp_nv,
+     options=["Objectif en R", "Pas d'objectif", "Ne pas prendre le trade"])
+x_part_in = input.bool(false, "Sortie partielle au 1er niveau", group=grp_nv, inline="pt",
+     tooltip="Seulement avec l'objectif « Prochain niveau » et au moins 2 contrats. Le reste sort au 2e niveau, ou au stop (suiveur, break-even) et aux sorties sur signal.")
+x_partPct_in = input.int(50, "%", group=grp_nv, inline="pt", minval=10, maxval=90, step=10)
+x_partRest_in = input.string("2e niveau", "Reste de la position : sortie", group=grp_nv,
+     options=["2e niveau", "Stop seulement (suiveur, break-even, signaux)"])
+x_partBE_in = input.bool(true, "Après la 1re sortie : stop au prix d'entrée", group=grp_nv)
+rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_nv, minval=0.25)
+
+// ══════════════════════════════════════════════════════════════
+// PRÉRÉGLAGES — STRUCTURE EXTENSIBLE (V4)
+// ══════════════════════════════════════════════════════════════
+// Un préréglage = UNE ligne « clé=valeur;clé=valeur;… » dans f_pr_def().
+// Pour en ajouter un :
+//   1. ajouter son nom EXACT dans options=[…] du menu « Préréglage » ;
+//   2. ajouter une ligne :   nom == "<nom exact>" ? "<clés>" :
+// Règle des clés absentes : interrupteurs et modes (marqués ⓘ) = valeur
+// NEUTRE (coupé / « Aucun » / « ATR × k » / « Les deux ») ; paramètres
+// numériques et autres = valeur du réglage de la boîte de dialogue.
+// Booléens : 1 / 0. Modes : le libellé EXACT de l'option du menu (une faute
+// de frappe arrête le script avec un message). Pas de « ; » ni « = » dans
+// une valeur. Les espaces après « ; » sont tolérés.
+// Clés :
+//   ENTRÉES  sens ⓘ (Les deux | Long seulement | Short seulement), sig ⓘ,
+//            sigNiv ⓘ (Fort seulement | Fort + Moyen), hei ⓘ, tl ⓘ, lvl ⓘ, clx ⓘ
+//   FILTRES  feu ⓘ, feuMode, feuSeuil, tr ⓘ, ema ⓘ, hr ⓘ, hr1On, hr1 (ex.
+//            1430-0800), hr2On, hr2, bo, adx ⓘ, adxMin, maxJour, det ⓘ, detK,
+//            clxF ⓘ (filtre climax), clxAge
+//   SORTIES  stop ⓘ (ATR × k | Niveau de protection | Dernier swing + marge |
+//            Fixe (points) | Zone Detector la plus proche), atrK, fixPts,
+//            tp ⓘ (Aucun | En R | Prochain niveau), tpR, trail ⓘ (Aucun | ATR |
+//            Sous chaque nouveau swing), trK, trAct, be ⓘ, beR, oppArr ⓘ,
+//            oppHei ⓘ, fin ⓘ
+//   NIVEAUX  prio, slA slM slW slD slMo slSe slRo, slMin, slMax, slMarge,
+//            tpA tpM tpW tpD tpMo tpSe tpRo, rrMin, tpMarge, tpSans (Objectif
+//            en R | Pas d'objectif | Ne pas prendre le trade), part ⓘ, partPct,
+//            partRest (2e niveau | Stop seulement (suiveur, break-even, signaux)),
+//            partBE
+// Non modifiables par préréglage (valeur fixe exigée par Pine) : unité du
+// TREND supérieur, « Niveaux mesurés sur ».
+f_pr_def(string nom) =>
+    nom == "C — Cassure de trendline"         ? "tl=1;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;atrK=1.5;tp=En R;tpR=2" :
+     nom == "A — Climax BUY dans la tendance" ? "sens=Long seulement;clx=1;tr=1;atrK=2;oppHei=1" :
+     nom == "B — Signator Fort + TREND"       ? "sig=1;sigNiv=Fort seulement;tr=1;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;atrK=1;oppHei=1" :
+     ""
+
+pP     = preset == "Personnalisé"
+pr_def = str.replace_all(f_pr_def(preset), "; ", ";")
+if barstate.isfirst and not pP and pr_def == ""
+    runtime.error("Préréglage « " + preset + " » : aucune ligne dans f_pr_def().")
+
+// Valeur (texte) de la clé k dans le préréglage, na si absente.
+f_pv(string k) =>
+    string res = na
+    if pr_def != ""
+        t = ";" + pr_def + ";"
+        i = str.pos(t, ";" + k + "=")
+        if not na(i)
+            rest = str.substring(t, i + str.length(k) + 2)
+            res := str.substring(rest, 0, str.pos(rest, ";"))
+    res
+// Lecteurs : texte (avec liste des valeurs permises), booléen, nombre.
+f_gs(string k, string vin, string vbase, string permis) =>
+    v = f_pv(k)
+    string r = pP ? vin : na(v) ? vbase : v
+    if not pP and not na(v) and not str.contains("|" + permis + "|", "|" + v + "|")
+        runtime.error("Préréglage « " + preset + " » : valeur « " + v + " » invalide pour la clé « " + k + " ». Permis : " + permis)
+    r
+f_gb(string k, bool vin, bool vbase) =>
+    v = f_pv(k)
+    pP ? vin : na(v) ? vbase : (v == "1" or v == "oui" or v == "true")
+f_gf(string k, float vin) =>
+    v = f_pv(k)
+    float r = pP or na(v) ? vin : str.tonumber(v)
+    if na(r)
+        runtime.error("Préréglage « " + preset + " » : nombre invalide pour la clé « " + k + " ».")
+    r
+
+// ─── Valeurs effectives (calculées une fois, à la première bougie) ───
+var string e_sens   = f_gs("sens",   e_sens_in,   "Les deux", "Les deux|Long seulement|Short seulement")
+var bool   e_sigOn  = f_gb("sig",    e_sigOn_in,  false)
+var string e_sigNiv = f_gs("sigNiv", e_sigNiv_in, "Fort seulement", "Fort seulement|Fort + Moyen")
+var bool   e_heiOn  = f_gb("hei",    e_heiOn_in,  false)
+var bool   e_tlOn   = f_gb("tl",     e_tlOn_in,   false)
+var bool   e_lvlOn  = f_gb("lvl",    e_lvlOn_in,  false)
+var bool   e_clxOn  = f_gb("clx",    e_clxOn_in,  false)
+var bool   f_feuOn  = f_gb("feu",    f_feuOn_in,  false)
+var string f_feuMode = f_gs("feuMode", f_feuMode_in, f_feuMode_in, "Part dans le sens ≥ seuil|Pas de Feu opposé")
+var float  f_feuSeuil = f_gf("feuSeuil", f_feuSeuil_in)
+var bool   f_trOn   = f_gb("tr",     f_trOn_in,   false)
+var bool   f_emaOn  = f_gb("ema",    f_emaOn_in,  false)
+var bool   f_hrOn   = f_gb("hr",     f_hrOn_in,   false)
+var bool   f_hr1On  = f_gb("hr1On",  f_hr1On_in,  f_hr1On_in)
+var string f_hr1    = f_gs("hr1",    f_hr1_in,    f_hr1_in, f_pv("hr1"))
+var bool   f_hr2On  = f_gb("hr2On",  f_hr2On_in,  f_hr2On_in)
+var string f_hr2    = f_gs("hr2",    f_hr2_in,    f_hr2_in, f_pv("hr2"))
+var bool   f_boOn   = f_gb("bo",     f_boOn_in,   f_boOn_in)
+var bool   f_adxOn  = f_gb("adx",    f_adxOn_in,  false)
+var float  f_adxMin = f_gf("adxMin", f_adxMin_in)
+var int    f_maxJour = int(f_gf("maxJour", f_maxJour_in))
+var bool   f_detOn  = f_gb("det",    f_detOn_in,  false)
+var float  f_detK   = f_gf("detK",   f_detK_in)
+var bool   f_clxOn  = f_gb("clxF",   f_clxOn_in,  false)
+var int    f_clxAge = int(f_gf("clxAge", f_clxAge_in))
+var string x_stopMode = f_gs("stop", x_stopMode_in, "ATR × k", "ATR × k|Niveau de protection|Dernier swing + marge|Fixe (points)|Zone Detector la plus proche")
+var float  x_atrK   = f_gf("atrK",   x_atrK_in)
+var float  x_fixPts = f_gf("fixPts", x_fixPts_in)
+var string x_tpMode = f_gs("tp",     x_tpMode_in, "Aucun", "Aucun|En R|Prochain niveau")
+var float  x_tpR    = f_gf("tpR",    x_tpR_in)
+var string x_trMode = f_gs("trail",  x_trMode_in, "Aucun", "Aucun|ATR|Sous chaque nouveau swing")
+var float  x_trK    = f_gf("trK",    x_trK_in)
+var float  x_trAct  = f_gf("trAct",  x_trAct_in)
+var bool   x_beOn   = f_gb("be",     x_beOn_in,   false)
+var float  x_beR    = f_gf("beR",    x_beR_in)
+var bool   x_oppArr = f_gb("oppArr", x_oppArr_in, false)
+var bool   x_oppHei = f_gb("oppHei", x_oppHei_in, false)
+var bool   x_finOn  = f_gb("fin",    x_finOn_in,  false)
+var string x_prio   = str.lower(f_gs("prio", x_prio_in, x_prio_in, f_pv("prio")))
+var bool   x_slA    = f_gb("slA",  x_slA_in,  x_slA_in)
+var bool   x_slM    = f_gb("slM",  x_slM_in,  x_slM_in)
+var bool   x_slW    = f_gb("slW",  x_slW_in,  x_slW_in)
+var bool   x_slD    = f_gb("slD",  x_slD_in,  x_slD_in)
+var bool   x_slMo   = f_gb("slMo", x_slMo_in, x_slMo_in)
+var bool   x_slSe   = f_gb("slSe", x_slSe_in, x_slSe_in)
+var bool   x_slRo   = f_gb("slRo", x_slRo_in, x_slRo_in)
+var float  x_slMin  = f_gf("slMin",   x_slMin_in)
+var float  x_slMax  = f_gf("slMax",   x_slMax_in)
+var float  x_slMarge = f_gf("slMarge", x_slMarge_in)
+var bool   x_tpA    = f_gb("tpA",  x_tpA_in,  x_tpA_in)
+var bool   x_tpM    = f_gb("tpM",  x_tpM_in,  x_tpM_in)
+var bool   x_tpW    = f_gb("tpW",  x_tpW_in,  x_tpW_in)
+var bool   x_tpD    = f_gb("tpD",  x_tpD_in,  x_tpD_in)
+var bool   x_tpMo   = f_gb("tpMo", x_tpMo_in, x_tpMo_in)
+var bool   x_tpSe   = f_gb("tpSe", x_tpSe_in, x_tpSe_in)
+var bool   x_tpRo   = f_gb("tpRo", x_tpRo_in, x_tpRo_in)
+var float  x_rrMin  = f_gf("rrMin",   x_rrMin_in)
+var float  x_tpMarge = f_gf("tpMarge", x_tpMarge_in)
+var string x_tpSans = f_gs("tpSans", x_tpSans_in, x_tpSans_in, "Objectif en R|Pas d'objectif|Ne pas prendre le trade")
+var bool   x_part   = f_gb("part",   x_part_in,   false)
+var float  x_partPct = f_gf("partPct", x_partPct_in)
+var string x_partRest = f_gs("partRest", x_partRest_in, x_partRest_in, "2e niveau|Stop seulement (suiveur, break-even, signaux)")
+var bool   x_partBE = f_gb("partBE", x_partBE_in, x_partBE_in)
 
 grp_q = "=== 4. TAILLE ==="
 q_mode    = input.string("Contrats fixes", "Taille de position", group=grp_q, options=["Contrats fixes", "Risque fixe en $"])
@@ -230,7 +416,12 @@ q_max     = input.int(10, "Contrats maximum", group=grp_q, minval=1)
 
 grp_a = "=== 5. AFFICHAGE ==="
 a_bar     = input.bool(true, "Colorer les bougies (Heishinator)", group=grp_a)
-a_niv     = input.bool(true, "Tracer stop et objectif", group=grp_a)
+a_trades  = input.bool(true, "Dessiner les trades (boîtes stop / objectif)", group=grp_a,
+     tooltip="Comme l'outil « position longue / courte » : boîte rouge entrée → stop initial, verte entrée → objectif, de l'entrée à la sortie ; ligne pointillée au prix d'entrée. Remplace l'ancien « Tracer stop et objectif ».")
+a_trN     = input.int(50, "Trades dessinés (les plus récents)", group=grp_a, minval=1, maxval=100,
+     tooltip="3 boîtes, 1 ligne et 4 étiquettes par trade au plus : 100 trades maximum (limite de 500 objets de TradingView).")
+a_lbl     = input.bool(true, "Étiquettes des trades (niveaux, résultat)", group=grp_a)
+a_stopLn  = input.bool(true, "Ligne « Stop en cours » (suit break-even et suiveur)", group=grp_a)
 a_sig     = input.bool(false, "Marquer aussi les signaux bruts (non filtrés)", group=grp_a)
 a_tbl     = input.bool(true, "Tableau de bord", group=grp_a)
 a_pos     = input.string("Bottom Right", "Position du tableau", group=grp_a,
@@ -268,6 +459,41 @@ if not na(r_pl)
     r_swLow := r_pl
 if not na(r_ph)
     r_swHigh := r_ph
+tick = syminfo.mintick
+
+// Source des niveaux (pivots, sessions, Monday) : HA de l'indicateur ou vrais prix.
+lv_vrai = nv_src == "Vrais prix"
+
+// ══════════════════════════════════════════════════════════════
+// PIVATOR — pivots annuel / mensuel / weekly, calcul de CompletV3
+// ══════════════════════════════════════════════════════════════
+// Même appel que le Pivator de CompletV3 (sets 1, 2, 3 par défaut) :
+//   request.security(<symbole du graphique>, "12M" | "M" | "W",
+//                    [high[1], low[1], close[1]], lookahead_on)
+// = la période PRÉCÉDENTE, sans repaint ; formule « Traditionnel » (type par
+// défaut de l'indicateur). Sur graphique HA, le symbole du graphique est le HA :
+// mêmes valeurs que les lignes de l'indicateur. Avec « Vrais prix », on lit le
+// symbole des vrais prix (ticker.new, ajustement du graphique conservé).
+pv_tick = lv_vrai ? r_tick : syminfo.tickerid
+f_piv_trad(h, l, c) =>
+    p  = (h + l + c) / 3
+    r1 = 2 * p - l
+    s1 = 2 * p - h
+    r2 = p + (h - l)
+    s2 = p - (h - l)
+    r3 = h + 2 * (p - l)
+    s3 = l - 2 * (h - p)
+    r4 = r3 + (p - l)
+    s4 = s3 - (h - p)
+    r5 = r4 + (p - l)
+    s5 = s4 - (h - p)
+    [p, r1, s1, r2, s2, r3, s3, r4, s4, r5, s5]
+[pvA_h, pvA_l, pvA_c] = request.security(pv_tick, "12M", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvM_h, pvM_l, pvM_c] = request.security(pv_tick, "M",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvW_h, pvW_l, pvW_c] = request.security(pv_tick, "W",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pA_p, pA_r1, pA_s1, pA_r2, pA_s2, pA_r3, pA_s3, pA_r4, pA_s4, pA_r5, pA_s5] = f_piv_trad(pvA_h, pvA_l, pvA_c)
+[pM_p, pM_r1, pM_s1, pM_r2, pM_s2, pM_r3, pM_s3, pM_r4, pM_s4, pM_r5, pM_s5] = f_piv_trad(pvM_h, pvM_l, pvM_c)
+[pW_p, pW_r1, pW_s1, pW_r2, pW_s2, pW_r3, pW_s3, pW_r4, pW_s4, pW_r5, pW_s5] = f_piv_trad(pvW_h, pvW_l, pvW_c)
 
 // ══════════════════════════════════════════════════════════════
 // HEISHINATOR — formule exacte (CompletV3 V4, 2600/2600 sur l'API)
@@ -878,9 +1104,8 @@ t3_pLong  = 100.0 * t3_nLong  / t3_nTot
 t3_pShort = 100.0 * t3_nShort / t3_nTot
 
 // ══════════════════════════════════════════════════════════════
-// NIVEAUX : SOURCE (HA de l'indicateur, ou vrais prix)
+// NIVEAUX : SOURCE (HA de l'indicateur, ou vrais prix) — réglage du groupe 3b
 // ══════════════════════════════════════════════════════════════
-lv_vrai = e_lvlSrc == "Vrais prix"
 lv_hi   = lv_vrai ? r_h : high
 lv_lo   = lv_vrai ? r_l : low
 lv_cl   = lv_vrai ? r_c : close
@@ -946,7 +1171,7 @@ var int ses_dayN = 0
 if ta.change(time("D")) != 0
     ses_dayN += 1
 
-f_ses(_on, _sess, _tz) =>
+f_ses(_on, _sess, _tz, _sig) =>
     inS = not na(time(timeframe.period, _sess, _tz))
     var float h  = na
     var float l  = na
@@ -981,19 +1206,165 @@ f_ses(_on, _sess, _tz) =>
                 vieux = array.get(age, i) <= ses_dayN - ses_days
                 traverse = lv_brk == "Clôture" ? (hi ? lv_cl > p : lv_cl < p) : (hi ? lv_hi > p : lv_lo < p)
                 if vieux or traverse
-                    if traverse and not vieux
+                    if traverse and not vieux and _sig
                         if hi
                             up := true
                         else
                             dn := true
                     array.remove(prx, i), array.remove(hiF, i), array.remove(age, i)
-    [up, dn]
+    [up, dn, prx, hiF]
 
-[ses_asUp, ses_asDn] = f_ses(e_lvlOn and e_lvlAs, ses_asSes, "Asia/Tokyo")
-[ses_ldUp, ses_ldDn] = f_ses(e_lvlOn and e_lvlLd, ses_ldSes, "Europe/London")
-[ses_usUp, ses_usDn] = f_ses(e_lvlOn and e_lvlUs, ses_usSes, "America/New_York")
+// Les niveaux intacts servent aussi au stop / à l'objectif sur niveaux (V4) :
+// le module tourne alors même sans entrée sur cassure (signaux coupés).
+nv_stopNv = x_stopMode == "Niveau de protection"
+nv_tpNv   = x_tpMode == "Prochain niveau"
+nv_sesOn  = (nv_stopNv and x_slSe) or (nv_tpNv and x_tpSe)
+[ses_asUp, ses_asDn, ses_asP, ses_asH] = f_ses((e_lvlOn and e_lvlAs) or nv_sesOn, ses_asSes, "Asia/Tokyo",       e_lvlOn and e_lvlAs)
+[ses_ldUp, ses_ldDn, ses_ldP, ses_ldH] = f_ses((e_lvlOn and e_lvlLd) or nv_sesOn, ses_ldSes, "Europe/London",    e_lvlOn and e_lvlLd)
+[ses_usUp, ses_usDn, ses_usP, ses_usH] = f_ses((e_lvlOn and e_lvlUs) or nv_sesOn, ses_usSes, "America/New_York", e_lvlOn and e_lvlUs)
 lvl_up = ses_asUp or ses_ldUp or ses_usUp or (e_lvlMon and mhl_brkUp)
 lvl_dn = ses_asDn or ses_ldDn or ses_usDn or (e_lvlMon and mhl_brkDn)
+
+// ══════════════════════════════════════════════════════════════
+// LISTE DES NIVEAUX DE MARCHÉ (V4) — stop de protection et objectif
+// ══════════════════════════════════════════════════════════════
+// Chaque niveau : prix, TYPE, RÔLE, nom (affiché sur le graphique).
+//   Types : 1 pivot annuel, 2 pivot mensuel, 3 zone Detector, 4 pivot weekly,
+//           5 Monday, 6 session, 7 niveau rond.
+//   Rôle (somme de) : 1 stop d'un long, 2 stop d'un short, 4 objectif d'un
+//           long, 8 objectif d'un short ; 15 = tous. Un pivot, une session, un
+//           Monday ou un rond peut tout faire (selon qu'il est sous ou au-dessus
+//           de l'entrée). Zone Detector : haussière = bas → stop long, haut →
+//           objectif short ; baissière = haut → stop short, bas → objectif long
+//           (on sort au premier bord rencontré) ; milieu = listé, pas utilisé.
+// La liste n'est remplie qu'à la bougie d'un signal (f_nv_build).
+var array<float>  nv_px  = array.new_float()
+var array<int>    nv_typ = array.new_int()
+var array<int>    nv_rol = array.new_int()
+var array<string> nv_nom = array.new_string()
+
+f_nv_add(float px, int typ, int rol, string nom) =>
+    if not na(px)
+        array.push(nv_px, px)
+        array.push(nv_typ, typ)
+        array.push(nv_rol, rol)
+        array.push(nv_nom, nom)
+    true
+
+f_nv_piv(int typ, string per, float p, float r1, float s1, float r2, float s2, float r3, float s3, float r4, float s4, float r5, float s5) =>
+    n = "pivot " + per + " "
+    f_nv_add(p,  typ, 15, n + "P")
+    f_nv_add(r1, typ, 15, n + "R1"), f_nv_add(s1, typ, 15, n + "S1")
+    f_nv_add(r2, typ, 15, n + "R2"), f_nv_add(s2, typ, 15, n + "S2")
+    f_nv_add(r3, typ, 15, n + "R3"), f_nv_add(s3, typ, 15, n + "S3")
+    f_nv_add(r4, typ, 15, n + "R4"), f_nv_add(s4, typ, 15, n + "S4")
+    f_nv_add(r5, typ, 15, n + "R5"), f_nv_add(s5, typ, 15, n + "S5")
+    true
+
+f_nv_ses(array<float> p, array<bool> h, string nom) =>
+    if array.size(p) > 0
+        for i = 0 to array.size(p) - 1
+            f_nv_add(array.get(p, i), 6, 15, (array.get(h, i) ? "haut" : "bas") + " session " + nom)
+    true
+
+f_nv_build() =>
+    array.clear(nv_px), array.clear(nv_typ), array.clear(nv_rol), array.clear(nv_nom)
+    f_nv_piv(1, "annuel",  pA_p, pA_r1, pA_s1, pA_r2, pA_s2, pA_r3, pA_s3, pA_r4, pA_s4, pA_r5, pA_s5)
+    f_nv_piv(2, "mensuel", pM_p, pM_r1, pM_s1, pM_r2, pM_s2, pM_r3, pM_s3, pM_r4, pM_s4, pM_r5, pM_s5)
+    f_nv_piv(4, "weekly",  pW_p, pW_r1, pW_s1, pW_r2, pW_s2, pW_r3, pW_s3, pW_r4, pW_s4, pW_r5, pW_s5)
+    if array.size(bull_btm) > 0
+        for i = 0 to array.size(bull_btm) - 1
+            f_nv_add(array.get(bull_btm, i), 3, 1, "zone Detector haussière (bas)")
+            f_nv_add(array.get(bull_top, i), 3, 8, "zone Detector haussière (haut)")
+            f_nv_add(array.get(bull_avg, i), 3, 0, "zone Detector haussière (milieu)")
+    if array.size(bear_top) > 0
+        for i = 0 to array.size(bear_top) - 1
+            f_nv_add(array.get(bear_top, i), 3, 2, "zone Detector baissière (haut)")
+            f_nv_add(array.get(bear_btm, i), 3, 4, "zone Detector baissière (bas)")
+            f_nv_add(array.get(bear_avg, i), 3, 0, "zone Detector baissière (milieu)")
+    if mhl_pret and not mhl_isMon
+        f_nv_add(mhl_h, 5, 15, "Monday High")
+        f_nv_add(mhl_l, 5, 15, "Monday Low")
+    f_nv_ses(ses_asP, ses_asH, "Asie")
+    f_nv_ses(ses_ldP, ses_ldH, "Londres")
+    f_nv_ses(ses_usP, ses_usH, "US")
+    if not na(r_c) and rnd_step > 0
+        base = math.floor(r_c / rnd_step) * rnd_step
+        for k = -4 to 5
+            v = base + k * rnd_step
+            f_nv_add(v, 7, 15, "niveau rond " + str.tostring(v, format.mintick))
+    array.size(nv_px)
+
+f_bit(int r, int b) => int(r / b) % 2 == 1
+f_nv_mot(int typ) => typ == 1 ? "annuel" : typ == 2 ? "mensuel" : typ == 3 ? "detector" : typ == 4 ? "weekly" : typ == 5 ? "monday" : typ == 6 ? "session" : "rond"
+f_nv_slOn(int typ) => typ == 1 ? x_slA : typ == 2 ? x_slM : typ == 3 ? x_slD : typ == 4 ? x_slW : typ == 5 ? x_slMo : typ == 6 ? x_slSe : x_slRo
+f_nv_tpOn(int typ) => typ == 1 ? x_tpA : typ == 2 ? x_tpM : typ == 3 ? x_tpD : typ == 4 ? x_tpW : typ == 5 ? x_tpMo : typ == 6 ? x_tpSe : x_tpRo
+// Rang de priorité pour le stop (plus petit = plus fort), -1 = type non utilisé.
+f_nv_rang(int typ) =>
+    i = str.pos(x_prio, f_nv_mot(typ))
+    f_nv_slOn(typ) and not na(i) ? i : -1
+f_marge(float v) => nv_margeU == "Ticks" ? v * tick : v * r_atr
+
+// STOP « Niveau de protection » : long = niveau SOUS l'entrée, stop = niveau −
+// marge, distance du stop dans [min ; max] × ATR ; on garde le type le plus
+// prioritaire, puis le plus proche. Miroir pour un short. na si aucun.
+f_sl_niveau(int dir, float e) =>
+    float bS = na
+    string bN = ""
+    int bR = 1000000
+    float bD = na
+    mg = f_marge(x_slMarge)
+    n = array.size(nv_px)
+    if n > 0 and not na(r_atr)
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            rk = f_nv_rang(array.get(nv_typ, i))
+            if rk >= 0 and f_bit(array.get(nv_rol, i), dir > 0 ? 1 : 2) and (dir > 0 ? px < e : px > e)
+                s = px - dir * mg
+                d = (e - s) * dir
+                if d >= x_slMin * r_atr and d <= x_slMax * r_atr and (rk < bR or (rk == bR and d < bD))
+                    bS := s
+                    bN := array.get(nv_nom, i)
+                    bR := rk
+                    bD := d
+    [bS, bN]
+
+// OBJECTIF « Prochain niveau » : long = niveau AU-DESSUS de l'entrée, objectif
+// = niveau − marge ; on prend le plus proche qui rapporte au moins rrMin ×
+// risque (trop proche → le suivant). 2e objectif (sortie partielle) : le
+// prochain niveau strictement au-delà du 1er. Miroir pour un short.
+f_tp_niveau(int dir, float e, float risk) =>
+    mg = f_marge(x_tpMarge)
+    n = array.size(nv_px)
+    float t1 = na
+    string n1 = ""
+    float l1 = na
+    float d1 = na
+    if n > 0
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            if f_nv_tpOn(array.get(nv_typ, i)) and f_bit(array.get(nv_rol, i), dir > 0 ? 4 : 8) and (px - e) * dir > 0
+                t = px - dir * mg
+                d = (t - e) * dir
+                if d > 0 and d >= x_rrMin * risk and (na(d1) or d < d1)
+                    t1 := t
+                    n1 := array.get(nv_nom, i)
+                    l1 := px
+                    d1 := d
+    float t2 = na
+    string n2 = ""
+    float d2 = na
+    if n > 0 and not na(t1)
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            if f_nv_tpOn(array.get(nv_typ, i)) and f_bit(array.get(nv_rol, i), dir > 0 ? 4 : 8) and (px - l1) * dir > tick / 2
+                t = px - dir * mg
+                d = (t - e) * dir
+                if d > d1 and (na(d2) or d < d2)
+                    t2 := t
+                    n2 := array.get(nv_nom, i)
+                    d2 := d
+    [t1, n1, t2, n2]
 
 // ══════════════════════════════════════════════════════════════
 // SIGNAUX D'ENTRÉE
@@ -1055,17 +1426,28 @@ go_short  = sens_okS and sig_short and not sig_long  and commun_ok and feu_okS a
 // ══════════════════════════════════════════════════════════════
 // GESTION DES ORDRES (tout en vrais prix)
 // ══════════════════════════════════════════════════════════════
-tick = syminfo.mintick
-
-// Stop initial pour une entrée estimée au vrai close (ajusté au remplissage).
+// Stop initial pour une entrée estimée au vrai close. Renvoie [prix, nom,
+// absolu]. Absolu = posé derrière un niveau de marché : ce PRIX est gardé au
+// remplissage. Sinon (ATR, swing, fixe, zone Detector) la DISTANCE est gardée
+// et le stop est recalé sur le vrai prix d'entrée (comportement V3).
 f_stop(int dir, float e) =>
     float s = na
-    if x_stopMode == "Dernier swing + marge"
+    string nm = ""
+    bool ab = false
+    if x_stopMode == "Niveau de protection"
+        [ls, ln] = f_sl_niveau(dir, e)
+        if not na(ls)
+            s := ls
+            nm := ln
+            ab := true
+    else if x_stopMode == "Dernier swing + marge"
         sw = dir > 0 ? r_swLow : r_swHigh
         if not na(sw) and (dir > 0 ? sw < e : sw > e)
             s := dir > 0 ? sw - x_swMarge * tick : sw + x_swMarge * tick
+            nm := "dernier swing"
     else if x_stopMode == "Fixe (points)" and x_fixPts > 0
         s := e - dir * x_fixPts
+        nm := "fixe " + str.tostring(x_fixPts) + " pts"
     else if x_stopMode == "Zone Detector la plus proche"
         // long : zone haussière dont le bas est sous le prix, la plus haute ;
         // short : zone baissière dont le haut est au-dessus du prix, la plus basse.
@@ -1083,10 +1465,12 @@ f_stop(int dir, float e) =>
             d0 = math.abs(e - cand)
             if d0 >= x_detMin * r_atr and d0 <= x_detMax * r_atr
                 s := cand
-    // ATR × k, et secours si aucun swing utilisable
+                nm := "zone Detector"
+    // ATR × k, et secours si aucun niveau / swing utilisable
     if na(s)
         s := e - dir * x_atrK * r_atr
-    s
+        nm := "ATR × " + str.tostring(x_atrK) + (x_stopMode == "ATR × k" ? "" : " (repli : aucun niveau)")
+    [s, nm, ab]
 
 f_qty(float dist) =>
     int q = q_fixe
@@ -1094,43 +1478,183 @@ f_qty(float dist) =>
         q := dist > 0 ? math.min(int(math.floor(q_risque / (dist * syminfo.pointvalue))), q_max) : 0
     q
 
-var int   tr_dir   = 0      // 1 long, -1 short, 0 rien
-var bool  tr_fixe  = false  // prix d'entrée réel connu ?
-var float tr_entry = na
-var float tr_stop  = na
-var float tr_tp    = na
-var float tr_dist  = na     // distance initiale du stop
-var float tr_risk  = na     // 1 R en points
-var float tr_best  = na     // meilleur prix atteint depuis l'entrée
-var bool  tr_be    = false
+// État du trade (le testeur ne garde ni le stop ni l'objectif : on les mémorise).
+var int    tr_dir    = 0      // 1 long, -1 short, 0 rien
+var bool   tr_fixe   = false  // prix d'entrée réel connu ?
+var float  tr_entry  = na
+var float  tr_stop   = na     // stop en cours (break-even, suiveur)
+var float  tr_stop0  = na     // stop initial
+var float  tr_tp     = na     // objectif (1er niveau si sortie partielle)
+var float  tr_tp2    = na     // 2e objectif (sortie partielle)
+var float  tr_tpRk   = na     // objectif en R (multiple), na si objectif sur niveau
+var float  tr_dist   = na     // distance initiale du stop
+var float  tr_risk   = na     // 1 R en points
+var float  tr_best   = na     // meilleur prix atteint depuis l'entrée
+var bool   tr_be     = false
+var bool   tr_slAbs  = false  // stop sur un niveau (prix absolu) ?
+var bool   tr_part   = false  // sortie partielle prévue ?
+var bool   tr_p1     = false  // 1re partie sortie ?
+var int    tr_q      = 0
+var int    tr_q1     = 0
+var int    tr_ct0    = 0      // strategy.closedtrades à l'envoi de l'entrée
+var int    tr_bar0   = na
+var bool   tr_dess   = false  // le trade en cours a ses dessins ?
+var string tr_slNom  = ""
+var string tr_tpNom  = ""
+var string tr_tp2Nom = ""
+var int    nb_saute  = 0      // trades non pris faute de niveau au bon ratio
+
+// Dessins : 3 boîtes, 1 ligne, 4 étiquettes par trade (na si inutile).
+var array<box>   dr_boxes  = array.new_box()
+var array<line>  dr_lines  = array.new_line()
+var array<label> dr_labels = array.new_label()
+var box   dr_bR  = na
+var box   dr_bT  = na
+var box   dr_bT2 = na
+var line  dr_lE  = na
+var label dr_lbE = na
+var label dr_lbS = na
+var label dr_lbT = na
+var label dr_lbX = na
+c_risk = #F44336
+c_gain = #4CAF50
+c_txt  = #787B86
+c_none = color.new(color.white, 100)
+
+f_px(float v) => str.tostring(v, format.mintick)
+f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
 
 pos = strategy.position_size
+nCT = strategy.closedtrades
 bool sortie_marq = false
+bool tr_neuf = false
+// ordres de sortie à (r)envoyer en fin de bougie
+bool  ex_go   = false
+float ex_stop = na
+float ex_loss = na
+float ex_tp1  = na
+float ex_prof = na
 
-// 1. Position fermée (stop, objectif ou sortie) : on oublie l'état.
-if pos == 0
-    tr_dir := 0
+// 1. Remplissage de l'entrée envoyée à la bougie précédente (y compris un trade
+//    ouvert ET fermé sur la même bougie).
+if tr_dir != 0 and not tr_fixe
+    if pos != 0 or nCT > tr_ct0
+        ouvert = pos != 0
+        tr_entry := ouvert ? strategy.position_avg_price : strategy.closedtrades.entry_price(tr_ct0)
+        tr_bar0  := ouvert ? strategy.opentrades.entry_bar_index(0) : strategy.closedtrades.entry_bar_index(tr_ct0)
+        // Recalage sur le vrai prix d'entrée : stop sur niveau gardé tel quel,
+        // sinon distance du stop conservée ; objectif en R recalculé.
+        if not tr_slAbs
+            tr_stop := tr_entry - tr_dir * tr_dist
+        tr_risk  := (tr_entry - tr_stop) * tr_dir
+        if not na(tr_tpRk)
+            tr_tp := tr_risk > 0 ? tr_entry + tr_dir * tr_tpRk * tr_risk : na
+        tr_stop0 := tr_stop
+        tr_best  := tr_dir > 0 ? r_h : r_l
+        tr_be    := false
+        tr_p1    := false
+        tr_fixe  := true
+        tr_neuf  := true
+        if a_trades
+            tr_dess := true
+            dr_bR := box.new(tr_bar0, math.max(tr_entry, tr_stop0), bar_index, math.min(tr_entry, tr_stop0), border_color=color.new(c_risk, 55), bgcolor=color.new(c_risk, 82))
+            dr_bT  := na
+            dr_bT2 := na
+            dr_lbT := na
+            if not na(tr_tp)
+                dr_bT := box.new(tr_bar0, math.max(tr_entry, tr_tp), bar_index, math.min(tr_entry, tr_tp), border_color=color.new(c_gain, 55), bgcolor=color.new(c_gain, 82))
+                if not na(tr_tp2)
+                    dr_bT2 := box.new(tr_bar0, math.max(tr_tp, tr_tp2), bar_index, math.min(tr_tp, tr_tp2), border_color=color.new(c_gain, 70), bgcolor=color.new(c_gain, 91))
+            dr_lE := line.new(tr_bar0, tr_entry, bar_index, tr_entry, color=c_txt, style=line.style_dotted, width=1)
+            dr_lbE := na
+            dr_lbS := na
+            dr_lbX := na
+            if a_lbl
+                dr_lbE := label.new(tr_bar0, tr_entry, (tr_dir > 0 ? "LONG" : "SHORT") + " ×" + str.tostring(tr_q) + " @ " + f_px(tr_entry), style=label.style_label_right, color=c_none, textcolor=c_txt, size=size.tiny)
+                dr_lbS := label.new(tr_bar0, tr_stop0, "SL : " + tr_slNom + " (" + f_px(tr_stop0) + ")", style=label.style_label_right, color=c_none, textcolor=color.new(c_risk, 15), size=size.tiny)
+                if not na(tr_tp)
+                    rTp = tr_risk > 0 ? (tr_tp - tr_entry) * tr_dir / tr_risk : na
+                    tTp = (tr_part ? "TP1 (" + str.tostring(math.round(100.0 * tr_q1 / tr_q)) + " %) : " : "TP : ") + tr_tpNom + " (" + f_px(tr_tp) + ")" + (na(rTp) ? "" : " · " + str.tostring(rTp, "0.0") + " R")
+                    if tr_part
+                        tTp += na(tr_tp2) ? "\nreste : au stop" : "\nTP2 : " + tr_tp2Nom + " (" + f_px(tr_tp2) + ")"
+                    dr_lbT := label.new(tr_bar0, tr_tp, tTp, style=label.style_label_right, color=c_none, textcolor=color.new(c_gain, 10), size=size.tiny)
+                dr_lbX := label.new(bar_index, tr_entry, "en cours", style=label.style_label_left, color=c_none, textcolor=c_txt, size=size.tiny)
+            array.push(dr_boxes, dr_bR), array.push(dr_boxes, dr_bT), array.push(dr_boxes, dr_bT2)
+            array.push(dr_lines, dr_lE)
+            array.push(dr_labels, dr_lbE), array.push(dr_labels, dr_lbS), array.push(dr_labels, dr_lbT), array.push(dr_labels, dr_lbX)
+            // on ne garde que les N derniers trades
+            while array.size(dr_lines) > a_trN
+                for k = 1 to 3
+                    box.delete(array.shift(dr_boxes))
+                line.delete(array.shift(dr_lines))
+                for k = 1 to 4
+                    label.delete(array.shift(dr_labels))
+    else
+        tr_dir := 0   // entrée non exécutée (ne devrait pas arriver)
+
+// 2. Trade terminé (stop, objectif ou sortie) : bilan, dessin définitif, oubli.
+if tr_dir != 0 and tr_fixe and pos == 0
+    float pnl = 0.0
+    float rq  = 0.0
+    int   xb  = bar_index
+    float xp  = r_c
+    string xc = ""
+    if nCT > tr_ct0
+        for i = tr_ct0 to nCT - 1
+            pnl += strategy.closedtrades.profit(i)
+            rq  += (strategy.closedtrades.exit_price(i) - tr_entry) * tr_dir * math.abs(strategy.closedtrades.size(i))
+            xb  := strategy.closedtrades.exit_bar_index(i)
+            xp  := strategy.closedtrades.exit_price(i)
+            cm   = strategy.closedtrades.exit_comment(i)
+            xc  := na(cm) ? xc : cm
+    rr = tr_risk > 0 and tr_q > 0 ? rq / (tr_risk * tr_q) : na
+    if tr_dess
+        box.set_right(dr_bR, xb)
+        if not na(dr_bT)
+            box.set_right(dr_bT, xb)
+        if not na(dr_bT2)
+            box.set_right(dr_bT2, xb)
+        line.set_x2(dr_lE, xb)
+        if not na(dr_lbX)
+            label.set_xy(dr_lbX, xb, xp)
+            label.set_text(dr_lbX, (na(rr) ? "" : f_sgn(rr, "0.00") + " R · ") + f_sgn(pnl, "#,##0") + " $" + (xc != "" ? " · " + xc : ""))
+            label.set_textcolor(dr_lbX, pnl >= 0 ? c_gain : c_risk)
+        if not na(dr_lbS) and tr_stop != tr_stop0
+            label.set_text(dr_lbS, "SL : " + tr_slNom + " (" + f_px(tr_stop0) + ")\nstop final " + f_px(tr_stop))
+    tr_dir  := 0
     tr_fixe := false
+    tr_dess := false
 
-// 2. Position ouverte : gestion du stop, de l'objectif et des sorties.
+// 3. Position ouverte : gestion du stop, de l'objectif et des sorties.
 if pos != 0
     if tr_dir == 0
         // sécurité : position sans état (ne devrait pas arriver)
-        tr_dir  := pos > 0 ? 1 : -1
-        tr_dist := x_atrK * r_atr
-        tr_stop := strategy.position_avg_price - tr_dir * tr_dist
-    if not tr_fixe
-        // Première clôture après le remplissage : on recale sur le VRAI prix d'entrée.
+        tr_dir   := pos > 0 ? 1 : -1
         tr_entry := strategy.position_avg_price
-        // Recalage sur le vrai prix d'entrée : la distance du stop est conservée.
-        tr_stop := tr_entry - tr_dir * tr_dist
-        tr_risk := (tr_entry - tr_stop) * tr_dir
-        tr_tp   := x_tpOn and tr_risk > 0 ? tr_entry + tr_dir * x_tpR * tr_risk : na
-        tr_best := tr_dir > 0 ? r_h : r_l
-        tr_be   := false
-        tr_fixe := true
-    else
+        tr_dist  := x_atrK * r_atr
+        tr_stop  := tr_entry - tr_dir * tr_dist
+        tr_stop0 := tr_stop
+        tr_risk  := tr_dist
+        tr_tp    := na
+        tr_tp2   := na
+        tr_tpRk  := na
+        tr_best  := tr_dir > 0 ? r_h : r_l
+        tr_be    := false
+        tr_part  := false
+        tr_q     := int(math.abs(pos))
+        tr_ct0   := nCT
+        tr_slNom := "ATR × " + str.tostring(x_atrK)
+        tr_fixe  := true
+        tr_dess  := false
+        tr_neuf  := true
+    if not tr_neuf
         tr_best := tr_dir > 0 ? math.max(tr_best, r_h) : math.min(tr_best, r_l)
+    // 1re partie sortie (objectif 1 touché) : stop au prix d'entrée si demandé
+    if tr_part and not tr_p1 and math.abs(pos) < tr_q
+        tr_p1 := true
+        if x_partBE
+            be1 = tr_entry + tr_dir * x_beTk * tick
+            tr_stop := tr_dir > 0 ? math.max(tr_stop, be1) : math.min(tr_stop, be1)
     gainR = tr_risk > 0 ? (tr_best - tr_entry) * tr_dir / tr_risk : 0.0
     // break-even
     if x_beOn and not tr_be and tr_risk > 0 and gainR >= x_beR
@@ -1146,11 +1670,10 @@ if pos != 0
             cand := tr_dir > 0 ? r_pl - x_swMarge * tick : r_ph + x_swMarge * tick
         if not na(cand)
             tr_stop := tr_dir > 0 ? math.max(tr_stop, cand) : math.min(tr_stop, cand)
-    // ordres de sortie (mis à jour à chaque bougie)
-    if tr_dir > 0
-        strategy.exit("XL", "L", stop=tr_stop, limit=tr_tp, comment_loss="Stop L", comment_profit="Obj L")
-    else
-        strategy.exit("XS", "S", stop=tr_stop, limit=tr_tp, comment_loss="Stop S", comment_profit="Obj S")
+    // ordres de sortie (mis à jour à chaque bougie, envoyés plus bas)
+    ex_go   := true
+    ex_stop := tr_stop
+    ex_tp1  := tr_tp
     // sorties sur signal (exécutées à l'ouverture suivante)
     oppL = (x_oppArr and (sg_short or sg_shortM)) or (x_oppHei and hei_bear_flip)
     oppS = (x_oppArr and (sg_long  or sg_longM))  or (x_oppHei and hei_bull_flip)
@@ -1166,54 +1689,117 @@ if pos != 0
     else if tr_dir < 0 and oppS
         strategy.close("S", comment="Signal opposé")
         sortie_marq := true
+    // dessin du trade en cours, prolongé jusqu'à la bougie courante
+    if tr_dess
+        box.set_right(dr_bR, bar_index)
+        if not na(dr_bT)
+            box.set_right(dr_bT, bar_index)
+        if not na(dr_bT2)
+            box.set_right(dr_bT2, bar_index)
+        line.set_x2(dr_lE, bar_index)
+        if not na(dr_lbX)
+            oR = tr_risk > 0 ? (r_c - tr_entry) * tr_dir / tr_risk : na
+            label.set_xy(dr_lbX, bar_index, r_c)
+            label.set_text(dr_lbX, "en cours " + (na(oR) ? "" : f_sgn(oR, "0.00") + " R · ") + f_sgn(strategy.openprofit, "#,##0") + " $" + (tr_stop != tr_stop0 ? "\nstop " + f_px(tr_stop) : ""))
+            label.set_textcolor(dr_lbX, strategy.openprofit >= 0 ? c_gain : c_risk)
 
-// 3. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
+// 4. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
 bool entree_L = false
 bool entree_S = false
-if pos == 0 and (go_long or go_short)
+if pos == 0 and tr_dir == 0 and (go_long or go_short)
     d  = go_long ? 1 : -1
     e0 = r_c
-    s0 = f_stop(d, e0)
+    if nv_stopNv or nv_tpNv
+        f_nv_build()
+    [s0, sNom, sAbs] = f_stop(d, e0)
     dist = math.abs(e0 - s0)
+    [t1, n1, t2, n2] = f_tp_niveau(d, e0, dist)
+    float tp0  = na
+    string tpN = "aucun"
+    float tpRk = na
+    bool saute = false
+    if x_tpMode == "En R"
+        tpRk := x_tpR
+    else if x_tpMode == "Prochain niveau"
+        if not na(t1)
+            tp0 := t1
+            tpN := n1
+        else if x_tpSans == "Objectif en R"
+            tpRk := x_tpR
+        else if x_tpSans == "Ne pas prendre le trade"
+            saute := true
+    if not na(tpRk)
+        tp0 := e0 + d * tpRk * dist
+        tpN := str.tostring(tpRk) + " R" + (x_tpMode == "Prochain niveau" ? " (repli : aucun niveau à " + str.tostring(x_rrMin) + " R)" : "")
     q  = f_qty(dist)
-    if q >= 1 and dist > 0
-        tr_dir   := d
-        tr_fixe  := false
-        tr_entry := e0
-        tr_stop  := s0
-        tr_dist  := dist
-        tr_risk  := dist
-        tr_tp    := x_tpOn ? e0 + d * x_tpR * dist : na
-        tr_best  := e0
-        tr_be    := false
-        nb_jour  += 1
-        // Stop et objectif en TICKS relatifs au prix réellement obtenu : sur la
-        // bougie de remplissage, ils ne dépendent pas d'une estimation du prix
-        // d'entrée. Dès la clôture suivante, ils sont recalés en prix absolus.
-        lossTk = math.max(1, math.round(dist / tick))
-        profTk = x_tpOn ? math.max(1, math.round(x_tpR * dist / tick)) : na
+    part = x_part and x_tpMode == "Prochain niveau" and na(tpRk) and not na(tp0) and q >= 2
+    q1 = part ? math.max(1, math.min(q - 1, int(math.round(q * x_partPct / 100.0)))) : q
+    if saute
+        nb_saute += 1
+    else if q >= 1 and dist > 0
+        tr_dir    := d
+        tr_fixe   := false
+        tr_entry  := e0
+        tr_stop   := s0
+        tr_stop0  := s0
+        tr_slAbs  := sAbs
+        tr_slNom  := sNom
+        tr_dist   := dist
+        tr_risk   := dist
+        tr_tp     := tp0
+        tr_tpRk   := tpRk
+        tr_tpNom  := tpN
+        tr_part   := part
+        tr_p1     := false
+        tr_tp2    := part and x_partRest == "2e niveau" ? t2 : na
+        tr_tp2Nom := n2
+        tr_q      := q
+        tr_q1     := q1
+        tr_ct0    := nCT
+        tr_best   := e0
+        tr_be     := false
+        tr_dess   := false
+        nb_jour   += 1
         if d > 0
             strategy.entry("L", strategy.long, qty=q, comment="L " + str.tostring(q))
-            strategy.exit("XL", "L", loss=lossTk, profit=profTk, comment_loss="Stop L", comment_profit="Obj L")
             entree_L := true
         else
             strategy.entry("S", strategy.short, qty=q, comment="S " + str.tostring(q))
-            strategy.exit("XS", "S", loss=lossTk, profit=profTk, comment_loss="Stop S", comment_profit="Obj S")
             entree_S := true
+        // Bougie de remplissage : stop / objectif « en distance » posés en TICKS
+        // relatifs au prix réellement obtenu (V3) ; stop / objectif sur niveau
+        // posés au prix du niveau. Dès la clôture suivante : prix absolus.
+        ex_go   := true
+        ex_stop := sAbs ? s0 : na
+        ex_loss := sAbs ? na : math.max(1, math.round(dist / tick))
+        ex_tp1  := na(tpRk) ? tp0 : na
+        ex_prof := na(tpRk) ? na : math.max(1, math.round(tpRk * dist / tick))
+
+// 5. Envoi des ordres de sortie (bracket stop + objectif ; 2 brackets si sortie partielle).
+if ex_go
+    lg = tr_dir > 0
+    fe = lg ? "L" : "S"
+    cl = lg ? "Stop L" : "Stop S"
+    cp = lg ? "Obj L" : "Obj S"
+    if tr_part
+        if not tr_p1
+            strategy.exit(lg ? "XL1" : "XS1", fe, qty=tr_q1, stop=ex_stop, loss=ex_loss, limit=ex_tp1, profit=ex_prof, comment_loss=cl, comment_profit=cp + "1")
+        strategy.exit(lg ? "XL2" : "XS2", fe, qty=tr_q - tr_q1, stop=ex_stop, loss=ex_loss, limit=tr_tp2, comment_loss=cl, comment_profit=cp + "2")
+    else
+        strategy.exit(lg ? "XL" : "XS", fe, stop=ex_stop, loss=ex_loss, limit=ex_tp1, profit=ex_prof, comment_loss=cl, comment_profit=cp)
 
 // ══════════════════════════════════════════════════════════════
 // AFFICHAGE
 // ══════════════════════════════════════════════════════════════
-// Le testeur marque déjà chaque remplissage (entrée, stop, objectif, sortie).
-// En plus : la bougie du signal retenu, et la bougie qui déclenche une sortie.
+// Le testeur marque déjà chaque remplissage. En plus : les trades dessinés
+// (boîtes, voir plus haut), la bougie du signal retenu, la bougie qui déclenche
+// une sortie, et la ligne en escalier du stop en cours.
 plotshape(entree_L, "Entrée long (signal)",  style=shape.triangleup,   location=location.belowbar, color=color.new(#00C853, 0), size=size.small, text="L", textcolor=color.new(#00C853, 0))
 plotshape(entree_S, "Entrée short (signal)", style=shape.triangledown, location=location.abovebar, color=color.new(#D50000, 0), size=size.small, text="S", textcolor=color.new(#D50000, 0))
 plotshape(sortie_marq, "Sortie sur signal", style=shape.xcross, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny)
 plotshape(a_sig and sig_long  and not entree_L, "Signal long brut",  style=shape.circle, location=location.belowbar, color=color.new(#00C853, 60), size=size.tiny)
 plotshape(a_sig and sig_short and not entree_S, "Signal short brut", style=shape.circle, location=location.abovebar, color=color.new(#D50000, 60), size=size.tiny)
-plot(a_niv and pos != 0 ? tr_stop : na, "Stop", color=color.new(color.red, 0), style=plot.style_linebr, linewidth=1)
-plot(a_niv and pos != 0 ? tr_tp   : na, "Objectif", color=color.new(color.green, 0), style=plot.style_linebr, linewidth=1)
-plot(a_niv and pos != 0 ? tr_entry : na, "Entrée", color=color.new(color.gray, 0), style=plot.style_linebr, linewidth=1)
+plot(a_stopLn and pos != 0 and tr_fixe ? tr_stop : na, "Stop en cours", color=color.new(c_risk, 0), style=plot.style_steplinebr, linewidth=2)
 
 // Avertissement : graphique pas en Heiken Ashi
 if barstate.islast and not chart.is_heikinashi
@@ -1228,7 +1814,7 @@ f_tb_pos(p) =>
     p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
      p == "Bottom Left" ? position.bottom_left : p == "Middle Right" ? position.middle_right : position.bottom_right
 
-var table tb = table.new(f_tb_pos(a_pos), 2, 7, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
+var table tb = table.new(f_tb_pos(a_pos), 2, 10, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
 f_tb(r, k, v, col) =>
     table.cell(tb, 0, r, k, text_color=color.rgb(190, 190, 205), text_size=size.small, text_halign=text.align_left)
     table.cell(tb, 1, r, v, text_color=col, text_size=size.small, text_halign=text.align_right)
@@ -1239,10 +1825,14 @@ if a_tbl and barstate.islast
     pf   = strategy.grossloss > 0 ? strategy.grossprofit / strategy.grossloss : na
     pnl  = strategy.netprofit
     dd   = strategy.max_drawdown
+    enPos = pos != 0 and tr_fixe
     f_tb(0, "Trades", str.tostring(nT), color.white)
     f_tb(1, "% gagnants", str.tostring(win, "0.0") + " %", win >= 50 ? color.rgb(56, 149, 255) : color.rgb(255, 82, 99))
     f_tb(2, "Profit factor", na(pf) ? "—" : str.tostring(pf, "0.00"), na(pf) ? color.white : pf >= 1 ? color.rgb(56, 149, 255) : color.rgb(255, 82, 99))
     f_tb(3, "P&L net", str.tostring(pnl, "#,##0") + " " + strategy.account_currency, pnl >= 0 ? color.rgb(56, 149, 255) : color.rgb(255, 82, 99))
     f_tb(4, "Drawdown max", str.tostring(dd, "#,##0") + " " + strategy.account_currency, color.rgb(245, 166, 35))
     f_tb(5, "Position", pos > 0 ? "LONG " + str.tostring(pos) : pos < 0 ? "SHORT " + str.tostring(-pos) : "à plat", color.white)
-    f_tb(6, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
+    f_tb(6, "Stop", enPos ? f_px(tr_stop) + (tr_stop != tr_stop0 ? " (déplacé)" : " · " + tr_slNom) : "—", color.rgb(255, 82, 99))
+    f_tb(7, "Objectif", enPos and not na(tr_tp) ? f_px(tr_tp) + " · " + tr_tpNom : "—", color.rgb(76, 175, 80))
+    f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
+    f_tb(9, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
