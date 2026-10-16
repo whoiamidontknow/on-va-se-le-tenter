@@ -138,6 +138,12 @@
 //                   préréglage (fonction f_pr_def), A / B / C inchangés.
 //                   A, B et C : mêmes valeurs et même logique d'ordres qu'en
 //                   V3 (mêmes trades attendus ; à confirmer au testeur).
+//   V5  2026-10-16  19 préréglages ajoutés (tools/strategie/preregles/) :
+//                   A sans nuit, A référence, stops fixes 1 à 3 ATR et en
+//                   points, stop et objectif sur pivots, Detector, Monday,
+//                   sessions. Hypothèses à vérifier au testeur sur 3 ans :
+//                   sur ~2 mois, aucun niveau ne retient le prix mieux
+//                   qu'un niveau placebo.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -160,7 +166,7 @@ grp_e = "=== 1. ENTRÉES ==="
 // Pour AJOUTER un préréglage : son nom ici (littéral, cf. piège Pine v6) ET une
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 preset    = input.string("C — Cassure de trendline", "Préréglage", group=grp_e,
-     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "Personnalisé"],
+     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "01 A jour 08-23h · SL 2 ATR · Heishi", "02 A réf · SL 2 ATR · Heishi", "03 A · SL pivots HA 1-3 ATR", "04 A · SL 2,5 ATR · Heishi", "05 A · SL 3 ATR · Heishi", "06 A · SL+TP pivots HA · Heishi", "07 A · SL 1,5 ATR · Heishi", "08 C · SL 2 ATR · TP pivots + Heishi", "09 C réf · SL 1,5 ATR · 2R", "10 A · SL fixe 80 pts (NQ)", "11 A · SL fixe 13 pts (ES)", "12 A · SL 1 ATR · Heishi", "13 A · SL niveaux (défaut)", "14 A · SL Detector d'abord", "15 A · SL Monday/sessions d'abord", "16 A · TP pivots HA + Heishi", "17 A · TP pivots+Detector + Heishi", "18 A · TP fixe 3R", "19 A · TP pivots ≥2R sinon rien", "Personnalisé"],
      tooltip="Un préréglage IMPOSE ses valeurs : les réglages qu'il ne cite pas sont coupés (entrées, filtres, sorties) ou gardent ta valeur (paramètres numériques). C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur. B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur. Personnalisé : tous tes réglages.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
@@ -308,6 +314,27 @@ f_pr_def(string nom) =>
     nom == "C — Cassure de trendline"         ? "tl=1;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;atrK=1.5;tp=En R;tpR=2" :
      nom == "A — Climax BUY dans la tendance" ? "sens=Long seulement;clx=1;tr=1;atrK=2;oppHei=1" :
      nom == "B — Signator Fort + TREND"       ? "sig=1;sigNiv=Fort seulement;tr=1;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;atrK=1;oppHei=1" :
+     // 19 préréglages du 16/10 (tools/strategie/preregles/PREREGLAGES.md) :
+     // hypothèses à vérifier au testeur sur 3 ans, du plus prometteur au moins.
+     nom == "01 A jour 08-23h · SL 2 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=1;hr1On=1;hr1=0800-2300;hr2On=0;stop=ATR × k;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "02 A réf · SL 2 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "03 A · SL pivots HA 1-3 ATR" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Niveau de protection;prio=annuel > mensuel > weekly;slA=1;slM=1;slW=1;slD=0;slMo=0;slSe=0;slRo=0;slMin=1;slMax=3;slMarge=0.1;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "04 A · SL 2,5 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2.5;tp=Aucun;oppHei=1" :
+     nom == "05 A · SL 3 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=3;tp=Aucun;oppHei=1" :
+     nom == "06 A · SL+TP pivots HA · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Niveau de protection;prio=annuel > mensuel > weekly;slA=1;slM=1;slW=1;slD=0;slMo=0;slSe=0;slRo=0;slMin=1;slMax=3;slMarge=0.1;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
+     nom == "07 A · SL 1,5 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=1.5;tp=Aucun;oppHei=1" :
+     nom == "08 C · SL 2 ATR · TP pivots + Heishi" ? "sens=Les deux;clx=0;sig=0;hei=0;tl=1;lvl=0;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
+     nom == "09 C réf · SL 1,5 ATR · 2R" ? "sens=Les deux;clx=0;sig=0;hei=0;tl=1;lvl=0;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=1;hr1On=1;hr1=1430-0800;hr2On=0;stop=ATR × k;atrK=1.5;tp=En R;tpR=2;oppHei=0" :
+     nom == "10 A · SL fixe 80 pts (NQ)" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Fixe (points);fixPts=80;tp=Aucun;oppHei=1" :
+     nom == "11 A · SL fixe 13 pts (ES)" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Fixe (points);fixPts=13;tp=Aucun;oppHei=1" :
+     nom == "12 A · SL 1 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=1;tp=Aucun;oppHei=1" :
+     nom == "13 A · SL niveaux (défaut)" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Niveau de protection;prio=annuel > mensuel > detector > weekly > monday > session > rond;slA=1;slM=1;slW=1;slD=1;slMo=1;slSe=1;slRo=1;slMin=0.5;slMax=3.5;slMarge=0.1;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "14 A · SL Detector d'abord" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Niveau de protection;prio=detector > annuel > mensuel > weekly > monday > session;slA=1;slM=1;slW=1;slD=1;slMo=1;slSe=1;slRo=0;slMin=1;slMax=3;slMarge=0.1;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "15 A · SL Monday/sessions d'abord" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=Niveau de protection;prio=monday > session > annuel > mensuel > weekly;slA=1;slM=1;slW=1;slD=0;slMo=1;slSe=1;slRo=0;slMin=1;slMax=3;slMarge=0.1;atrK=2;tp=Aucun;oppHei=1" :
+     nom == "16 A · TP pivots HA + Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
+     nom == "17 A · TP pivots+Detector + Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=1;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
+     nom == "18 A · TP fixe 3R" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=En R;tpR=3;oppHei=0" :
+     nom == "19 A · TP pivots ≥2R sinon rien" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=2;tpMarge=0.1;tpSans=Ne pas prendre le trade;oppHei=0" :
      ""
 
 pP     = preset == "Personnalisé"

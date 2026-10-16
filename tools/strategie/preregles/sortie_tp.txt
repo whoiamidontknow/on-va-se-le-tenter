@@ -1,0 +1,184 @@
+===== ('Aleatoire', 'ATR2.0')
+                                                    var    n  saute  stop      R    usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES  usd_NQ
+                                            Heishinator 1003  0.000 0.215 -0.032     59 1.448   0.000  0.000    0.000       0.000       0.000     0.000    0.000      0.000         0.000         0.000   -8.699     315
+                                                Fixe 1R 1003  0.000 0.519 -0.095    -16 0.926  -0.013 -0.255   -0.064      -0.213       0.067    -0.853     -358        -75          -156         2.780   -9.552     -42
+                                                Fixe 2R 1003  0.000 0.675 -0.092    -15 0.949  -0.015 -0.231   -0.060      -0.202       0.063    -0.807     -350        -74          -149        -6.555   -9.507     -35
+                                                Fixe 3R 1003  0.000 0.746 -0.067     21 1.066  -0.016 -0.107   -0.035      -0.165       0.081    -2.106     -175        -38          -103            31      -11     140
+                                              Fixe 1.5R 1003  0.000 0.617 -0.103 -4.142 0.984  -0.033 -0.221   -0.072      -0.216       0.052    -2.045     -295        -63          -141         9.377      -11      21
+             NIV|DET|min2.0|suivant|HA|repli saute|seul  335  0.666 0.722 -0.045   -120 0.809   0.196 -0.337   -0.039      -0.204       0.136        13     -606       -260          -427           -80    0.327    -273
+           NIV|DET|min2.0|suivant|REEL|repli saute|seul  335  0.666 0.722 -0.045   -120 0.809   0.196 -0.337   -0.039      -0.204       0.136        13     -606       -260          -427           -80    0.327    -273
+        NIV|TOUS|min2.0|bloquant|HA|repli saute|+Heishi   57  0.943 0.333 -0.048 -3.784 0.894   0.184    NaN    0.184       0.026       0.491        16      NaN         16         1.762            43   -3.784     NaN
+       NIV|TOUS|min2.0|bloquant|HA|repli Heishi|+Heishi   57  0.943 0.333 -0.048 -3.784 0.894   0.184    NaN    0.184       0.026       0.491        16      NaN         16         1.762            43   -3.784     NaN
+       NIV|TOUS|min2.0|bloquant|HA|repli Fixe2R|+Heishi   57  0.943 0.333 -0.048 -3.784 0.894   0.184    NaN    0.184       0.026       0.491        16      NaN         16         1.762            43   -3.784     NaN
+   NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli saute|seul   85  0.915 0.694 -0.028    -40 0.861   0.177    NaN    0.150      -0.188       0.472     8.947      NaN         47          -176           320    2.539     NaN
+  NIV|PIV+MO+SES|min2.0|bloquant|HA|repli saute|+Heishi  103  0.897 0.272  0.067     81 1.545   0.163    NaN    0.132      -0.054       0.348        14      NaN         31          -134           214   -3.130     NaN
+  NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli Heishi|seul   99  0.901 0.657  0.099    -25 0.902   0.146    NaN    0.129      -0.151       0.447     7.361      NaN         41          -139           269       14     NaN
+ NIV|PIV+MO+SES|min2.0|bloquant|HA|repli Heishi|+Heishi  119  0.881 0.303  0.143     76 1.567   0.136    NaN    0.114      -0.054       0.313        12      NaN         26          -120           171    5.360     NaN
+      NIV|TOUS|min2.0|bloquant|REEL|repli saute|+Heishi   33  0.967 0.364 -0.091 -3.867 0.884   0.131    NaN    0.131       0.000       0.295     8.045      NaN      8.045         0.000            18   -3.867     NaN
+     NIV|TOUS|min2.0|bloquant|REEL|repli Heishi|+Heishi   33  0.967 0.364 -0.091 -3.867 0.884   0.131    NaN    0.131       0.000       0.295     8.045      NaN      8.045         0.000            18   -3.867     NaN
+     NIV|TOUS|min2.0|bloquant|REEL|repli Fixe2R|+Heishi   33  0.967 0.364 -0.091 -3.867 0.884   0.131    NaN    0.131       0.000       0.295     8.045      NaN      8.045         0.000            18   -3.867     NaN
+            NIV|PIV|min2.0|bloquant|HA|repli saute|seul  543  0.459 0.794 -0.025     33 1.096   0.126  0.061    0.111      -0.108       0.369     4.332      126         32           -83           195      -13     187
+NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli saute|+Heishi   85  0.915 0.318 -0.059    -33 0.808   0.107    NaN    0.120      -0.023       0.299     7.940      NaN         54        -1.193           158    1.532     NaN
+     NIV|PIV+MO+SES|min1.5|bloquant|HA|repli saute|seul  172  0.829 0.686 -0.013  3.465 1.012   0.105 -0.204    0.033      -0.264       0.336     7.885     -181        -36          -201           167   -3.319      26
+
+===== ('Aleatoire', 'NIV PROCHE 1.0-3.0 REEL')
+                                                    var    n  saute  stop      R    usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES  usd_NQ
+                                                Fixe 2R 1003  0.000 0.656 -0.046     34 1.136   0.049 -0.129    0.012      -0.129       0.141     5.302     -179        -33          -107            45   -4.024     180
+                                                Fixe 1R 1003  0.000 0.499 -0.063 -0.066 1.000   0.048 -0.207   -0.005      -0.143       0.118     6.095     -347        -67          -138         5.362   -3.232      12
+                                                Fixe 3R 1003  0.000 0.740 -0.054     38 1.132   0.027 -0.084    0.004      -0.131       0.132     2.094     -149        -29           -96            39   -7.232     210
+                                              Fixe 1.5R 1003  0.000 0.604 -0.082  3.330 1.014   0.026 -0.212   -0.023      -0.161       0.100     3.833     -322        -64          -136         7.373   -5.493      37
+                                            Heishinator 1003  0.000 0.229 -0.058     67 1.556   0.000  0.000    0.000       0.000       0.000     0.000    0.000      0.000         0.000         0.000   -9.327     359
+           NIV|DET|min2.0|suivant|REEL|repli saute|seul  339  0.662 0.711  0.005    -37 0.935   0.307 -0.279    0.042      -0.157       0.253        21     -486       -208          -386           -48    7.349     -90
+             NIV|DET|min2.0|suivant|HA|repli saute|seul  339  0.662 0.711  0.005    -37 0.935   0.307 -0.279    0.042      -0.157       0.253        21     -486       -208          -386           -48    7.349     -90
+   NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli saute|seul  117  0.883 0.744 -0.146   -113 0.580   0.248    NaN    0.131      -0.103       0.385        13      NaN        -71          -166            25   -0.722     NaN
+     NIV|PIV+MO+SES|min2.0|bloquant|HA|repli saute|seul  133  0.867 0.737 -0.020     15 1.060   0.242 -0.025    0.182      -0.081       0.479     8.169      -21      1.564          -140           142      -13     110
+  NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli Heishi|seul  131  0.869 0.733 -0.163   -102 0.585   0.214    NaN    0.117      -0.096       0.348        11      NaN        -63          -151            14   -1.601     NaN
+    NIV|PIV+MO+SES|min2.0|bloquant|HA|repli Heishi|seul  149  0.851 0.732 -0.060     11 1.050   0.210 -0.025    0.162      -0.066       0.422     7.070      -21      1.396          -120           121      -13     110
+           NIV|DET|min1.5|suivant|REEL|repli saute|seul  364  0.637 0.676 -0.049    -70 0.869   0.200 -0.290   -0.018      -0.217       0.203        14     -494       -212          -390           -48    3.633    -163
+             NIV|DET|min1.5|suivant|HA|repli saute|seul  364  0.637 0.676 -0.049    -70 0.869   0.200 -0.290   -0.018      -0.217       0.203        14     -494       -212          -390           -48    3.633    -163
+             NIV|DET|min1.0|suivant|HA|repli saute|seul  376  0.625 0.614 -0.028 -8.018 0.983   0.195 -0.215    0.013      -0.207       0.250        15     -351       -148          -302         0.281    3.585     -23
+           NIV|DET|min1.0|suivant|REEL|repli saute|seul  376  0.625 0.614 -0.028 -8.018 0.983   0.195 -0.215    0.013      -0.207       0.250        15     -351       -148          -302         0.281    3.585     -23
+  NIV|PIV+MO+SES|min2.0|bloquant|HA|repli saute|+Heishi  133  0.867 0.316 -0.013     32 1.221   0.193  0.177    0.189      -0.003       0.406        11       45         19          -124           141   -9.336     176
+NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli saute|+Heishi  117  0.883 0.333 -0.103    -11 0.933   0.171    NaN    0.174       0.045       0.330        10      NaN         32           -22           112   -3.606     NaN
+    NIV|PIV+MO+SES|min2.0|bloquant|HA|repli Fixe2R|seul  149  0.851 0.752 -0.092  8.440 1.037   0.170 -0.025    0.131      -0.100       0.398     3.262      -21     -1.646          -122           118      -17     110
+  NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli Fixe2R|seul  131  0.869 0.756 -0.199   -105 0.574   0.168    NaN    0.081      -0.144       0.314     6.820      NaN        -67          -154            10   -6.001     NaN
+ NIV|PIV+MO+SES|min2.0|bloquant|HA|repli Heishi|+Heishi  149  0.851 0.356 -0.054     27 1.198   0.167  0.177    0.169      -0.008       0.356     9.826       45         17          -113           136      -11     176
+
+===== ('Signaux', 'ATR2.0')
+                                                     var   n  saute  stop      R  usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES  usd_NQ
+                                             Heishinator 589  0.000 0.397  0.171  173 1.630   0.000  0.000    0.000       0.000       0.000     0.000    0.000      0.000         0.000         0.000   -5.883     656
+                                                 Fixe 2R 589  0.000 0.652 -0.005   72 1.208  -0.124 -0.316   -0.176      -0.498       0.088    -1.864     -367       -100          -366           110   -7.747     289
+                                               Fixe 1.5R 589  0.000 0.594 -0.033   39 1.121  -0.141 -0.376   -0.204      -0.570       0.091    -2.413     -490       -134          -430            87   -8.296     166
+                                                 Fixe 3R 589  0.000 0.727  0.033  171 1.457  -0.146 -0.115   -0.137      -0.396       0.078    -4.959    8.930     -1.210          -237           212      -11     665
+                                                 Fixe 1R 589  0.000 0.506 -0.058   28 1.105  -0.155 -0.429   -0.229      -0.643       0.090    -3.377     -528       -145          -477           103   -9.260     127
+             NIV|DET|min1.5|bloquant|HA|repli saute|seul  57  0.904 0.667 -0.049 -340 0.468   0.129    NaN   -0.233      -0.820       0.212        17      NaN       -486         -1083           -11       13     NaN
+           NIV|DET|min1.5|bloquant|REEL|repli saute|seul  57  0.904 0.667 -0.049 -340 0.468   0.129    NaN   -0.233      -0.820       0.212        17      NaN       -486         -1083           -11       13     NaN
+     NIV|PIV+DET|min1.5|bloquant|HA|repli Fixe2R|+Heishi 273  0.537 0.392  0.073  167 2.104   0.030 -0.448   -0.038      -0.233       0.127     4.035     -482        -65          -235            73   -7.061    1211
+ NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli saute|+Heishi  56  0.905 0.286  0.944  506 3.774   0.026    NaN   -0.499      -1.191       0.268     4.652      NaN       -659         -1496           267       53     NaN
+  NIV|PIV+MO+SES|min2.0|bloquant|HA|repli Fixe2R|+Heishi  70  0.882 0.414  0.571  314 1.908   0.025    NaN   -0.180      -0.692       0.346     4.103      NaN       -187          -671           293       14     NaN
+NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli Fixe2R|+Heishi  60  0.899 0.317  0.825  468 3.687   0.024    NaN   -0.465      -1.151       0.265     4.198      NaN       -615         -1410           197       42     NaN
+NIV|PIV+MO+SES|min2.0|bloquant|REEL|repli Heishi|+Heishi  60  0.899 0.317  0.825  468 3.687   0.024    NaN   -0.465      -1.151       0.265     4.198      NaN       -615         -1410           197       42     NaN
+      NIV|PIV+DET|min1.5|bloquant|HA|repli saute|+Heishi 232  0.607 0.401  0.030  192 2.116   0.017 -0.448   -0.061      -0.285       0.115     3.409     -482        -78          -271            82      -14    1211
+     NIV|PIV+DET|min1.5|bloquant|HA|repli Heishi|+Heishi 273  0.537 0.392  0.059  166 2.096   0.014 -0.448   -0.052      -0.231       0.104     2.812     -482        -66          -232            71   -8.284    1211
+          NIV|DET|min1.5|bloquant|REEL|repli Heishi|seul 376  0.362 0.449  0.168  205 1.945   0.013 -0.260   -0.035      -0.118       0.032     1.776     -422        -74          -177         2.788   -9.517    1196
+            NIV|DET|min1.5|bloquant|HA|repli Heishi|seul 376  0.362 0.449  0.168  205 1.945   0.013 -0.260   -0.035      -0.118       0.032     1.776     -422        -74          -177         2.788   -9.517    1196
+    NIV|PIV+DET|min1.5|bloquant|REEL|repli saute|+Heishi 222  0.623 0.374  0.079  179 2.086   0.011 -0.945   -0.187      -0.426       0.008     4.805    -1264       -258          -561           -35   -9.647     903
+   NIV|PIV+DET|min1.5|bloquant|REEL|repli Heishi|+Heishi 243  0.587 0.379  0.082  165 2.066   0.010 -0.945   -0.171      -0.405       0.021     4.293    -1264       -236          -527           -26   -7.301     903
+     NIV|PIV+DET|min2.0|bloquant|HA|repli Fixe2R|+Heishi 234  0.603 0.406  0.091  155 2.067   0.010    NaN   -0.087      -0.300       0.095     2.514      NaN       -110          -281         5.042   -5.283     NaN
+   NIV|PIV+DET|min1.5|bloquant|REEL|repli Fixe2R|+Heishi 243  0.587 0.379  0.078  165 2.066   0.006 -0.945   -0.174      -0.424       0.034     4.032    -1264       -236          -525           -25   -7.562     903
+
+===== ('Signaux', 'NIV PROCHE 1.0-3.0 REEL')
+                                                 var   n  saute  stop      R   usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES  usd_NQ
+                                         Heishinator 589  0.000 0.455  0.145   143 1.529   0.000  0.000    0.000       0.000       0.000     0.000    0.000      0.000         0.000         0.000   -4.265     542
+                                             Fixe 3R 589  0.000 0.722  0.053   129 1.358  -0.112 -0.040   -0.092      -0.334       0.118    -3.406      -45        -15          -192           145   -7.671     497
+                                           Fixe 1.5R 589  0.000 0.598 -0.046 9.081 1.029  -0.162 -0.270   -0.191      -0.545       0.099    -2.157     -491       -134          -379            62   -6.422      51
+                                             Fixe 1R 589  0.000 0.508 -0.063 9.011 1.035  -0.178 -0.292   -0.209      -0.595       0.097    -3.162     -489       -134          -417            82   -7.428      53
+                                             Fixe 2R 589  0.000 0.660 -0.037    56 1.170  -0.186 -0.172   -0.182      -0.484       0.079    -7.147     -304        -87          -301            83      -11     238
+         NIV|DET|min1.5|bloquant|HA|repli saute|seul  68  0.885 0.662  0.040  -168 0.674   0.253 -0.580   -0.127      -0.747       0.371        13     -712       -317          -985           322       17    -388
+       NIV|DET|min1.5|bloquant|REEL|repli saute|seul  68  0.885 0.662  0.040  -168 0.674   0.253 -0.580   -0.127      -0.747       0.371        13     -712       -317          -985           322       17    -388
+  NIV|TOUS|min1.5|bloquant|REEL|repli Fixe2R|+Heishi  51  0.914 0.431  0.013   -17 0.580   0.110    NaN    0.108      -0.238       0.463     5.473      NaN      5.366        -7.583            19   -6.991     NaN
+   NIV|TOUS|min1.5|bloquant|REEL|repli saute|+Heishi  51  0.914 0.431  0.013   -17 0.580   0.110    NaN    0.108      -0.238       0.463     5.473      NaN      5.366        -7.583            19   -6.991     NaN
+  NIV|TOUS|min1.5|bloquant|REEL|repli Heishi|+Heishi  51  0.914 0.431  0.013   -17 0.580   0.110    NaN    0.108      -0.238       0.463     5.473      NaN      5.366        -7.583            19   -6.991     NaN
+         NIV|DET|min1.0|bloquant|HA|repli saute|seul 101  0.829 0.614  0.047  -178 0.664   0.048 -0.333   -0.126      -0.771       0.379    -0.871     -431       -197          -788           413       22    -417
+       NIV|DET|min1.0|bloquant|REEL|repli saute|seul 101  0.829 0.614  0.047  -178 0.664   0.048 -0.333   -0.126      -0.771       0.379    -0.871     -431       -197          -788           413       22    -417
+      NIV|DET|min2.0|bloquant|REEL|repli Heishi|seul 366  0.379 0.481  0.083   159 1.772   0.036 -0.218   -0.009      -0.069       0.054     1.939     -247        -42          -104        -4.124      -10     955
+        NIV|DET|min2.0|bloquant|HA|repli Heishi|seul 366  0.379 0.481  0.083   159 1.772   0.036 -0.218   -0.009      -0.069       0.054     1.939     -247        -42          -104        -4.124      -10     955
+NIV|PIV+DET|min1.5|bloquant|REEL|repli saute|+Heishi 236  0.599 0.449 -0.012   140 1.798   0.033 -0.710   -0.125      -0.320       0.038     5.145    -1034       -215          -463           -22      -13     711
+     NIV|TOUS|min1.5|bloquant|REEL|repli Heishi|seul  51  0.914 0.706 -0.063   -23 0.561   0.032    NaN    0.031      -0.280       0.414    -0.399      NaN     -0.391           -15            17      -13     NaN
+     NIV|TOUS|min1.5|bloquant|REEL|repli Fixe2R|seul  51  0.914 0.706 -0.063   -23 0.561   0.032    NaN    0.031      -0.280       0.414    -0.399      NaN     -0.391           -15            17      -13     NaN
+      NIV|TOUS|min1.5|bloquant|REEL|repli saute|seul  51  0.914 0.706 -0.063   -23 0.561   0.032    NaN    0.031      -0.280       0.414    -0.399      NaN     -0.391           -15            17      -13     NaN
+      NIV|DET|min1.5|bloquant|REEL|repli Heishi|seul 387  0.343 0.478  0.101   173 1.806   0.030 -0.246   -0.022      -0.122       0.071     1.548     -302        -56          -168            52   -8.686     952
+        NIV|DET|min1.5|bloquant|HA|repli Heishi|seul 387  0.343 0.478  0.101   173 1.806   0.030 -0.246   -0.022      -0.122       0.071     1.548     -302        -56          -168            52   -8.686     952
+
+===== ('Preset A', 'ATR2.0')
+                                                  var  n  saute  stop     R  usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES
+                                          Heishinator 65  0.000 0.369 0.901  184 1.415   0.000    NaN    0.000       0.000       0.000     0.000      NaN      0.000         0.000         0.000       76
+                                              Fixe 3R 65  0.000 0.569 0.686  445 1.808  -0.678    NaN   -0.215      -0.987       0.492       -33      NaN        261          -246           904       43
+                                              Fixe 2R 65  0.000 0.554 0.302  115 1.210  -1.067    NaN   -0.600      -1.438       0.233       -56      NaN        -69          -589           488       20
+                                              Fixe 1R 65  0.000 0.338 0.286  265 1.863  -1.289    NaN   -0.615      -1.827       0.674       -66      NaN         81          -818           766    9.417
+                                            Fixe 1.5R 65  0.000 0.477 0.271  234 1.537  -1.317    NaN   -0.631      -1.675       0.394       -71      NaN         49          -603           686    4.970
+NIV|PIV+MO+SES|min1.5|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.851  143 1.332  -0.079    NaN   -0.050      -0.582       0.334    -9.202      NaN        -41          -440           263       67
+NIV|PIV+MO+SES|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.825  116 1.262  -0.079    NaN   -0.076      -0.533       0.247    -9.202      NaN        -68          -319           111       67
+ NIV|PIV+MO+SES|min1.5|suivant|HA|repli saute|+Heishi 63  0.031 0.381 0.605  138 1.310  -0.084    NaN   -0.052      -0.599       0.335    -9.743      NaN        -42          -456           267       52
+ NIV|PIV+MO+SES|min2.0|suivant|HA|repli saute|+Heishi 63  0.031 0.381 0.578  110 1.240  -0.084    NaN   -0.079      -0.549       0.254    -9.743      NaN        -70          -325           113       52
+       NIV|DET|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.832  179 1.403  -0.125    NaN   -0.069      -0.296       0.090       -10      NaN     -5.590           -23         6.203       66
+     NIV|DET|min2.0|suivant|REEL|repli Heishi|+Heishi 65  0.000 0.369 0.832  179 1.403  -0.125    NaN   -0.069      -0.296       0.090       -10      NaN     -5.590           -23         6.203       66
+   NIV|PIV+DET|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.821  157 1.355  -0.133    NaN   -0.081      -0.458       0.175       -13      NaN        -27          -195           106       63
+    NIV|PIV+DET|min2.0|suivant|HA|repli saute|+Heishi 63  0.031 0.381 0.574  152 1.332  -0.141    NaN   -0.083      -0.467       0.176       -14      NaN        -28          -199           107       48
+        NIV|DET|min2.0|suivant|REEL|repli Heishi|seul 65  0.000 0.446 0.900  379 1.852  -0.152    NaN   -0.002      -0.271       0.284       -12      NaN        194           -55           829       63
+          NIV|DET|min2.0|suivant|HA|repli Heishi|seul 65  0.000 0.446 0.900  379 1.852  -0.152    NaN   -0.002      -0.271       0.284       -12      NaN        194           -55           829       63
+       NIV|PIV|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.787  155 1.349  -0.195    NaN   -0.115      -0.462       0.102       -17      NaN        -29          -195           100       59
+       NIV|PIV|min1.5|suivant|HA|repli Heishi|+Heishi 65  0.000 0.369 0.824  201 1.466  -0.195    NaN   -0.078      -0.485       0.188       -17      NaN         17          -262           254       59
+         NIV|PIV|min2.0|suivant|REEL|repli saute|seul 65  0.000 0.615 0.762  107 1.162  -0.197    NaN   -0.140      -0.651       0.474    -6.219      NaN        -78          -638           427       70
+        NIV|PIV|min2.0|suivant|REEL|repli Heishi|seul 65  0.000 0.615 0.762  107 1.162  -0.197    NaN   -0.140      -0.651       0.474    -6.219      NaN        -78          -638           427       70
+        NIV|PIV|min2.0|suivant|REEL|repli Fixe2R|seul 65  0.000 0.615 0.762  107 1.162  -0.197    NaN   -0.140      -0.651       0.474    -6.219      NaN        -78          -638           427       70
+
+===== ('Preset A', 'NIV PROCHE 1.0-3.0 REEL')
+                                                    var  n  saute  stop     R    usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES
+                                            Heishinator 65  0.000 0.538 0.694     93 1.188   0.000    NaN    0.000       0.000       0.000     0.000      NaN      0.000         0.000         0.000       68
+                                                Fixe 3R 65  0.000 0.631 0.436    294 1.545  -0.698    NaN   -0.258      -0.793       0.326       -35      NaN        201          -102           844       33
+                                                Fixe 2R 65  0.000 0.615 0.113     87 1.169  -1.115    NaN   -0.581      -1.393       0.238       -59      NaN     -5.782          -389           528    8.340
+                                              Fixe 1.5R 65  0.000 0.538 0.113     61 1.131  -1.184    NaN   -0.581      -1.539       0.569       -66      NaN        -32          -602           592    1.773
+                                                Fixe 1R 65  0.000 0.400 0.159    169 1.524  -1.198    NaN   -0.535      -1.775       0.752       -64      NaN         76          -771           750    3.683
+  NIV|PIV+MO+SES|min1.5|suivant|HA|repli Heishi|+Heishi 65  0.000 0.508 0.589     19 1.041  -0.216    NaN   -0.105      -0.616       0.339       -16      NaN        -74          -452           296       52
+  NIV|PIV+MO+SES|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.523 0.582     49 1.103  -0.216    NaN   -0.113      -0.536       0.222       -16      NaN        -43          -249           149       52
+   NIV|PIV+MO+SES|min1.5|suivant|HA|repli saute|+Heishi 61  0.062 0.525 0.336 -0.358 0.999  -0.235    NaN   -0.112      -0.672       0.399       -17      NaN        -79          -479           343       38
+   NIV|PIV+MO+SES|min2.0|suivant|HA|repli saute|+Heishi 61  0.062 0.541 0.328     32 1.063  -0.235    NaN   -0.120      -0.590       0.254       -17      NaN        -46          -263           172       38
+         NIV|PIV|min1.5|suivant|HA|repli Heishi|+Heishi 65  0.000 0.508 0.607     79 1.170  -0.261    NaN   -0.087      -0.507       0.321       -20      NaN        -14          -279           308       48
+         NIV|PIV|min2.0|suivant|HA|repli Heishi|+Heishi 65  0.000 0.523 0.600    109 1.228  -0.261    NaN   -0.095      -0.434       0.198       -20      NaN         17           -77           154       48
+          NIV|PIV|min1.5|suivant|HA|repli saute|+Heishi 61  0.062 0.525 0.356     63 1.129  -0.285    NaN   -0.093      -0.539       0.376       -22      NaN        -15          -303           343       34
+          NIV|PIV|min2.0|suivant|HA|repli saute|+Heishi 61  0.062 0.541 0.347     96 1.188  -0.285    NaN   -0.101      -0.467       0.228       -22      NaN         18           -83           175       34
+          NIV|PIV|min2.0|suivant|REEL|repli Fixe2R|seul 65  0.000 0.692 0.431    -46 0.927  -0.291    NaN   -0.263      -0.552       0.052       -11      NaN       -138          -381            16       57
+           NIV|PIV|min2.0|suivant|REEL|repli saute|seul 65  0.000 0.692 0.431    -46 0.927  -0.291    NaN   -0.263      -0.552       0.052       -11      NaN       -138          -381            16       57
+          NIV|PIV|min2.0|suivant|REEL|repli Heishi|seul 65  0.000 0.692 0.431    -46 0.927  -0.291    NaN   -0.263      -0.552       0.052       -11      NaN       -138          -381            16       57
+ NIV|PIV+MO+SES|min2.0|suivant|REEL|repli saute|+Heishi 65  0.000 0.538 0.473     58 1.118  -0.338    NaN   -0.221      -0.566       0.058       -15      NaN        -35          -106         5.690       52
+NIV|PIV+MO+SES|min2.0|suivant|REEL|repli Fixe2R|+Heishi 65  0.000 0.538 0.473     58 1.118  -0.338    NaN   -0.221      -0.566       0.058       -15      NaN        -35          -106         5.690       52
+NIV|PIV+MO+SES|min2.0|suivant|REEL|repli Heishi|+Heishi 65  0.000 0.538 0.473     58 1.118  -0.338    NaN   -0.221      -0.566       0.058       -15      NaN        -35          -106         5.690       52
+       NIV|DET|min2.0|suivant|REEL|repli Heishi|+Heishi 65  0.000 0.538 0.505     79 1.160  -0.342    NaN   -0.189      -0.551       0.000       -25      NaN        -14           -41         0.000       42
+
+===== ('Preset C', 'ATR2.0')
+                                                  var  n  saute  stop      R  usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES
+                                          Heishinator 76  0.000 0.355 -0.041  143 2.158   0.000    NaN    0.000       0.000       0.000     0.000      NaN      0.000         0.000         0.000   -9.103
+                                            Fixe 1.5R 76  0.000 0.579  0.007  258 3.096  -0.011    NaN    0.048      -0.247       0.349     0.822      NaN        115          -132           423   -8.281
+                                              Fixe 1R 76  0.000 0.539 -0.125  138 2.163  -0.098    NaN   -0.084      -0.361       0.181    -6.667      NaN     -4.641          -236           250      -16
+                                              Fixe 2R 76  0.000 0.684 -0.099  216 2.201  -0.114    NaN   -0.057      -0.283       0.213       -11      NaN         73           -87           266      -21
+                                              Fixe 3R 76  0.000 0.789 -0.204  286 2.343  -0.289    NaN   -0.163      -0.448       0.169       -30      NaN        143          -113           453      -39
+      NIV|PIV|min2.0|bloquant|HA|repli Fixe2R|+Heishi 52  0.316 0.404  0.169  296 3.730   0.263    NaN    0.263       0.067       0.473        19      NaN         86           -53           273    8.284
+NIV|PIV+MO+SES|min1.5|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.214  216 2.908   0.257    NaN    0.255       0.097       0.455        24      NaN         73           -13           186       15
+ NIV|PIV+MO+SES|min1.5|suivant|HA|repli saute|+Heishi 74  0.026 0.351  0.208  221 2.921   0.241    NaN    0.242       0.086       0.462        23      NaN         74        -9.907           191       14
+      NIV|PIV|min1.5|bloquant|HA|repli Fixe2R|+Heishi 59  0.224 0.390  0.166  298 3.978   0.239    NaN    0.274       0.101       0.457        18      NaN        129           -21           295    4.886
+NIV|PIV+MO+SES|min1.5|suivant|HA|repli Heishi|+Heishi 76  0.000 0.355  0.194  214 2.898   0.233    NaN    0.235       0.081       0.429        22      NaN         72           -14           186       13
+       NIV|PIV|min1.5|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.223  272 3.404   0.227    NaN    0.264       0.096       0.463        19      NaN        129        -4.745           267    9.677
+   NIV|PIV+DET|min1.5|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.184  208 2.842   0.224    NaN    0.226       0.058       0.427        19      NaN         65           -21           179    9.492
+       NIV|PIV|min2.0|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.170  206 2.670   0.222    NaN    0.212       0.067       0.385        18      NaN         63           -34           189    9.254
+   NIV|PIV+DET|min2.0|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.167  206 2.669   0.218    NaN    0.209       0.064       0.379        18      NaN         63           -34           188    9.069
+       NIV|PIV|min2.0|bloquant|HA|repli saute|+Heishi 45  0.408 0.400  0.149  340 3.864   0.209    NaN    0.219       0.025       0.443        16      NaN         94           -76           277    6.757
+  NIV|PIV+DET|min2.0|bloquant|HA|repli Fixe2R|+Heishi 40  0.474 0.425  0.053  105 2.353   0.205    NaN    0.179       0.020       0.381        18      NaN        -14           -91            31    8.507
+  NIV|PIV+DET|min1.5|bloquant|HA|repli Fixe2R|+Heishi 44  0.421 0.409  0.097  145 2.929   0.204    NaN    0.220       0.053       0.396        17      NaN         57           -58           204    8.153
+NIV|PIV+MO+SES|min2.0|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.355  0.147  203 2.648   0.194    NaN    0.188       0.055       0.350        16      NaN         60           -35           185    6.982
+       NIV|PIV|min1.5|bloquant|HA|repli saute|+Heishi 52  0.316 0.385  0.148  336 4.119   0.188    NaN    0.238       0.044       0.472        14      NaN        140           -37           320    3.020
+        NIV|PIV|min1.5|suivant|HA|repli saute|+Heishi 69  0.092 0.348  0.215  298 3.478   0.187    NaN    0.236       0.052       0.467        16      NaN        138        -0.425           301    8.843
+
+===== ('Preset C', 'NIV PROCHE 1.0-3.0 REEL')
+                                                  var  n  saute  stop      R  usd    pf  dR_MES  dR_NQ  dR_TOUT  dR_TOUT_lo  dR_TOUT_hi  dusd_MES  dusd_NQ  dusd_TOUT  dusd_TOUT_lo  dusd_TOUT_hi  usd_MES
+                                              Fixe 1R 76  0.000 0.474  0.004  141 2.321   0.086    NaN    0.067      -0.228       0.392     3.064      NaN        -22          -212           168   -3.309
+                                            Fixe 1.5R 76  0.000 0.592 -0.029  149 1.966   0.015    NaN    0.034      -0.242       0.298     3.487      NaN        -14          -141           117   -2.886
+                                          Heishinator 76  0.000 0.395 -0.063  163 2.596   0.000    NaN    0.000       0.000       0.000     0.000      NaN      0.000         0.000         0.000   -6.373
+                                              Fixe 2R 76  0.000 0.684 -0.101  220 2.333  -0.136    NaN   -0.039      -0.306       0.226       -17      NaN         57           -52           193      -23
+                                              Fixe 3R 76  0.000 0.776 -0.154  290 2.483  -0.263    NaN   -0.091      -0.364       0.221       -31      NaN        128           -65           353      -37
+        NIV|PIV|min1.5|suivant|HA|repli saute|+Heishi 69  0.092 0.348  0.327  308 4.223   0.289    NaN    0.350       0.089       0.711        18      NaN        126        -4.318           273       14
+       NIV|PIV|min1.5|bloquant|HA|repli saute|+Heishi 54  0.289 0.389  0.238  375 5.857   0.279    NaN    0.375       0.058       0.780        16      NaN        155           -24           336    0.910
+       NIV|PIV|min1.5|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.368  0.261  277 4.063   0.264    NaN    0.324       0.081       0.622        16      NaN        115           -13           247    9.778
+       NIV|PIV|min1.5|suivant|HA|repli Heishi|+Heishi 76  0.000 0.368  0.255  277 4.059   0.257    NaN    0.318       0.076       0.611        16      NaN        114           -14           247    9.315
+      NIV|PIV|min1.5|bloquant|HA|repli Fixe2R|+Heishi 61  0.197 0.410  0.166  329 5.503   0.249    NaN    0.339       0.073       0.683        14      NaN        138           -22           296   -2.239
+ NIV|PIV+MO+SES|min2.0|suivant|HA|repli saute|+Heishi 74  0.026 0.365  0.283  300 4.225   0.249    NaN    0.318       0.081       0.660        14      NaN        131            11           269    8.917
+       NIV|PIV|min2.0|bloquant|HA|repli saute|+Heishi 47  0.382 0.404  0.259  320 4.834   0.249    NaN    0.380       0.054       0.822     9.997      NaN        199         4.789           392    2.299
+NIV|PIV+MO+SES|min2.0|suivant|HA|repli Heishi|+Heishi 76  0.000 0.382  0.247  291 4.157   0.241    NaN    0.310       0.080       0.606        13      NaN        128            12           259    6.849
+NIV|PIV+MO+SES|min2.0|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.382  0.247  291 4.157   0.241    NaN    0.310       0.080       0.606        13      NaN        128            12           259    6.849
+      NIV|PIV|min1.5|bloquant|HA|repli Heishi|+Heishi 61  0.197 0.410  0.159  329 5.496   0.240    NaN    0.332       0.063       0.678        13      NaN        138           -22           295   -2.811
+ NIV|PIV+MO+SES|min1.5|suivant|HA|repli saute|+Heishi 74  0.026 0.351  0.235  225 3.461   0.240    NaN    0.271       0.063       0.604        17      NaN         57           -18           162       13
+        NIV|PIV|min2.0|suivant|HA|repli saute|+Heishi 69  0.092 0.362  0.293  321 4.309   0.239    NaN    0.316       0.058       0.696        12      NaN        140            14           290    8.251
+NIV|PIV+MO+SES|min1.5|suivant|HA|repli Fixe2R|+Heishi 76  0.000 0.368  0.201  218 3.405   0.232    NaN    0.263       0.056       0.535        17      NaN         55           -24           159       10
+NIV|PIV+MO+SES|min1.5|suivant|HA|repli Heishi|+Heishi 76  0.000 0.368  0.201  218 3.405   0.232    NaN    0.263       0.056       0.535        17      NaN         55           -24           159       10
+    NIV|PIV+DET|min2.0|suivant|HA|repli saute|+Heishi 69  0.092 0.362  0.286  321 4.307   0.230    NaN    0.309       0.058       0.674        12      NaN        139            14           290    8.042
+

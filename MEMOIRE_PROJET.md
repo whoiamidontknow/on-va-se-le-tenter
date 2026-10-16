@@ -792,3 +792,17 @@ n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la du
 - **À refaire au testeur** : A en V3 sur NQ et ES ; puis en Personnalisé, A sans entrées de nuit
   (plage 08:00-23:00), break-even 1R/2R, stop 2,5/3 ATR, suiveur ATR 3-4 — un réglage à la fois, garder
   seulement ce qui s'améliore sur NQ, ES et chaque moitié de la période.
+
+### Stratégie V4-V5 (16/10) — trades dessinés, stop/objectif sur niveaux, 22 préréglages
+
+- V4 : chaque trade dessiné (boîtes rouge/verte, niveau utilisé, résultat en R et $) ; stop « Niveau de
+  protection » (pivots Y/M/W, Detector, Monday, sessions, ronds, ordre réglable) ; objectif « Prochain
+  niveau » (ratio min, option ne pas prendre le trade, sortie partielle) ; préréglages en une ligne clé=valeur.
+- V5 : 19 préréglages de `tools/strategie/preregles/PREREGLAGES.md` (+ A, B, C). Validés : toutes les clés
+  et valeurs sont reconnues par le code.
+- **Recherche : aucun type de niveau ne retient le prix mieux qu'un placebo** (rebond 34-39 % contre
+  35-41 %), y compris pivots ; après contact, 72 % de dépassement ≥ 0,25 ATR, comme au placebo. Les pivots
+  de l'indicateur sont calculés sur la bougie HA de la période, pas sur les vrais prix. Seule piste :
+  objectif au prochain pivot ≥ 1,5 R EN GARDANT la sortie Heishinator (préréglages 06, 08, 16).
+- Ordre de test conseillé : 02 puis 01 (NQ et ES) ; puis 03, 06, 16 ; stops fixes 04, 05, 07, 10-12 en
+  référence ; 13-19 pour réfuter ou confirmer l'idée niveaux. Comparer en R moyen et PF.
