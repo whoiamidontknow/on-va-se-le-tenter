@@ -1,0 +1,198 @@
+# ============================================================================
+# RÈGLES PROPFIRM — PROVISOIRE (16/10/2026)
+# ============================================================================
+# PROVISOIRE : estimations de mémoire du simulateur, NON vérifiées sur les sites.
+# Le fichier de référence est `regles.toml` (écrit par l'agent « Règles propfirms ») :
+# simulateur.py le lit EN PRIORITÉ s'il existe et n'utilise ce fichier qu'à défaut.
+#
+# Conventions (les mêmes que regles.toml) :
+#   - montants en USD ; drawdown_plafond_usd = niveau maximal du seuil de liquidation
+#     AU-DESSUS du capital (100 -> le seuil cesse de monter à 50 100 $). Une valeur
+#     > capital/2 est lue comme un solde absolu (50100 -> 100) ; 0 = pas de plafond.
+#   - REMPLACÉ le 16/10 par regles.toml (définitif) : ce fichier ne sert plus que de secours.
+#   - perte_journaliere_type : "soft" (arrêt du jour), "hard" (échec), "none".
+#   - consistance_*_pct : meilleure journée <= pct % du gain total (0 = pas de règle).
+#   - Champs facultatifs propres au simulateur (absents du schéma commun) :
+#       propfirm, jours_gagnants_min_payout, coussin_payout_usd, payout_max_usd,
+#       partage_pct, frais_eval_mensuels, frais_activation_mensuels.
+# ============================================================================
+
+[[variante]]
+nom = "apex_50k_intraday"            # PROVISOIRE
+propfirm = "apex"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2500
+drawdown_type = "intraday_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+contrats_max_mini = 10
+contrats_max_micro = 100
+jours_min_eval = 1
+consistance_eval_pct = 0
+consistance_funded_pct = 30
+jours_min_avant_payout = 8
+jours_gagnants_min_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 50
+coussin_payout_usd = 2600            # « safety net » 52 600 $
+payout_max_usd = 2000
+partage_pct = 100
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "non (automatisation complète interdite) — À CONFIRMER"
+frais_eval_usd = 167
+frais_eval_mensuels = true
+frais_activation_usd = 140
+frais_activation_mensuels = false
+
+[[variante]]
+nom = "apex_50k_eod"                 # PROVISOIRE
+propfirm = "apex"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2500
+drawdown_type = "eod_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 1000
+perte_journaliere_type = "soft"
+contrats_max_mini = 10
+contrats_max_micro = 100
+jours_min_eval = 1
+consistance_eval_pct = 0
+consistance_funded_pct = 30
+jours_min_avant_payout = 8
+jours_gagnants_min_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 50
+coussin_payout_usd = 2600
+payout_max_usd = 2000
+partage_pct = 100
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "non (automatisation complète interdite) — À CONFIRMER"
+frais_eval_usd = 187
+frais_eval_mensuels = true
+frais_activation_usd = 140
+frais_activation_mensuels = false
+
+[[variante]]
+nom = "tradeify_50k_growth"          # PROVISOIRE
+propfirm = "tradeify"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 1250
+perte_journaliere_type = "soft"
+contrats_max_mini = 4
+contrats_max_micro = 40
+jours_min_eval = 1
+consistance_eval_pct = 0
+consistance_funded_pct = 35
+jours_min_avant_payout = 5
+jours_gagnants_min_payout = 5
+payout_min_usd = 250
+gain_min_jour_payout_usd = 100
+coussin_payout_usd = 2100
+payout_max_usd = 1500
+partage_pct = 90
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "oui (si le trader possède le bot) — À CONFIRMER"
+frais_eval_usd = 125
+frais_eval_mensuels = false
+frais_activation_usd = 0
+frais_activation_mensuels = false
+
+[[variante]]
+nom = "tradeify_50k_select"          # PROVISOIRE
+propfirm = "tradeify"
+capital = 50000
+objectif_eval_usd = 2500
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+contrats_max_mini = 4
+contrats_max_micro = 40
+jours_min_eval = 3
+consistance_eval_pct = 40
+consistance_funded_pct = 0
+jours_min_avant_payout = 5
+jours_gagnants_min_payout = 5
+payout_min_usd = 250
+gain_min_jour_payout_usd = 100
+coussin_payout_usd = 2100
+payout_max_usd = 1500
+partage_pct = 90
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "oui (si le trader possède le bot) — À CONFIRMER"
+frais_eval_usd = 159
+frais_eval_mensuels = true
+frais_activation_usd = 0
+frais_activation_mensuels = false
+
+[[variante]]
+nom = "lucid_50k_flex"               # PROVISOIRE
+propfirm = "lucid"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+contrats_max_mini = 4
+contrats_max_micro = 40
+jours_min_eval = 2
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 5
+jours_gagnants_min_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 150
+coussin_payout_usd = 2100
+payout_max_usd = 2000
+partage_pct = 90
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "à confirmer"
+frais_eval_usd = 130
+frais_eval_mensuels = false
+frais_activation_usd = 0
+frais_activation_mensuels = false
+
+[[variante]]
+nom = "lucid_50k_pro"                # PROVISOIRE
+propfirm = "lucid"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_plafond_usd = 100
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+contrats_max_mini = 4
+contrats_max_micro = 40
+jours_min_eval = 1
+consistance_eval_pct = 0
+consistance_funded_pct = 40
+jours_min_avant_payout = 5
+jours_gagnants_min_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+coussin_payout_usd = 2100
+payout_max_usd = 2000
+partage_pct = 90
+fermeture_obligatoire_ct = "15:59"
+news_interdites = false
+bots_autorises = "à confirmer"
+frais_eval_usd = 165
+frais_eval_mensuels = false
+frais_activation_usd = 0
+frais_activation_mensuels = false
