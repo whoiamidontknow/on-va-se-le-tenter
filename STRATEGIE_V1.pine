@@ -144,6 +144,10 @@
 //                   sessions. Hypothèses à vérifier au testeur sur 3 ans :
 //                   sur ~2 mois, aucun niveau ne retient le prix mieux
 //                   qu'un niveau placebo.
+//   V6  2026-10-16  Lignes horizontales ENTRÉE (bleu), SL (rouge, épais,
+//                   suit break-even et suiveur) et TP (vert) sur chaque
+//                   position, tracées en plot() : toujours visibles, sans
+//                   limite de nombre. Version affichée dans le tableau de bord.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -448,7 +452,8 @@ a_trades  = input.bool(true, "Dessiner les trades (boîtes stop / objectif)", gr
 a_trN     = input.int(50, "Trades dessinés (les plus récents)", group=grp_a, minval=1, maxval=100,
      tooltip="3 boîtes, 1 ligne et 4 étiquettes par trade au plus : 100 trades maximum (limite de 500 objets de TradingView).")
 a_lbl     = input.bool(true, "Étiquettes des trades (niveaux, résultat)", group=grp_a)
-a_stopLn  = input.bool(true, "Ligne « Stop en cours » (suit break-even et suiveur)", group=grp_a)
+a_stopLn  = input.bool(true, "Lignes horizontales ENTRÉE / SL / TP de chaque position", group=grp_a,
+     tooltip="Tracées comme des courbes : toujours visibles, sur tout l'historique chargé, sans limite de nombre (contrairement aux boîtes). Le SL suit le break-even et le stop suiveur. Rien ne s'affiche sur le graphique en mode « backtest profond » : c'est une limite de TradingView.")
 a_sig     = input.bool(false, "Marquer aussi les signaux bruts (non filtrés)", group=grp_a)
 a_tbl     = input.bool(true, "Tableau de bord", group=grp_a)
 a_pos     = input.string("Bottom Right", "Position du tableau", group=grp_a,
@@ -1826,7 +1831,13 @@ plotshape(entree_S, "Entrée short (signal)", style=shape.triangledown, location
 plotshape(sortie_marq, "Sortie sur signal", style=shape.xcross, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny)
 plotshape(a_sig and sig_long  and not entree_L, "Signal long brut",  style=shape.circle, location=location.belowbar, color=color.new(#00C853, 60), size=size.tiny)
 plotshape(a_sig and sig_short and not entree_S, "Signal short brut", style=shape.circle, location=location.abovebar, color=color.new(#D50000, 60), size=size.tiny)
-plot(a_stopLn and pos != 0 and tr_fixe ? tr_stop : na, "Stop en cours", color=color.new(c_risk, 0), style=plot.style_steplinebr, linewidth=2)
+// Lignes horizontales de chaque position (demande de Jeremy, 16/10) : des
+// plot() plutôt que des objets dessinés, pour qu'elles soient TOUJOURS là.
+enPosL = a_stopLn and pos != 0 and tr_fixe
+plot(enPosL ? tr_entry : na, "Entrée",  color=color.new(#2962FF, 0), style=plot.style_linebr, linewidth=2)
+plot(enPosL ? tr_stop  : na, "SL",      color=color.new(#FF1744, 0), style=plot.style_steplinebr, linewidth=3)
+plot(enPosL ? tr_tp    : na, "TP",      color=color.new(#00C853, 0), style=plot.style_linebr, linewidth=3)
+plot(enPosL ? tr_tp2   : na, "TP 2",    color=color.new(#00C853, 40), style=plot.style_linebr, linewidth=2)
 
 // Avertissement : graphique pas en Heiken Ashi
 if barstate.islast and not chart.is_heikinashi
@@ -1841,7 +1852,7 @@ f_tb_pos(p) =>
     p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
      p == "Bottom Left" ? position.bottom_left : p == "Middle Right" ? position.middle_right : position.bottom_right
 
-var table tb = table.new(f_tb_pos(a_pos), 2, 10, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
+var table tb = table.new(f_tb_pos(a_pos), 2, 11, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
 f_tb(r, k, v, col) =>
     table.cell(tb, 0, r, k, text_color=color.rgb(190, 190, 205), text_size=size.small, text_halign=text.align_left)
     table.cell(tb, 1, r, v, text_color=col, text_size=size.small, text_halign=text.align_right)
@@ -1863,3 +1874,5 @@ if a_tbl and barstate.islast
     f_tb(7, "Objectif", enPos and not na(tr_tp) ? f_px(tr_tp) + " · " + tr_tpNom : "—", color.rgb(76, 175, 80))
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
+    // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
+    f_tb(10, "Version du code", "V6 · 16/10 · lignes SL/TP", color.rgb(245, 166, 35))
