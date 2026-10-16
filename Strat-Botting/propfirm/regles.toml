@@ -1,0 +1,939 @@
+# Règles des comptes futures 50k — Apex Trader Funding, Tradeify, Lucid Trading
+# Relevé du 16/10/2026 (agent « Règles des propfirms »). Détail, citations et contradictions : REGLES.md
+#
+# CONVENTIONS (clés du schéma imposé + clés ajoutées, aucune clé du schéma n'est renommée)
+# - Toutes les heures sont en heure de Chicago (CT). ET = CT + 1 h.
+# - drawdown_type             : type de drawdown pendant l'ÉVAL (ou du compte financé s'il n'y a pas d'éval).
+#   drawdown_type_funded      : type pendant la phase financée (ajouté ; souvent identique).
+# - drawdown_plafond_usd      : NIVEAU DU PLANCHER (seuil de liquidation) une fois que le trailing s'arrête,
+#                               en phase FINANCÉE (ex. 50100). 0 = sans objet.
+#   drawdown_declencheur_blocage_usd : solde (de clôture si EOD, pic intraday si intraday) qui déclenche ce blocage.
+#   drawdown_plafond_eval_usd : plancher maximal atteint pendant l'éval (0 = le trailing ne s'arrête jamais en éval ;
+#                               sans effet pratique si l'éval est réussie avant).
+#   drawdown_bloque_a_la_demande_payout : true si une demande de payout fige immédiatement le plancher.
+# - perte_journaliere_usd     : DLL de l'ÉVAL (ou du financé s'il n'y a pas d'éval). perte_journaliere_funded_usd : DLL
+#                               de départ en financé. perte_journaliere_funded_regle : évolution éventuelle.
+# - contrats_max_mini/micro   : limite en ÉVAL. contrats_funded_paliers = [[profit_min_usd, minis], ...] (micros = 10 x minis).
+# - jours_min_eval            : minimum de jours pour réussir (y compris celui imposé de fait par la règle de constance).
+# - consistance_*_pct         : plus gros jour / profit total, en % (0 = aucune).
+# - payout_plafonds_usd       : plafond par demande, payout n°1, n°2, ... ; le dernier s'applique aux suivants
+#                               sauf si payouts_max l'interdit. payout_pct_profit_max : part max du profit retirable (0 = sans).
+#   payout_solde_min_usd      : solde minimal pour demander (0 = aucun). payout_profit_cycle_min_usd : profit minimal du cycle.
+# - duree_max_eval_jours      : 0 = illimité.
+# - frais_* en USD, PRIX CATALOGUE (hors codes promo, qui sont fréquents) ; -1 = introuvable de source officielle.
+# - Une valeur « a_verifier » dans la clé `incertitudes` signale un point non confirmé par une source officielle.
+
+# =====================================================================================================
+# APEX TRADER FUNDING — règles « 4.0 » (comptes achetés depuis le 01/03/2026)
+# Pages officielles bloquées (Cloudflare 403) : contenu relu via les extraits indexés des pages officielles
+# + sources récentes (août-sept. 2026). AUTOMATISATION INTERDITE sur tous les comptes.
+# =====================================================================================================
+
+[apex_50k_eod]
+nom = "Apex 50k EOD Trail (avec frais d'activation)"
+source = "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-evaluations/"
+sources_complementaires = [
+  "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-drawdown-explained/",
+  "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-performance-accounts-pa/",
+  "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-payouts/",
+  "https://apextraderfunding.com/help-center/additional-helpful-items/daily-loss-limit-explained/",
+  "https://apextraderfunding.com/help-center/getting-started/prohibited-activities/",
+  "https://traderssecondbrain.com/guides/apex-payout-rules-explained",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 53000
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1000
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1000
+perte_journaliere_funded_regle = "paliers PA : 1000 $ (profit 0-1499), 1000 $ (1500-2999), 2000 $ (3000-5999)"
+contrats_max_mini = 6
+contrats_max_micro = 60
+contrats_funded_paliers = [[0, 2], [1500, 3], [3000, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 30
+consistance_eval_pct = 0
+consistance_funded_pct = 50
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 250
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 0
+payout_plafonds_usd = [1500, 1500, 2000, 2500, 2500, 3000]
+payout_pct_profit_max = 0
+payouts_max = 6
+partage_trader_pct = 100
+fermeture_obligatoire_ct = "15:59"
+fermeture_effet = "position ouverte à 16:00 CT : compte pouvant être échoué/terminé (filet de sécurité auto à 15:59 CT, à ne pas utiliser)"
+news_interdites = false
+microscalping_regle = "aucune règle chiffrée publiée ; HFT interdit"
+bots_autorises = "non"
+bots_detail = "Interdit sur tous les comptes (éval, PA, Live) : IA, autobots, algorithmes, systèmes entièrement automatisés, HFT, tout script/macro qui pré-programme ou auto-exécute des ordres, trading 'set-and-forget'. Copy-trading par service tiers interdit en PA. Seule la gestion semi-auto d'une position ouverte à la main (ATM, brackets, stop suiveur) est tolérée. Sanction : fermeture du PA/Live et confiscation des gains."
+frais_eval_usd = 490
+frais_eval_note = "prix catalogue contradictoire selon les sources (490 $ ou 590 $) ; remises de 80-92 % très fréquentes"
+frais_activation_usd = 139
+frais_activation_note = "129 $ ou 139 $ selon les sources ; Apex ne publie plus le montant depuis le 01/10/2026"
+plateformes = ["Rithmic", "Tradovate", "WealthCharts", "NinjaTrader", "TradingView (via Tradovate)"]
+incertitudes = ["frais_eval_usd a_verifier", "frais_activation_usd a_verifier", "payout_plafonds_usd n°3-6 source secondaire"]
+
+[apex_50k_eod_sans_activation]
+nom = "Apex 50k EOD Trail (sans frais d'activation)"
+source = "https://apextraderfunding.com/help-center/uncategorized/no-activation-fee-evaluations/"
+sources_complementaires = [
+  "https://apextraderfunding.com/?picker_balance=50k&picker_fee=nofee&picker_type=trail-eod",
+  "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-payouts/",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 53000
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1000
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1000
+perte_journaliere_funded_regle = "paliers PA : 1000 $ (profit 0-1499), 1000 $ (1500-2999), 2000 $ (3000-5999)"
+contrats_max_mini = 6
+contrats_max_micro = 60
+contrats_funded_paliers = [[0, 2], [1500, 3], [3000, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 30
+consistance_eval_pct = 0
+consistance_funded_pct = 50
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 250
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 0
+payout_plafonds_usd = [1500, 1500, 2000, 2500, 2500, 3000]
+payout_pct_profit_max = 0
+payouts_max = 6
+partage_trader_pct = 100
+fermeture_obligatoire_ct = "15:59"
+fermeture_effet = "position ouverte à 16:00 CT : compte pouvant être échoué/terminé"
+news_interdites = false
+microscalping_regle = "aucune règle chiffrée publiée ; HFT interdit"
+bots_autorises = "non"
+bots_detail = "Identique à apex_50k_eod : toute automatisation interdite sur tous les comptes."
+frais_eval_usd = 1190
+frais_eval_note = "prix catalogue officiel 1190 $, 119 $ avec code promo (extrait du sélecteur officiel)"
+frais_activation_usd = 0
+plateformes = ["Rithmic", "Tradovate", "WealthCharts", "NinjaTrader", "TradingView (via Tradovate)"]
+incertitudes = ["payout_plafonds_usd n°3-6 source secondaire"]
+
+[apex_50k_intraday]
+nom = "Apex 50k Intraday Trail (avec frais d'activation)"
+source = "https://apextraderfunding.com/help-center/evaluation-accounts-ea/intraday-trailing-drawdown-evaluations/"
+sources_complementaires = [
+  "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-explained/",
+  "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-performance-accounts-pa/",
+  "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-payouts/",
+  "https://traderssecondbrain.com/guides/apex-payout-rules-explained",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "intraday_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 53000
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 1000
+perte_journaliere_funded_regle = "DLL par paliers en PA (« tier-based ») ; montants supposés identiques au PA EOD : 1000/1000/2000 $"
+contrats_max_mini = 6
+contrats_max_micro = 60
+contrats_funded_paliers = [[0, 2], [1500, 3], [3000, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 30
+consistance_eval_pct = 0
+consistance_funded_pct = 50
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 200
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 0
+payout_plafonds_usd = [1500, 2000, 2500, 2500, 3000, 3000]
+payout_pct_profit_max = 0
+payouts_max = 6
+partage_trader_pct = 100
+fermeture_obligatoire_ct = "15:59"
+fermeture_effet = "position ouverte à 16:00 CT : compte pouvant être échoué/terminé"
+news_interdites = false
+microscalping_regle = "aucune règle chiffrée publiée ; HFT interdit"
+bots_autorises = "non"
+bots_detail = "Identique à apex_50k_eod : toute automatisation interdite sur tous les comptes."
+frais_eval_usd = 249
+frais_eval_note = "prix catalogue relevé par source secondaire (10/08/2026) ; remises fréquentes"
+frais_activation_usd = 59
+frais_activation_note = "59 $ ou 79 $ selon les sources"
+plateformes = ["Rithmic", "Tradovate", "WealthCharts", "NinjaTrader", "TradingView (via Tradovate)"]
+incertitudes = ["frais_eval_usd a_verifier", "frais_activation_usd a_verifier", "paliers DLL/contrats PA intraday a_verifier", "payout_plafonds_usd n°2-6 source secondaire"]
+
+[apex_50k_intraday_sans_activation]
+nom = "Apex 50k Intraday Trail (sans frais d'activation)"
+source = "https://apextraderfunding.com/help-center/uncategorized/no-activation-fee-evaluations/"
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "intraday_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 53000
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 1000
+perte_journaliere_funded_regle = "DLL par paliers en PA ; montants supposés 1000/1000/2000 $"
+contrats_max_mini = 6
+contrats_max_micro = 60
+contrats_funded_paliers = [[0, 2], [1500, 3], [3000, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 30
+consistance_eval_pct = 0
+consistance_funded_pct = 50
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 200
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 0
+payout_plafonds_usd = [1500, 2000, 2500, 2500, 3000, 3000]
+payout_pct_profit_max = 0
+payouts_max = 6
+partage_trader_pct = 100
+fermeture_obligatoire_ct = "15:59"
+fermeture_effet = "position ouverte à 16:00 CT : compte pouvant être échoué/terminé"
+news_interdites = false
+microscalping_regle = "aucune règle chiffrée publiée ; HFT interdit"
+bots_autorises = "non"
+bots_detail = "Identique à apex_50k_eod : toute automatisation interdite sur tous les comptes."
+frais_eval_usd = -1
+frais_eval_note = "prix introuvable (plus cher que la version standard selon fundedfuturesfamily.com, 04/09/2026)"
+frais_activation_usd = 0
+plateformes = ["Rithmic", "Tradovate", "WealthCharts", "NinjaTrader", "TradingView (via Tradovate)"]
+incertitudes = ["frais_eval_usd introuvable", "paliers DLL/contrats PA intraday a_verifier"]
+
+# =====================================================================================================
+# TRADEIFY — Help Center (intercom) + Funded Trader Agreement « Last modified: October 2026 »
+# BOTS AUTORISÉS SOUS CONDITIONS (propriété exclusive, usage exclusif chez Tradeify, pas de HFT).
+# Tous les comptes : drawdown EOD trailing appliqué en temps réel ; fermeture 16:45 ET = 15:45 CT ; news libres.
+# Microscalping (financé uniquement) : >50 % des trades ET >50 % du profit sur des trades tenus >10 s, sinon pas de payout.
+# =====================================================================================================
+
+[tradeify_50k_growth]
+nom = "Tradeify Growth 50k"
+source = "https://help.tradeify.co/en/articles/10495915-growth-evaluation-accounts"
+sources_complementaires = [
+  "https://help.tradeify.co/en/articles/11083796-growth-funded-account-payout-policy",
+  "https://help.tradeify.co/en/articles/10468321-rules-daily-loss-limit",
+  "https://help.tradeify.co/en/articles/10495897-rules-trailing-max-drawdowns",
+  "https://help.tradeify.co/en/articles/10468320-rules-consistency-rule",
+  "https://help.tradeify.co/en/articles/14369021-tradeify-pricing-reference",
+  "https://tradeify.co/funded-trader-agreement",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 0
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 1250
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1250
+perte_journaliere_funded_regle = "passe à 2000 $ (session suivante) quand le solde atteint 53000 $ (+6 %)"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 0
+consistance_eval_pct = 0
+consistance_funded_pct = 35
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 150
+payout_solde_min_usd = 53000
+payout_profit_cycle_min_usd = 0
+payout_plafonds_usd = [1500, 2000, 2500, 3000]
+payout_pct_profit_max = 0
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "financé : >50 % des trades et >50 % du profit sur trades >10 s, sinon payout refusé (compte non échoué)"
+inactivite = "au moins 1 trade par semaine (lun-ven) par compte, éval comprise"
+bots_autorises = "conditions"
+bots_detail = "Funded Trader Agreement §6.6 (oct. 2026) : bots/algos permis seulement si (1) le trader prouve être le seul propriétaire du bot/de la stratégie, (2) usage exclusif chez Tradeify (l'utiliser dans plusieurs firmes est contraire à la politique), (3) pas de HFT. Help Center : scan des ordres similaires sur d'autres comptes + vidéo en direct possible du trader lançant le code sur son PC. Copie entre ses propres comptes permise (max 5 financés), copie entre personnes interdite."
+frais_eval_usd = 145
+frais_activation_usd = 0
+frais_reset_usd = 95
+plateformes = ["Tradovate", "NinjaTrader (via Tradovate)", "TradingView (via Tradovate)", "Rithmic (Tradesea, Quantower, Sierra Chart, R|Trader)", "WealthCharts"]
+incertitudes = ["la page Pricing Reference écrit « Growth : 35 % consistency » sans préciser la phase ; l'article Growth dit « pas de constance en éval » : 35 % retenu pour le financé seulement"]
+
+[tradeify_50k_select_flex]
+nom = "Tradeify Select 50k -> Select Flex (payout 5 jours)"
+source = "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts"
+sources_complementaires = [
+  "https://help.tradeify.co/en/articles/12853966-select-flex-and-select-daily-payout-policies",
+  "https://help.tradeify.co/en/articles/10495897-rules-trailing-max-drawdowns",
+  "https://help.tradeify.co/en/articles/14369021-tradeify-pricing-reference",
+  "https://tradeify.co/funded-trader-agreement",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 0
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 0
+perte_journaliere_funded_regle = "aucune DLL en éval ni en Flex"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 2], [1500, 3], [2000, 4]]
+jours_min_eval = 3
+duree_max_eval_jours = 0
+consistance_eval_pct = 40
+consistance_eval_option_pct = 50
+consistance_eval_option_note = "option « 50 % Consistency Add-on » à l'achat (205 $) : réussite possible en 2 jours"
+consistance_funded_pct = 0
+jours_min_avant_payout = 5
+payout_min_usd = 250
+gain_min_jour_payout_usd = 150
+payout_solde_min_usd = 0
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [2500]
+payout_pct_profit_max = 50
+payout_note = "50 % du profit total (solde - 50000) plafonné à 2500 $ par demande (comptes achetés après le 01/09/2026 ; 3000 $ avant). Cycle suivant : 5 nouveaux jours gagnants + profit net du cycle > 0."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "financé : >50 % des trades et >50 % du profit sur trades >10 s, sinon payout refusé"
+inactivite = "au moins 1 trade par semaine (lun-ven) par compte, éval comprise"
+bots_autorises = "conditions"
+bots_detail = "Voir tradeify_50k_growth : propriété exclusive prouvable, usage exclusif chez Tradeify, pas de HFT, vidéo de vérification possible."
+frais_eval_usd = 165
+frais_eval_option_usd = 205
+frais_activation_usd = 0
+frais_reset_usd = 109
+plateformes = ["Tradovate", "NinjaTrader (via Tradovate)", "TradingView (via Tradovate)", "Rithmic (Tradesea, Quantower, Sierra Chart, R|Trader)", "WealthCharts"]
+incertitudes = []
+
+[tradeify_50k_select_daily]
+nom = "Tradeify Select 50k -> Select Daily (payout quotidien)"
+source = "https://help.tradeify.co/en/articles/12853966-select-flex-and-select-daily-payout-policies"
+sources_complementaires = [
+  "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts",
+  "https://help.tradeify.co/en/articles/10468321-rules-daily-loss-limit",
+  "https://tradeify.co/funded-trader-agreement",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 0
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 1000
+perte_journaliere_funded_type = "soft"
+perte_journaliere_funded_regle = "pas de DLL en éval ; 1000 $ fixe (soft) en financé Daily"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 2], [1500, 3], [2000, 4]]
+jours_min_eval = 3
+duree_max_eval_jours = 0
+consistance_eval_pct = 40
+consistance_eval_option_pct = 50
+consistance_eval_option_note = "option « 50 % Consistency Add-on » à l'achat (205 $) : réussite possible en 2 jours"
+consistance_funded_pct = 0
+jours_min_avant_payout = 0
+payout_min_usd = 250
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52100
+payout_profit_cycle_min_usd = 125
+payout_plafonds_usd = [1250]
+payout_pct_profit_max = 0
+payout_note = "Éligible chaque jour : seul le profit au-dessus du tampon (52100 $) est retirable ; montant <= 2 x profit du cycle depuis le dernier payout, plafonné à 1250 $/demande (achat après 01/09/2026 ; 1000 $ avant) ; minimum 250 $ ; une seule demande ouverte à la fois."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "financé : >50 % des trades et >50 % du profit sur trades >10 s, sinon payout refusé"
+inactivite = "au moins 1 trade par semaine (lun-ven) par compte, éval comprise"
+bots_autorises = "conditions"
+bots_detail = "Voir tradeify_50k_growth : propriété exclusive prouvable, usage exclusif chez Tradeify, pas de HFT, vidéo de vérification possible."
+frais_eval_usd = 165
+frais_eval_option_usd = 205
+frais_activation_usd = 0
+frais_reset_usd = 109
+plateformes = ["Tradovate", "NinjaTrader (via Tradovate)", "TradingView (via Tradovate)", "Rithmic (Tradesea, Quantower, Sierra Chart, R|Trader)", "WealthCharts"]
+incertitudes = []
+
+[tradeify_50k_lightning]
+nom = "Tradeify Lightning Funded 50k (financé direct, sans éval)"
+source = "https://help.tradeify.co/en/articles/10495938-lightning-funded-accounts"
+sources_complementaires = [
+  "https://help.tradeify.co/en/articles/10495932-lightning-funded-account-payout-policy",
+  "https://help.tradeify.co/en/articles/10468321-rules-daily-loss-limit",
+  "https://help.tradeify.co/en/articles/14369021-tradeify-pricing-reference",
+]
+verifie_le = "2026-10-16"
+type_compte = "financement_direct"
+capital = 50000
+objectif_eval_usd = 0
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 0
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 1250
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1250
+perte_journaliere_funded_regle = "passe à 2000 $ (session suivante) quand le solde atteint 53000 $"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 0
+duree_max_eval_jours = 0
+consistance_eval_pct = 0
+consistance_funded_pct = 20
+consistance_funded_progression_pct = [20, 25, 30]
+jours_min_avant_payout = 0
+payout_min_usd = 1000
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 0
+payout_objectifs_profit_cycle_usd = [3000, 2000]
+payout_profit_cycle_min_usd = 3000
+payout_plafonds_usd = [2000, 2000, 2000, 2500]
+payout_pct_profit_max = 0
+payout_note = "Objectif de profit du cycle : 3000 $ (payout 1) puis 2000 $ (payouts 2+) ; constance 20 % / 25 % / 30 % (payouts 1 / 2 / 3+), remise à zéro après chaque payout."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "financé : >50 % des trades et >50 % du profit sur trades >10 s, sinon payout refusé"
+inactivite = "au moins 1 trade par semaine (lun-ven) par compte"
+bots_autorises = "conditions"
+bots_detail = "Voir tradeify_50k_growth."
+frais_eval_usd = 492
+frais_eval_note = "prix d'achat du compte financé direct (pas d'éval, pas de reset)"
+frais_activation_usd = 0
+plateformes = ["Tradovate", "NinjaTrader (via Tradovate)", "TradingView (via Tradovate)", "Rithmic (Tradesea, Quantower, Sierra Chart, R|Trader)", "WealthCharts"]
+incertitudes = []
+
+# =====================================================================================================
+# LUCID TRADING — Help Center (support.lucidtrading.com, intercom)
+# BOTS ET COPIEURS « permis » selon le Help Center ; MAIS l'Account Agreement (LucidDirect, mai 2025) exige un
+# accord écrit préalable et interdit les logiciels d'automatisation appartenant à des tiers -> "conditions".
+# Fermeture 16:45 ET = 15:45 CT (fermeture auto, pas d'échec). News libres sauf LucidDaily (hard breach).
+# Microscalping : signalement si >50 % du profit vient de trades tenus <= 5 s. HFT interdit.
+# Prix : site marchand bloqué (403) -> prix catalogue de sources secondaires, à vérifier au panier.
+# =====================================================================================================
+
+[lucid_50k_flex_dll]
+nom = "LucidFlex 50k (DLL activée)"
+source = "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/12945795-lucidflex-funded-account",
+  "https://support.lucidtrading.com/en/articles/12945796-lucidflex-payouts",
+  "https://support.lucidtrading.com/en/articles/12945805-lucidflex-consistency-percentage",
+  "https://support.lucidtrading.com/en/articles/12945808-lucidflex-scaling-plan",
+  "https://support.lucidtrading.com/en/articles/12945815-lucidflex-drawdown",
+  "https://support.lucidtrading.com/en/articles/16226050-lucidflex-customization",
+  "https://support.lucidtrading.com/en/articles/11404728-other-trading-activities",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1200
+perte_journaliere_funded_regle = "DLL fixe en éval et en financé quand l'option est activée (montant 1200 $ = source secondaire)"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 2], [1000, 3], [2000, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 150
+payout_solde_min_usd = 0
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [2000]
+payout_pct_profit_max = 50
+payout_note = "50 % du profit, plafonné à 2000 $ par demande (ne monte pas) ; 5 jours >= 150 $ dans le cycle + profit net du cycle > 0 ; aucun tampon ; 5 payouts puis examen pour passage en Live."
+payouts_max = 5
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Help Center (Other Trading Activities) : « Automated trading systems and trade copiers are permitted », conformité aux règles, trader responsable des erreurs logicielles ; HFT interdit. Account Agreement (LucidDirect, 19/05/2025) : accord écrit préalable obligatoire pour tout logiciel automatisé, logiciel d'un tiers interdit. Obtenir l'accord écrit du support avant usage."
+frais_eval_usd = 146
+frais_eval_note = "prix catalogue de sources secondaires (sept.-oct. 2026), configuration non précisée"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["perte_journaliere_usd 1200 source secondaire", "frais_eval_usd a_verifier", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_flex_sans_dll]
+nom = "LucidFlex 50k (sans DLL)"
+source = "https://support.lucidtrading.com/en/articles/16226050-lucidflex-customization"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account",
+  "https://support.lucidtrading.com/en/articles/12945796-lucidflex-payouts",
+  "https://support.lucidtrading.com/en/articles/12945808-lucidflex-scaling-plan",
+  "https://support.lucidtrading.com/en/articles/12945815-lucidflex-drawdown",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = true
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 0
+perte_journaliere_funded_regle = "aucune DLL en éval ni en financé"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 2], [1000, 3], [2000, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 5
+payout_min_usd = 500
+gain_min_jour_payout_usd = 150
+payout_solde_min_usd = 0
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [2000]
+payout_pct_profit_max = 50
+payout_note = "Identique à lucid_50k_flex_dll."
+payouts_max = 5
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = -1
+frais_eval_note = "« higher evaluation purchase price » que la version avec DLL ; montant introuvable"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd introuvable", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_pro_dll]
+nom = "LucidPro 50k (DLL activée)"
+source = "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/12890069-lucidpro-funded-account",
+  "https://support.lucidtrading.com/en/articles/12890092-lucidpro-payouts",
+  "https://support.lucidtrading.com/en/articles/12890109-lucidpro-consistency-percentage",
+  "https://support.lucidtrading.com/en/articles/12890122-lucidpro-daily-loss-limit",
+  "https://support.lucidtrading.com/en/articles/12890136-lucidpro-drawdown",
+  "https://support.lucidtrading.com/en/articles/16226068-lucidpro-customization",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1200
+perte_journaliere_funded_regle = "1200 $ fixe tant que le solde n'a pas clôturé au-dessus de 52100 $, puis « LucidScale » = 60 % du plus haut profit de clôture (ne baisse jamais)"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 0
+consistance_eval_pct = 0
+consistance_funded_pct = 40
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 500
+payout_plafonds_usd = [2000, 2500]
+payout_pct_profit_max = 0
+payout_note = "Tampon 52100 $ (non retirable) ; profit du cycle >= 500 $ ; constance 40 % sur le cycle (=> au moins 3 jours gagnants de fait) ; max 2000 $ (payout 1), 2500 $ (payouts 2+) ; examen Live après le payout 5."
+payouts_max = 5
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = 192
+frais_eval_note = "prix catalogue de sources secondaires (192 $ ou 185 $), configuration non précisée"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd a_verifier", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_pro_sans_dll]
+nom = "LucidPro 50k (sans DLL)"
+source = "https://support.lucidtrading.com/en/articles/16226068-lucidpro-customization"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account",
+  "https://support.lucidtrading.com/en/articles/12890092-lucidpro-payouts",
+  "https://support.lucidtrading.com/en/articles/12890136-lucidpro-drawdown",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 0
+perte_journaliere_funded_regle = "aucune DLL en éval ni en financé"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 1
+duree_max_eval_jours = 0
+consistance_eval_pct = 0
+consistance_funded_pct = 40
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 500
+payout_plafonds_usd = [2000, 2500]
+payout_pct_profit_max = 0
+payout_note = "Identique à lucid_50k_pro_dll."
+payouts_max = 5
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = -1
+frais_eval_note = "« higher evaluation purchase price » que la version avec DLL ; montant introuvable"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd introuvable", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_daily_eod_dll]
+nom = "LucidDaily 50k (éval EOD, DLL activée)"
+source = "https://support.lucidtrading.com/en/articles/16033858-luciddaily-customization"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/15996664-luciddaily-evaluation",
+  "https://support.lucidtrading.com/en/articles/15997244-luciddaily-funded-account",
+  "https://support.lucidtrading.com/en/articles/15997266-luciddaily-payouts",
+  "https://support.lucidtrading.com/en/articles/15998425-luciddaily-drawdown",
+  "https://support.lucidtrading.com/en/articles/16085900-luciddaily-daily-loss-limit",
+  "https://support.lucidtrading.com/en/articles/11404728-other-trading-activities",
+]
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1200
+perte_journaliere_funded_regle = "1200 $ fixe en éval et en financé ; ne suit pas le MLL"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [0]
+payout_pct_profit_max = 0
+payout_note = "Payout quotidien : tout le profit au-dessus du tampon 52100 $ est retirable (0 = pas de plafond par demande) ; profit net > 0 depuis le dernier payout ; gain journalier max 8000 $ -> passage automatique en Live."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = true
+news_detail = "Annonces USD à fort impact (« red folder ») : être à plat de 1 min avant à 1 min après ; violation = hard breach (compte perdu)."
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll. Attention : un bot doit couper toute position autour des annonces USD fort impact."
+frais_eval_usd = -1
+frais_eval_note = "« from 156 $ » pour la configuration la moins chère (DLL + éval intraday) selon sources secondaires ; celle-ci est « mid-tier »"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd introuvable", "interdiction news en éval Daily : la page générale dit « Not allowed on Daily » sans distinguer éval/financé", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_daily_eod_sans_dll]
+nom = "LucidDaily 50k (éval EOD, sans DLL)"
+source = "https://support.lucidtrading.com/en/articles/16033858-luciddaily-customization"
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 0
+perte_journaliere_funded_regle = "aucune DLL"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [0]
+payout_pct_profit_max = 0
+payout_note = "Identique à lucid_50k_daily_eod_dll."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = true
+news_detail = "Annonces USD à fort impact : à plat de -1 min à +1 min ; violation = hard breach."
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = -1
+frais_eval_note = "configuration la plus chère de LucidDaily ; montant introuvable"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd introuvable", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_daily_intraday_dll]
+nom = "LucidDaily 50k (éval intraday, DLL activée)"
+source = "https://support.lucidtrading.com/en/articles/16033858-luciddaily-customization"
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "intraday_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1200
+perte_journaliere_funded_regle = "1200 $ fixe en éval et en financé"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [0]
+payout_pct_profit_max = 0
+payout_note = "Identique à lucid_50k_daily_eod_dll."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = true
+news_detail = "Annonces USD à fort impact : à plat de -1 min à +1 min ; violation = hard breach."
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = 156
+frais_eval_note = "« from 156 $ » (configuration la moins chère) selon sources secondaires"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd a_verifier", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_daily_intraday_sans_dll]
+nom = "LucidDaily 50k (éval intraday, sans DLL)"
+source = "https://support.lucidtrading.com/en/articles/16033858-luciddaily-customization"
+verifie_le = "2026-10-16"
+capital = 50000
+objectif_eval_usd = 3000
+drawdown_usd = 2000
+drawdown_type = "intraday_trailing"
+drawdown_type_funded = "intraday_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 50100
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 0
+perte_journaliere_type = "none"
+perte_journaliere_funded_usd = 0
+perte_journaliere_funded_regle = "aucune DLL"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 2
+duree_max_eval_jours = 0
+consistance_eval_pct = 50
+consistance_funded_pct = 0
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 52600
+payout_profit_cycle_min_usd = 1
+payout_plafonds_usd = [0]
+payout_pct_profit_max = 0
+payout_note = "Identique à lucid_50k_daily_eod_dll."
+payouts_max = 0
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = true
+news_detail = "Annonces USD à fort impact : à plat de -1 min à +1 min ; violation = hard breach."
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Voir lucid_50k_flex_dll."
+frais_eval_usd = -1
+frais_eval_note = "configuration « mid-tier » ; montant introuvable"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd introuvable", "accord écrit pour l'automatisation a_verifier"]
+
+[lucid_50k_direct]
+nom = "LucidDirect 50k (financé direct, sans éval)"
+source = "https://support.lucidtrading.com/en/articles/12890148-luciddirect-funded-account"
+sources_complementaires = [
+  "https://support.lucidtrading.com/en/articles/12890164-luciddirect-payout-objectives",
+  "https://support.lucidtrading.com/en/articles/12890178-luciddirect-consistency-percentage",
+  "https://support.lucidtrading.com/en/articles/12890185-luciddirect-daily-loss-limit",
+  "https://support.lucidtrading.com/en/articles/12890192-luciddirect-drawdown",
+  "https://lucidtrading.com/wp-content/uploads/2025/05/LucidDirect-Account-Agreement-5-19.pdf",
+]
+verifie_le = "2026-10-16"
+type_compte = "financement_direct"
+capital = 50000
+objectif_eval_usd = 0
+drawdown_usd = 2000
+drawdown_type = "eod_trailing"
+drawdown_type_funded = "eod_trailing"
+drawdown_plafond_usd = 50100
+drawdown_declencheur_blocage_usd = 52100
+drawdown_plafond_eval_usd = 0
+drawdown_bloque_a_la_demande_payout = false
+perte_journaliere_usd = 1200
+perte_journaliere_type = "soft"
+perte_journaliere_funded_usd = 1200
+perte_journaliere_funded_regle = "1200 $ fixe, puis « LucidScale » = 60 % du plus haut profit de clôture après une clôture > 52100 $"
+contrats_max_mini = 4
+contrats_max_micro = 40
+contrats_funded_paliers = [[0, 4]]
+jours_min_eval = 0
+duree_max_eval_jours = 0
+consistance_eval_pct = 0
+consistance_funded_pct = 20
+jours_min_avant_payout = 0
+payout_min_usd = 500
+gain_min_jour_payout_usd = 0
+payout_solde_min_usd = 0
+payout_objectifs_profit_cycle_usd = [3000, 2500]
+payout_profit_cycle_min_usd = 3000
+payout_plafonds_usd = [2000, 2000, 2000, 2500, 2500]
+payout_pct_profit_max = 0
+payout_note = "Objectif de profit du cycle 3000 $ (payout 1) puis 2500 $ ; constance 20 % sur le cycle ; examen Live après le payout 5."
+payouts_max = 5
+partage_trader_pct = 90
+fermeture_obligatoire_ct = "15:45"
+fermeture_effet = "fermeture automatique, sans échec du compte"
+news_interdites = false
+microscalping_regle = "signalement si >50 % du profit vient de trades tenus <= 5 s"
+inactivite = "compte supprimé sans trade (P&L net >= 1 $) pendant 30 jours calendaires"
+bots_autorises = "conditions"
+bots_detail = "Help Center : automatisation et copieurs permis. Account Agreement LucidDirect (19/05/2025) : accord écrit préalable obligatoire, logiciel automatisé appartenant à un tiers interdit, Lucid peut exiger des tests préalables."
+frais_eval_usd = 515
+frais_eval_note = "prix d'achat du compte financé direct, sources secondaires (515 $ ou 520 $)"
+frais_activation_usd = 0
+plateformes = ["Tradovate (CQG)", "NinjaTrader (CQG)", "TradingView (CQG/Tradovate)", "Rithmic (Quantower, Tradesea, MotiveWave, Sierra Chart, Jigsaw, Bookmap, ATAS, R|Trader Pro, MultiCharts)"]
+incertitudes = ["frais_eval_usd a_verifier", "accord écrit pour l'automatisation a_verifier"]
