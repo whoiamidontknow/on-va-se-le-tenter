@@ -235,7 +235,10 @@ class Barres:
         D = pd.DatetimeIndex(pd.to_datetime(cible, unit='ns')).tz_localize(ZoneInfo(fuseau), ambiguous='NaT',
                                                 nonexistent='shift_forward').tz_convert('UTC').as_unit('ns').asi8
         dt = self.t_clo - self.t_ouv
-        fin = (self.t_clo <= D) & (self.t_clo + dt > D)
+        # trou de données : si la barre suivante OUVRE après l'heure limite, cette barre est la dernière
+        # avant la limite (sinon une position traverserait le trou, et la nuit, sans être fermée)
+        ouv_suiv = np.append(self.t_ouv[1:], np.iinfo(np.int64).max)
+        fin = (self.t_clo <= D) & ((self.t_clo + dt > D) | (ouv_suiv > D))
         interdite = _dans_plage(mins, H, Rp)
         self._cache[k] = (fin, interdite)
         return fin, interdite

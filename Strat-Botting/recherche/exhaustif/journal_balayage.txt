@@ -1,0 +1,19 @@
+jeux : MES_5:1009, NQ_5:1192, MES_15:1468, MES1_15:3337, NQ_15:1272, MES_30:763, NQ_30:813, MES_60:774, NQ_60:774 (0 s)
+étape 1 : 672 variantes (154 s)
+étape 2 : 30 bases, total 2198 variantes (214 s)
+étape 3 (2 filtres) : total 2590 variantes (54 s)
+étape 3b (3 filtres) : total 2644 variantes (43 s)
+étape 4 (sorties) : 12 finalistes, total 5152 variantes (266 s)
+{
+ "n_variantes": 5152,
+ "n_classees": 3990,
+ "p_white": 0.19940029985007496,
+ "meilleur_white": "zone_entree|inverse|les_deux|30m|hors_annonces|stop 1 ATR, obj 4R, sortie_hei",
+ "duree_s": 792.3899941444397,
+ "source": "cache"
+}
+   pli  n_candidats                                                             choisi  note_app  r_test_n1  n_test_n1  r_test_top10  r_test_tous
+0    0         1721  zone_entree|inverse|les_deux|30m|hors_annonces|stop 1 ATR, obj 3R  1.068548  -1.039572          3     -0.388051     0.024321
+1    1         1720      adx20_croise|suivi|les_deux|15m|sauf_lundi|stop 2 ATR, obj 2R  1.161819  -0.588565         15     -0.275672     0.076251
+2    2         1951           monday_cassure|inverse|les_deux|15m|-|stop 2 ATR, obj 2R  0.992944  -0.311165         12     -0.721729     0.158892
+3    3         1783                       us_rejet|suivi|long|15m|-|stop 2 ATR, obj 2R  0.858466  -0.025926          5      0.596149     0.574022

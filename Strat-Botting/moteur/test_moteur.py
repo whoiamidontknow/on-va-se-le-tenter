@@ -177,6 +177,20 @@ class TestHeure(unittest.TestCase):
         t = M.backtest(df, long=sig(6, 0), gestion=dict(G0, heure_sortie='15:59')).iloc[0]
         self.assertEqual(t.sortie_t, pd.Timestamp('2026-07-07 22:45', tz='Europe/Paris'))
 
+    def test_trou_de_donnees_avant_la_limite(self):
+        # données coupées le mardi à 11:00 Paris, reprise le jeudi : la position doit être fermée à la
+        # clôture de la dernière barre avant le trou, pas gardée deux nuits
+        a = barres_main('2026-01-06 10:00', 15, [PLAT] * 4)
+        b = barres_main('2026-01-08 10:00', 15, [PLAT] * 4)
+        df = pd.concat([a, b])
+        t = M.backtest(df, long=sig(8, 0), gestion=dict(G0, heure_sortie='15:59')).iloc[0]
+        self.assertEqual(t.motif_sortie, 'heure')
+        self.assertEqual(t.sortie_t, pd.Timestamp('2026-01-06 11:00', tz='Europe/Paris'))
+        # un trou court dans la même séance ne force pas de sortie
+        c = barres_main('2026-01-06 12:00', 15, [PLAT] * 4)
+        T = M.backtest(pd.concat([a, c]), long=sig(8, 0), gestion=dict(G0, heure_sortie='15:59', sortie_barres=6))
+        self.assertEqual(T.iloc[0].motif_sortie, 'temps')
+
     def test_plage_interdite(self):
         df = barres_main('2026-01-06 08:00', 15, [PLAT] * 8)
         g = dict(G0, sortie_barres=1, plages_interdites=[('08:00', '08:30')])

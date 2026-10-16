@@ -1,0 +1,11 @@
+zone_entree|inverse|les_deux|30m|espace_lt1|stop 1 ATR, obj 4R                             n=35 R=+1.304 P(flex)=1.000 (ref 0.540) taille 2  p_hasard=0.05
+zone_cassee|suivi|long|30m|dash60_avec+hors_annonces|stop 1 ATR, obj 4R                    n=34 R=+1.090 P(flex)=0.870 (ref 0.482) taille 2  p_hasard=0.05
+feu_0.5|suivi|short|60m|di_avec+hei_avec+trend1D_contre|stop niveau, sans obj              n=31 R=+1.313 P(flex)=0.900 (ref 0.242) taille 2  p_hasard=0.05
+orb_cassure|inverse|les_deux|30m|sauf_lundi|stop 1.5 ATR, obj 4R, suiveur3                 n=30 R=+0.908 P(flex)=1.000 (ref 0.285) taille 2  p_hasard=0.05
+zone_cassee|suivi|les_deux|15m|hors_annonces+vol_0.9_1.2|stop 1.5 ATR, obj 3R, suiveur3    n=31 R=+1.024 P(flex)=1.000 (ref 0.243) taille 2  p_hasard=0.05
+feu_0.3|suivi|short|60m|hei_avec+hors_annonces|stop 1.5 ATR, obj 3R, temps16               n=33 R=+0.845 P(flex)=1.000 (ref 0.230) taille 2  p_hasard=0.05
+londres_cassure|suivi|long|15m|hei60_avec+hors_londres|stop 2 ATR, obj 2R                  n=35 R=+0.557 P(flex)=0.933 (ref 0.465) taille 3  p_hasard=0.05
+feu_0.5|suivi|les_deux|60m|trend1D_contre|stop 2 ATR, obj 2R                               n=46 R=+0.421 P(flex)=0.961 (ref 0.302) taille 1  p_hasard=0.05
+zone_entree|inverse|long|30m|hors_annonces|stop 2 ATR, obj 2R                              n=30 R=+0.494 P(flex)=0.910 (ref 0.683) taille 1  p_hasard=0.14
+adx20_croise|suivi|les_deux|15m|dash60_avec|stop 2 ATR, obj 2R                             n=57 R=+0.372 P(flex)=0.864 (ref 0.327) taille 2  p_hasard=0.10
+finalistes : 194 s

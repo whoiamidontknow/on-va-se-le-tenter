@@ -1,0 +1,7 @@
+MES_15_2 sigF : 204 variantes, 19 s
+MES_15_2 sigFM : 408 variantes, 43 s
+MES_15_2 hei : 612 variantes, 56 s
+MES_15_2 clx : 816 variantes, 65 s
+MES_15_2 tl : 1020 variantes, 94 s
+MES_15_2 det : 1224 variantes, 154 s
+MES_15_2 feu : 1428 variantes, 236 s
