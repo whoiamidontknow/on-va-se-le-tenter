@@ -296,6 +296,7 @@ def main():
     ap.add_argument('--risque', type=float, default=200.0, help='risque $ par trade (taille en micros)')
     ap.add_argument('--jobs', type=int, default=8)
     ap.add_argument('--registre', action='store_true')
+    ap.add_argument('--note', default='', help='texte ajouté au verdict des lignes du registre')
     OPT = ap.parse_args()
     t0 = time.time()
     src = OPT.source or os.environ.get('REG_SOURCE', donnees.SOURCE_DEFAUT)
@@ -388,7 +389,7 @@ def inscrire(TAB, byk, ech):
         verdict = ('walk-forward ancré %d plis : R hors éch. %+.3f (dév. %+.3f), hasard %+.3f p=%.2f ; P(réussite) %.1f %% '
                    'vs hasard %.1f %% ; VE %+.0f $ ; %d variantes d\'aiguillage comparées -> non concluant (2 mois)'
                    % (K, row.r_oos, row.r_dev, row.r_hasard, row.p_hasard, 100 * row.p_reussite,
-                      100 * row.get('p_reussite_hasard', np.nan), row.ve, nvar))
+                      100 * row.get('p_reussite_hasard', np.nan), row.ve, nvar)) + (' ; ' + OPT.note if OPT.note else '')
         RG.ajouter_test(dict(agent='regimes', famille=fam,
                              recette='%s, T_MIN %.1f (état -> setup appris sur le passé ; risque %d $/trade)'
                                      % (row.partition, row.t_min, OPT.risque),

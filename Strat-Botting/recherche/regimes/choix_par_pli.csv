@@ -1,5 +1,5 @@
 pli,etat,setup,n_app,r_app,t_app,partition,t_min
-0,tout,heiflip|long|aucun|A2_2R,21,0.385,1.290,UNIQUE,0.000
+0,tout,orb|long|hei60|A2_2R,11,0.378,0.990,UNIQUE,0.000
 1,tout,orb|long|ema50|A2_3R_be1,18,0.360,1.437,UNIQUE,0.000
 2,tout,sigFM|short|trend60|A2_3R_be1,11,0.628,1.543,UNIQUE,0.000
 3,tout,sigFM|short|trend60|A2_3R_be1,11,0.628,1.543,UNIQUE,0.000
@@ -17,27 +17,27 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 0,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
 0,baisse_vol,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
 0,range_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
-0,range_vol,feu|long|aucun|A2_3R_be1,11,0.477,1.015,TENDANCE_VOL,0.000
+0,range_vol,feu|les_deux|hei60|A2_3R_be1,10,0.311,0.682,TENDANCE_VOL,0.000
 0,hausse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
-0,hausse_vol,heiflip|les_deux|ema50|A1_1.5R,10,0.562,1.469,TENDANCE_VOL,0.000
+0,hausse_vol,heiflip|long|adx20|A2_3R_be1,10,0.722,1.529,TENDANCE_VOL,0.000
 1,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
-1,baisse_vol,feu|les_deux|adx20|A2_3R_be1,13,0.116,0.268,TENDANCE_VOL,0.000
+1,baisse_vol,feu|les_deux|aucun|A2_3R_be1,13,0.116,0.268,TENDANCE_VOL,0.000
 1,range_volbasse,feu|les_deux|aucun|A1_1.5R,12,0.606,1.671,TENDANCE_VOL,0.000
-1,range_vol,feu|long|adx20|A2_3R_be1,14,0.476,1.242,TENDANCE_VOL,0.000
+1,range_vol,feu|long|adx20|A2_3R_be1,16,0.287,0.800,TENDANCE_VOL,0.000
 1,hausse_volbasse,feu|les_deux|trend60|A2_hei,10,0.184,0.267,TENDANCE_VOL,0.000
 1,hausse_vol,heiflip|les_deux|ema50|A1_1.5R,10,0.562,1.469,TENDANCE_VOL,0.000
 2,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
 2,baisse_vol,sigFM|les_deux|feu|A2_3R_be1,13,0.379,0.989,TENDANCE_VOL,0.000
 2,range_volbasse,feu|les_deux|aucun|A1_1.5R,15,0.612,1.907,TENDANCE_VOL,0.000
-2,range_vol,feu|long|adx20|A2_3R_be1,14,0.476,1.242,TENDANCE_VOL,0.000
+2,range_vol,heiflip|short|aucun|A2_2R,26,0.307,1.173,TENDANCE_VOL,0.000
 2,hausse_volbasse,feu|les_deux|trend60|A2_hei,11,0.074,0.117,TENDANCE_VOL,0.000
-2,hausse_vol,heiflip|les_deux|ema50|A2_3R_be1,11,0.447,1.009,TENDANCE_VOL,0.000
+2,hausse_vol,heiflip|les_deux|ema50|A2_3R_be1,11,0.594,1.313,TENDANCE_VOL,0.000
 3,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
 3,baisse_vol,feu|les_deux|hei60|A2_2R,11,0.523,1.145,TENDANCE_VOL,0.000
 3,range_volbasse,feu|les_deux|aucun|A1_1.5R,18,0.474,1.578,TENDANCE_VOL,0.000
 3,range_vol,heiflip|short|aucun|A2_2R,31,0.383,1.558,TENDANCE_VOL,0.000
 3,hausse_volbasse,feu|les_deux|trend60|A2_hei,13,0.076,0.143,TENDANCE_VOL,0.000
-3,hausse_vol,heiflip|les_deux|ema50|A2_3R_be1,11,0.447,1.009,TENDANCE_VOL,0.000
+3,hausse_vol,heiflip|les_deux|ema50|A2_3R_be1,11,0.594,1.313,TENDANCE_VOL,0.000
 4,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,0.000
 4,baisse_vol,sigFM|les_deux|trend60|A2_3R_be1,12,0.497,1.322,TENDANCE_VOL,0.000
 4,range_volbasse,heiflip|long|aucun|A1_1.5R,11,0.745,2.071,TENDANCE_VOL,0.000
@@ -49,7 +49,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 0,range_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
 0,range_vol,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
 0,hausse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
-0,hausse_vol,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
+0,hausse_vol,heiflip|long|adx20|A2_3R_be1,10,0.722,1.529,TENDANCE_VOL,1.500
 1,baisse_volbasse,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
 1,baisse_vol,PAS DE TRADE,0,,,TENDANCE_VOL,1.500
 1,range_volbasse,feu|les_deux|aucun|A1_1.5R,12,0.606,1.671,TENDANCE_VOL,1.500
@@ -129,7 +129,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 2,apmUS_nonal,feu|les_deux|aucun|A1_1.5R,15,0.234,0.720,SEANCE_ALIGNE,0.000
 2,apmUS_al,heiflip|les_deux|ema50|A1_1.5R,10,0.617,1.861,SEANCE_ALIGNE,0.000
 3,asie_nonal,heiflip|les_deux|aucun|A2_2R,16,0.579,1.538,SEANCE_ALIGNE,0.000
-3,asie_al,heiflip|les_deux|aucun|A2_3R_be1,10,0.476,0.843,SEANCE_ALIGNE,0.000
+3,asie_al,feu|les_deux|hei60|A2_3R_be1,10,0.462,0.936,SEANCE_ALIGNE,0.000
 3,londres_nonal,feu|les_deux|adx20|A1_1.5R,19,0.133,0.448,SEANCE_ALIGNE,0.000
 3,londres_al,feu|les_deux|hei60|A2_hei,14,0.875,0.745,SEANCE_ALIGNE,0.000
 3,ouvUS_nonal,feu|les_deux|hei60|A1_1.5R,12,0.635,1.776,SEANCE_ALIGNE,0.000
@@ -137,13 +137,13 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 3,apmUS_nonal,feu|les_deux|adx20|A2_2R,10,0.761,2.732,SEANCE_ALIGNE,0.000
 3,apmUS_al,heiflip|les_deux|ema50|A1_1.5R,10,0.617,1.861,SEANCE_ALIGNE,0.000
 4,asie_nonal,heiflip|long|aucun|A2_2R,11,1.306,3.502,SEANCE_ALIGNE,0.000
-4,asie_al,heiflip|les_deux|aucun|A2_3R_be1,10,0.476,0.843,SEANCE_ALIGNE,0.000
+4,asie_al,feu|les_deux|hei60|A2_3R_be1,10,0.462,0.936,SEANCE_ALIGNE,0.000
 4,londres_nonal,det|les_deux|aucun|A2_2R,16,0.855,2.278,SEANCE_ALIGNE,0.000
 4,londres_al,feu|les_deux|hei60|A2_hei,14,0.875,0.745,SEANCE_ALIGNE,0.000
 4,ouvUS_nonal,feu|les_deux|hei60|A1_1.5R,15,0.805,2.703,SEANCE_ALIGNE,0.000
 4,ouvUS_al,orb|les_deux|feu|A2_2R,10,0.133,0.389,SEANCE_ALIGNE,0.000
 4,apmUS_nonal,feu|les_deux|adx20|A2_2R,15,0.402,1.600,SEANCE_ALIGNE,0.000
-4,apmUS_al,heiflip|les_deux|adx20|A2_hei,13,0.373,1.954,SEANCE_ALIGNE,0.000
+4,apmUS_al,heiflip|les_deux|feu|A1_1.5R,12,0.550,1.734,SEANCE_ALIGNE,0.000
 0,asie_nonal,PAS DE TRADE,0,,,SEANCE_ALIGNE,1.500
 0,asie_al,PAS DE TRADE,0,,,SEANCE_ALIGNE,1.500
 0,londres_nonal,PAS DE TRADE,0,,,SEANCE_ALIGNE,1.500
@@ -183,7 +183,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 4,ouvUS_nonal,feu|les_deux|hei60|A1_1.5R,15,0.805,2.703,SEANCE_ALIGNE,1.500
 4,ouvUS_al,PAS DE TRADE,0,,,SEANCE_ALIGNE,1.500
 4,apmUS_nonal,feu|les_deux|adx20|A2_2R,15,0.402,1.600,SEANCE_ALIGNE,1.500
-4,apmUS_al,heiflip|les_deux|adx20|A2_hei,13,0.373,1.954,SEANCE_ALIGNE,1.500
+4,apmUS_al,heiflip|les_deux|feu|A1_1.5R,12,0.550,1.734,SEANCE_ALIGNE,1.500
 0,asie_nonal,PAS DE TRADE,0,,,SEANCE_ALIGNE,2.500
 0,asie_al,PAS DE TRADE,0,,,SEANCE_ALIGNE,2.500
 0,londres_nonal,PAS DE TRADE,0,,,SEANCE_ALIGNE,2.500
@@ -257,7 +257,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 3,ragite_asie,heiflip|les_deux|aucun|A2_2R,18,0.570,1.605,COMPOSITE,0.000
 3,ragite_actif,feu|short|hei60|A2_3R_be1,11,0.690,1.623,COMPOSITE,0.000
 4,th_asie,PAS DE TRADE,0,,,COMPOSITE,0.000
-4,th_actif,feu|long|ema50|A2_3R_be1,10,0.156,0.409,COMPOSITE,0.000
+4,th_actif,feu|les_deux|ema50|A2_2R,10,0.181,0.496,COMPOSITE,0.000
 4,tb_asie,PAS DE TRADE,0,,,COMPOSITE,0.000
 4,tb_actif,heiflip|les_deux|adx20|A2_hei,10,1.608,0.977,COMPOSITE,0.000
 4,rcalme_asie,feu|les_deux|aucun|A1_1.5R,11,0.537,1.387,COMPOSITE,0.000
@@ -346,26 +346,26 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 4,ragite_actif,PAS DE TRADE,0,,,COMPOSITE,2.500
 0,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 0,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,0.000
-0,dansORB_h60bas,heiflip|long|aucun|A2_2R,10,1.036,2.518,ORB_HEI60,0.000
-0,dansORB_h60haut,sigFM|les_deux|aucun|A1_1.5R,15,0.221,0.671,ORB_HEI60,0.000
+0,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,13,0.804,2.055,ORB_HEI60,0.000
+0,dansORB_h60haut,sigFM|les_deux|adx20|A1_1.5R,13,0.378,1.114,ORB_HEI60,0.000
 0,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 0,surORB_h60haut,orb|les_deux|aucun|A2_2R,11,0.378,0.990,ORB_HEI60,0.000
 1,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 1,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,0.000
-1,dansORB_h60bas,heiflip|long|aucun|A2_2R,16,0.720,2.078,ORB_HEI60,0.000
-1,dansORB_h60haut,tl|les_deux|feu|A1_1.5R,11,0.303,0.760,ORB_HEI60,0.000
+1,dansORB_h60bas,heiflip|long|aucun|A2_2R,18,0.578,1.780,ORB_HEI60,0.000
+1,dansORB_h60haut,feu|les_deux|hei60|A2_3R_be1,18,0.368,0.945,ORB_HEI60,0.000
 1,surORB_h60bas,orb|les_deux|adx20|A2_hei,10,0.139,0.456,ORB_HEI60,0.000
 1,surORB_h60haut,orb|les_deux|ema50|A2_2R,10,0.466,1.242,ORB_HEI60,0.000
 2,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 2,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,0.000
-2,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,24,0.730,2.567,ORB_HEI60,0.000
-2,dansORB_h60haut,tl|les_deux|feu|A1_1.5R,11,0.303,0.760,ORB_HEI60,0.000
+2,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,25,0.659,2.338,ORB_HEI60,0.000
+2,dansORB_h60haut,feu|long|ema50|A2_3R_be1,20,0.279,0.784,ORB_HEI60,0.000
 2,surORB_h60bas,orb|les_deux|ema50|A2_3R_be1,10,0.033,0.099,ORB_HEI60,0.000
 2,surORB_h60haut,feu|les_deux|aucun|A1_1.5R,11,0.507,1.347,ORB_HEI60,0.000
 3,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 3,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,0.000
-3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,28,0.752,2.898,ORB_HEI60,0.000
-3,dansORB_h60haut,feu|long|ema50|A2_3R_be1,22,0.180,0.571,ORB_HEI60,0.000
+3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,29,0.690,2.674,ORB_HEI60,0.000
+3,dansORB_h60haut,feu|long|ema50|A2_3R_be1,22,0.264,0.815,ORB_HEI60,0.000
 3,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
 3,surORB_h60haut,feu|les_deux|aucun|A1_1.5R,11,0.507,1.347,ORB_HEI60,0.000
 4,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,0.000
@@ -376,25 +376,25 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 4,surORB_h60haut,orb|les_deux|feu|A2_2R,13,0.511,1.641,ORB_HEI60,0.000
 0,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 0,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
-0,dansORB_h60bas,heiflip|long|aucun|A2_2R,10,1.036,2.518,ORB_HEI60,1.500
+0,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,13,0.804,2.055,ORB_HEI60,1.500
 0,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 0,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 0,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 1,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 1,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
-1,dansORB_h60bas,heiflip|long|aucun|A2_2R,16,0.720,2.078,ORB_HEI60,1.500
+1,dansORB_h60bas,heiflip|long|aucun|A2_2R,18,0.578,1.780,ORB_HEI60,1.500
 1,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 1,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 1,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 2,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 2,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
-2,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,24,0.730,2.567,ORB_HEI60,1.500
+2,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,25,0.659,2.338,ORB_HEI60,1.500
 2,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 2,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 2,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 3,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 3,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
-3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,28,0.752,2.898,ORB_HEI60,1.500
+3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,29,0.690,2.674,ORB_HEI60,1.500
 3,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
 3,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,1.500
 3,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,1.500
@@ -406,7 +406,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 4,surORB_h60haut,orb|les_deux|feu|A2_2R,13,0.511,1.641,ORB_HEI60,1.500
 0,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 0,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
-0,dansORB_h60bas,heiflip|long|aucun|A2_2R,10,1.036,2.518,ORB_HEI60,2.500
+0,dansORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 0,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
 0,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 0,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
@@ -418,13 +418,13 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 1,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
 2,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 2,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
-2,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,24,0.730,2.567,ORB_HEI60,2.500
+2,dansORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 2,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
 2,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 2,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
 3,sousORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 3,sousORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
-3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,28,0.752,2.898,ORB_HEI60,2.500
+3,dansORB_h60bas,heiflip|les_deux|aucun|A2_2R,29,0.690,2.674,ORB_HEI60,2.500
 3,dansORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
 3,surORB_h60bas,PAS DE TRADE,0,,,ORB_HEI60,2.500
 3,surORB_h60haut,PAS DE TRADE,0,,,ORB_HEI60,2.500
@@ -437,18 +437,18 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 0,sousMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 0,sousMon_vol,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 0,dansMon_volbasse,feu|les_deux|aucun|A1_1.5R,10,0.456,1.103,MONDAY_VOL,0.000
-0,dansMon_vol,heiflip|long|adx20|A2_2R,12,0.558,1.416,MONDAY_VOL,0.000
+0,dansMon_vol,heiflip|les_deux|hei60|A2_3R_be1,11,0.693,1.569,MONDAY_VOL,0.000
 0,surMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 0,surMon_vol,heiflip|les_deux|aucun|A2_hei,10,0.315,0.617,MONDAY_VOL,0.000
 1,sousMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 1,sousMon_vol,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 1,dansMon_volbasse,sigFM|les_deux|aucun|A2_hei,10,0.676,0.656,MONDAY_VOL,0.000
-1,dansMon_vol,orb|long|ema50|A2_3R_be1,10,0.337,1.148,MONDAY_VOL,0.000
+1,dansMon_vol,heiflip|les_deux|hei60|A2_3R_be1,15,0.507,1.358,MONDAY_VOL,0.000
 1,surMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 1,surMon_vol,feu|les_deux|aucun|A2_hei,10,0.328,0.652,MONDAY_VOL,0.000
 2,sousMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 2,sousMon_vol,heiflip|les_deux|adx20|A2_hei,10,1.705,1.031,MONDAY_VOL,0.000
-2,dansMon_volbasse,sigFM|les_deux|aucun|A2_hei,11,0.521,0.552,MONDAY_VOL,0.000
+2,dansMon_volbasse,feu|long|ema50|A2_2R,10,0.277,0.585,MONDAY_VOL,0.000
 2,dansMon_vol,feu|short|hei60|A2_2R,10,0.562,1.449,MONDAY_VOL,0.000
 2,surMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,0.000
 2,surMon_vol,feu|les_deux|aucun|A2_hei,10,0.328,0.652,MONDAY_VOL,0.000
@@ -467,7 +467,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 0,sousMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,1.500
 0,sousMon_vol,PAS DE TRADE,0,,,MONDAY_VOL,1.500
 0,dansMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,1.500
-0,dansMon_vol,PAS DE TRADE,0,,,MONDAY_VOL,1.500
+0,dansMon_vol,heiflip|les_deux|hei60|A2_3R_be1,11,0.693,1.569,MONDAY_VOL,1.500
 0,surMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,1.500
 0,surMon_vol,PAS DE TRADE,0,,,MONDAY_VOL,1.500
 1,sousMon_volbasse,PAS DE TRADE,0,,,MONDAY_VOL,1.500
@@ -529,25 +529,25 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 0,feuN_adxbas,PAS DE TRADE,0,,,FEU_ADX,0.000
 0,feuN_adxhaut,orb|les_deux|adx20|A1_1.5R,10,0.215,0.515,FEU_ADX,0.000
 0,feuL_adxbas,PAS DE TRADE,0,,,FEU_ADX,0.000
-0,feuL_adxhaut,heiflip|les_deux|feu|A2_2R,11,0.210,0.546,FEU_ADX,0.000
+0,feuL_adxhaut,heiflip|les_deux|ema50|A2_3R_be1,13,0.244,0.590,FEU_ADX,0.000
 1,feuS_adxbas,PAS DE TRADE,0,,,FEU_ADX,0.000
 1,feuS_adxhaut,feu|les_deux|hei60|A2_3R_be1,14,0.082,0.261,FEU_ADX,0.000
 1,feuN_adxbas,heiflip|les_deux|aucun|A2_hei,12,1.406,1.499,FEU_ADX,0.000
 1,feuN_adxhaut,heiflip|les_deux|ema50|A2_3R_be1,17,0.226,0.611,FEU_ADX,0.000
 1,feuL_adxbas,feu|les_deux|aucun|A2_2R,10,0.543,1.122,FEU_ADX,0.000
-1,feuL_adxhaut,heiflip|les_deux|feu|A2_2R,17,0.270,0.879,FEU_ADX,0.000
+1,feuL_adxhaut,feu|les_deux|hei60|A2_3R_be1,19,0.292,0.812,FEU_ADX,0.000
 2,feuS_adxbas,feu|les_deux|aucun|A2_hei,11,0.232,0.393,FEU_ADX,0.000
 2,feuS_adxhaut,sigFM|les_deux|trend60|A2_3R_be1,10,0.593,1.323,FEU_ADX,0.000
 2,feuN_adxbas,heiflip|les_deux|aucun|A2_hei,13,1.268,1.452,FEU_ADX,0.000
 2,feuN_adxhaut,heiflip|long|adx20|A2_2R,15,0.537,1.426,FEU_ADX,0.000
 2,feuL_adxbas,feu|les_deux|aucun|A2_2R,10,0.543,1.122,FEU_ADX,0.000
-2,feuL_adxhaut,feu|long|trend60|A2_3R_be1,31,0.150,0.577,FEU_ADX,0.000
+2,feuL_adxhaut,orb|les_deux|ema50|A2_2R,11,0.190,0.541,FEU_ADX,0.000
 3,feuS_adxbas,feu|les_deux|aucun|A2_hei,13,0.065,0.127,FEU_ADX,0.000
 3,feuS_adxhaut,sigFM|les_deux|trend60|A2_3R_be1,10,0.593,1.323,FEU_ADX,0.000
 3,feuN_adxbas,heiflip|les_deux|aucun|A2_hei,16,1.581,1.914,FEU_ADX,0.000
 3,feuN_adxhaut,heiflip|long|adx20|A2_2R,16,0.627,1.726,FEU_ADX,0.000
 3,feuL_adxbas,feu|les_deux|aucun|A2_2R,10,0.543,1.122,FEU_ADX,0.000
-3,feuL_adxhaut,orb|les_deux|ema50|A2_2R,11,0.190,0.541,FEU_ADX,0.000
+3,feuL_adxhaut,feu|les_deux|hei60|A2_3R_be1,26,0.151,0.561,FEU_ADX,0.000
 4,feuS_adxbas,feu|les_deux|ema50|A2_hei,20,0.373,0.691,FEU_ADX,0.000
 4,feuS_adxhaut,heiflip|les_deux|adx20|A2_2R,21,0.366,1.270,FEU_ADX,0.000
 4,feuN_adxbas,heiflip|les_deux|aucun|A2_hei,19,1.288,1.812,FEU_ADX,0.000
@@ -654,7 +654,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 3,jeu_US,feu|les_deux|aucun|A1_1.5R,11,0.265,0.687,JOUR_US,0.000
 3,ven_horsUS,feu|les_deux|aucun|A2_hei,10,2.025,1.254,JOUR_US,0.000
 3,ven_US,PAS DE TRADE,0,,,JOUR_US,0.000
-4,lun_horsUS,heiflip|les_deux|aucun|A2_2R,10,0.619,1.305,JOUR_US,0.000
+4,lun_horsUS,heiflip|les_deux|aucun|A2_2R,10,0.744,1.539,JOUR_US,0.000
 4,lun_US,clx|les_deux|adx20|A1_1.5R,11,0.784,2.201,JOUR_US,0.000
 4,mar_horsUS,feu|short|ema50|A1_1.5R,10,0.704,1.838,JOUR_US,0.000
 4,mar_US,feu|les_deux|aucun|A2_2R,10,0.686,1.827,JOUR_US,0.000
@@ -704,7 +704,7 @@ pli,etat,setup,n_app,r_app,t_app,partition,t_min
 3,jeu_US,PAS DE TRADE,0,,,JOUR_US,1.500
 3,ven_horsUS,PAS DE TRADE,0,,,JOUR_US,1.500
 3,ven_US,PAS DE TRADE,0,,,JOUR_US,1.500
-4,lun_horsUS,PAS DE TRADE,0,,,JOUR_US,1.500
+4,lun_horsUS,heiflip|les_deux|aucun|A2_2R,10,0.744,1.539,JOUR_US,1.500
 4,lun_US,clx|les_deux|adx20|A1_1.5R,11,0.784,2.201,JOUR_US,1.500
 4,mar_horsUS,feu|short|ema50|A1_1.5R,10,0.704,1.838,JOUR_US,1.500
 4,mar_US,feu|les_deux|aucun|A2_2R,10,0.686,1.827,JOUR_US,1.500

@@ -2,9 +2,9 @@
 
 **Verdict : l'aiguillage « état de marché → setup » n'apporte rien de démontrable par rapport à un setup
 unique, et il surapprend fortement.** Sur l'apprentissage, les couples (état, setup) choisis font en moyenne
-+0,63 R par trade de plus que sur le pli suivant. La corrélation entre le score en développement et le
-score sur le pli suivant vaut −0,07 : le choix fait sur le passé ne prédit rien. Aucune variante ne bat la
-référence au hasard (meilleur p = 0,19 sur 18 variantes qui tradent). Données : cache, environ 2 mois, donc
++0,64 R par trade de plus que sur le pli suivant. La corrélation entre le score en développement et le
+score sur le pli suivant vaut −0,15 : le choix fait sur le passé ne prédit rien. Aucune variante ne bat la
+référence au hasard (meilleur p = 0,29 sur 18 variantes qui tradent). Données : cache, environ 2 mois, donc
 tout ceci reste fragile. Il faut relancer sur le DATASET.
 
 ## Comment relancer
@@ -73,28 +73,28 @@ objectif 3 R et break-even à 1 R. Le moteur commun ferme tout à 15:59 heure de
 ## Résultats hors échantillon (34 jours de test, MES + MNQ)
 | Variante | n | R moyen hors éch. [IC95] | R moyen en dév. | R hasard | p hasard | P(réussite) | P hasard | VE $ |
 |---|---|---|---|---|---|---|---|---|
-| JOUR_US, T_MIN 0 | 72 | +0,26 [−0,12 ; +0,79] | +0,60 | +0,18 | 0,32 | 58,2 % | 54,1 % | +2 413 |
-| ORB_HEI60, T_MIN 1,5 | 65 | +0,19 | +0,73 | +0,07 | 0,19 | 23,5 % | 41,3 % | — |
-| FEU_ADX, T_MIN 0 | 92 | +0,11 | +0,52 | +0,10 | 0,48 | 25,6 % | 54,6 % | — |
-| MONDAY_VOL, T_MIN 1,5 | 18 | +0,12 | +0,61 | +0,01 | 0,39 | 3,2 % | 45,0 % | — |
-| SEANCE_ALIGNE, T_MIN 1,5 | 36 | +0,08 | +0,69 | +0,06 | 0,39 | 2,0 % | 45,4 % | — |
+| JOUR_US, T_MIN 0 | 72 | +0,26 [−0,12 ; +0,79] | +0,61 | +0,18 | 0,32 | 58,2 % | 54,1 % | +2 413 |
+| FEU_ADX, T_MIN 0 | 93 | +0,16 | +0,53 | +0,08 | 0,32 | 36,1 % | 50,6 % | — |
+| ORB_HEI60, T_MIN 1,5 | 65 | +0,14 | +0,67 | +0,05 | 0,29 | 14,5 % | 40,5 % | — |
+| MONDAY_VOL, T_MIN 1,5 | 22 | +0,10 | +0,63 | −0,01 | 0,35 | 11,7 % | 38,5 % | — |
+| SEANCE_ALIGNE, T_MIN 1,5 | 35 | +0,06 | +0,71 | +0,06 | 0,48 | 1,2 % | 45,9 % | — |
 | **UNIQUE, T_MIN 1,5** | 45 | +0,03 | +0,52 | −0,03 | 0,39 | 3,6 % | 19,1 % | −159 |
-| **UNIQUE, T_MIN 0** | 62 | +0,01 | +0,47 | −0,06 | 0,39 | 3,7 % | 12,7 % | — |
-| ORB_HEI60, T_MIN 0 | 92 | +0,02 | +0,49 | +0,00 | 0,48 | 5,3 % | 26,7 % | — |
-| COMPOSITE, T_MIN 0 / 1,5 | 70 / 26 | −0,03 / −0,03 | +0,47 / +0,60 | −0,01 / +0,03 | 0,58 / 0,65 | 0,4 % / 0,0 % | 22,6 % / 37,5 % | −165 |
-| TENDANCE_VOL, T_MIN 0 | 80 | −0,17 | +0,43 | +0,06 | 0,94 | 0,8 % | 30,9 % | — |
+| **UNIQUE, T_MIN 0** | 52 | +0,01 | +0,47 | −0,09 | 0,32 | 3,6 % | 12,5 % | — |
+| ORB_HEI60, T_MIN 0 | 94 | +0,01 | +0,47 | +0,01 | 0,55 | 4,6 % | 29,3 % | — |
+| COMPOSITE, T_MIN 0 / 1,5 | 70 / 26 | −0,06 / −0,03 | +0,47 / +0,60 | −0,04 / +0,03 | 0,55 / 0,65 | 0,1 % / 0,0 % | 18,4 % / 37,5 % | −165 |
+| TENDANCE_VOL, T_MIN 0 | 82 | −0,10 | +0,42 | +0,10 | 0,90 | 4,0 % | 38,2 % | — |
 
 Tableau complet : `walk_forward_variantes.csv`. Avec T_MIN 2,5, presque toutes les partitions ne tradent
 plus (aucun couple n'atteint ce t sur le passé). C'est la réponse honnête « pas de trade » dans tous les
 états.
 
 **Aiguillage contre setup unique** (même T_MIN, différence de R par jour de test, bootstrap) : aucune
-différence significative. La meilleure est ORB_HEI60 1,5 : +0,31 R par jour [−0,11 ; +0,73], p unilatéral
-0,07, mais c'est le meilleur de 21 comparaisons, donc pas significatif après correction. JOUR_US 0 donne
-+0,53 [−0,36 ; +1,65].
+différence significative. La meilleure est JOUR_US 0 : +0,54 R par jour [−0,30 ; +1,60], p unilatéral 0,12.
+Vient ensuite ORB_HEI60 1,5 : +0,22 [−0,22 ; +0,66], p 0,16. Ce sont les meilleures de 21 comparaisons,
+donc rien de significatif.
 
-**Surapprentissage** : décote moyenne de +0,63 R par trade entre le développement et le pli suivant (médiane
-+0,59). Corrélation entre les deux de −0,07. Choix instables : avec T_MIN 0, seulement 44 à 67 % des états
+**Surapprentissage** : décote moyenne de +0,64 R par trade entre le développement et le pli suivant (médiane
++0,57). Corrélation entre les deux de −0,15. Choix instables : avec T_MIN 0, seulement 42 à 62 % des états
 gardent le même setup d'un pli au suivant. Le « meilleur setup unique » change à presque chaque pli
 (heiflip long → orb long → Signator short → Detector).
 
@@ -120,7 +120,10 @@ hasard.
 - La sélection en apprentissage utilise les trades du balayage sans masque, étiquetés par l'état de la barre
   signal (approximation : effets de blocage entre positions). Le test, lui, est rejoué exactement.
 - Le Monte-Carlo propfirm est fait sur 34 jours de test mis bout à bout : ordre de grandeur seulement.
-- Registre : REG-0001 (JOUR_US 0, meilleur hors échantillon, sélectionné a posteriori), REG-0002
-  (COMPOSITE 1,5, partition définie à l'avance) et REG-0003 (setup unique 1,5). `p_ref_hasard` = P(réussite)
+- Registre : REG-0004 (JOUR_US 0, meilleur hors échantillon, sélectionné a posteriori), REG-0005
+  (COMPOSITE 1,5, partition définie à l'avance) et REG-0006 (setup unique 1,5). Ces lignes REMPLACENT
+  REG-0001 à 0003, calculées avant la correction du moteur (trous de données). Les chiffres de ces trois
+  recettes sont identiques, mais d'autres variantes ont un peu bougé. Tout ce fichier vient de la relance
+  avec le moteur corrigé ; aucun trade hors échantillon ne dure plus d'une journée. `p_ref_hasard` = P(réussite)
   de la référence au hasard. Les trades écrits sont ceux du hors échantillon.
 - Rien n'a été lu du scellé.

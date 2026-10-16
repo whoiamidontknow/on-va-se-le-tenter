@@ -1,29 +1,29 @@
-séries : [('MES1_avr-juil', 3337), ('MES_sep-oct', 1468), ('NQ_sep-oct', 1272)] 15 s
-balayage : 648 setups, 33711 trades, 70 s
+séries : [('MES1_avr-juil', 3337), ('MES_sep-oct', 1468), ('NQ_sep-oct', 1272)] 1 s
+balayage : 648 setups, 33855 trades, 7 s
 plis : [('2026-04-29', '2026-05-27', '2026-06-04', 7), ('2026-04-29', '2026-06-05', '2026-06-15', 7), ('2026-04-29', '2026-06-16', '2026-09-17', 6), ('2026-04-29', '2026-09-18', '2026-09-28', 7), ('2026-04-29', '2026-09-29', '2026-10-07', 7)]
-walk-forward : 751 s
-  UNIQUE         T_MIN 0.0 : n  62  R oos +0.012  R dev +0.467  hasard -0.062  p 0.39  P(réussite) 3.7 % / hasard 12.7 %
+walk-forward : 50 s
+  UNIQUE         T_MIN 0.0 : n  52  R oos +0.008  R dev +0.474  hasard -0.094  p 0.32  P(réussite) 3.6 % / hasard 12.5 %
   UNIQUE         T_MIN 1.5 : n  45  R oos +0.032  R dev +0.519  hasard -0.030  p 0.39  P(réussite) 3.6 % / hasard 19.1 %
   UNIQUE         T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-  TENDANCE_VOL   T_MIN 0.0 : n  80  R oos -0.168  R dev +0.431  hasard +0.059  p 0.94  P(réussite) 0.8 % / hasard 30.9 %
-  TENDANCE_VOL   T_MIN 1.5 : n  46  R oos -0.093  R dev +0.557  hasard +0.063  p 0.81  P(réussite) 2.9 % / hasard 46.1 %
+  TENDANCE_VOL   T_MIN 0.0 : n  82  R oos -0.101  R dev +0.419  hasard +0.097  p 0.90  P(réussite) 4.0 % / hasard 38.2 %
+  TENDANCE_VOL   T_MIN 1.5 : n  47  R oos -0.113  R dev +0.571  hasard +0.069  p 0.84  P(réussite) 0.9 % / hasard 48.2 %
   TENDANCE_VOL   T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-  SEANCE_ALIGNE  T_MIN 0.0 : n 101  R oos -0.062  R dev +0.519  hasard -0.025  p 0.58  P(réussite) 0.3 % / hasard 19.9 %
-  SEANCE_ALIGNE  T_MIN 1.5 : n  36  R oos +0.084  R dev +0.686  hasard +0.055  p 0.39  P(réussite) 2.0 % / hasard 45.4 %
+  SEANCE_ALIGNE  T_MIN 0.0 : n 103  R oos -0.084  R dev +0.524  hasard -0.001  p 0.74  P(réussite) 0.1 % / hasard 20.8 %
+  SEANCE_ALIGNE  T_MIN 1.5 : n  35  R oos +0.064  R dev +0.705  hasard +0.060  p 0.48  P(réussite) 1.2 % / hasard 45.9 %
   SEANCE_ALIGNE  T_MIN 2.5 : n  11  R oos -0.428  R dev +0.946  hasard +0.177  p 0.97  P(réussite) 0.0 % / hasard 44.4 %
-  COMPOSITE      T_MIN 0.0 : n  70  R oos -0.033  R dev +0.465  hasard -0.012  p 0.58  P(réussite) 0.4 % / hasard 22.6 %
+  COMPOSITE      T_MIN 0.0 : n  70  R oos -0.059  R dev +0.466  hasard -0.040  p 0.55  P(réussite) 0.1 % / hasard 18.4 %
   COMPOSITE      T_MIN 1.5 : n  26  R oos -0.027  R dev +0.595  hasard +0.034  p 0.65  P(réussite) 0.0 % / hasard 37.5 %
   COMPOSITE      T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-  ORB_HEI60      T_MIN 0.0 : n  92  R oos +0.024  R dev +0.488  hasard +0.003  p 0.48  P(réussite) 5.3 % / hasard 26.7 %
-  ORB_HEI60      T_MIN 1.5 : n  65  R oos +0.185  R dev +0.732  hasard +0.070  p 0.19  P(réussite) 23.5 % / hasard 41.3 %
-  ORB_HEI60      T_MIN 2.5 : n  34  R oos +0.082  R dev +0.827  hasard +0.091  p 0.48  P(réussite) 9.4 % / hasard 36.1 %
-  MONDAY_VOL     T_MIN 0.0 : n  57  R oos -0.023  R dev +0.668  hasard -0.002  p 0.52  P(réussite) 1.8 % / hasard 37.0 %
-  MONDAY_VOL     T_MIN 1.5 : n  18  R oos +0.122  R dev +0.605  hasard +0.013  p 0.39  P(réussite) 3.2 % / hasard 45.0 %
+  ORB_HEI60      T_MIN 0.0 : n  94  R oos +0.006  R dev +0.472  hasard +0.006  p 0.55  P(réussite) 4.6 % / hasard 29.3 %
+  ORB_HEI60      T_MIN 1.5 : n  65  R oos +0.139  R dev +0.670  hasard +0.054  p 0.29  P(réussite) 14.5 % / hasard 40.5 %
+  ORB_HEI60      T_MIN 2.5 : n  24  R oos -0.080  R dev +0.792  hasard +0.057  p 0.87  P(réussite) 0.0 % / hasard 22.9 %
+  MONDAY_VOL     T_MIN 0.0 : n  59  R oos +0.014  R dev +0.669  hasard +0.006  p 0.45  P(réussite) 18.9 % / hasard 41.0 %
+  MONDAY_VOL     T_MIN 1.5 : n  22  R oos +0.099  R dev +0.628  hasard -0.013  p 0.35  P(réussite) 11.7 % / hasard 38.5 %
   MONDAY_VOL     T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-  FEU_ADX        T_MIN 0.0 : n  92  R oos +0.110  R dev +0.524  hasard +0.097  p 0.48  P(réussite) 25.6 % / hasard 54.6 %
+  FEU_ADX        T_MIN 0.0 : n  93  R oos +0.159  R dev +0.529  hasard +0.077  p 0.32  P(réussite) 36.1 % / hasard 50.6 %
   FEU_ADX        T_MIN 1.5 : n  29  R oos +0.107  R dev +1.055  hasard +0.062  p 0.48  P(réussite) 12.6 % / hasard 40.2 %
   FEU_ADX        T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-  JOUR_US        T_MIN 0.0 : n  72  R oos +0.262  R dev +0.603  hasard +0.181  p 0.32  P(réussite) 58.2 % / hasard 54.1 %
-  JOUR_US        T_MIN 1.5 : n  22  R oos -0.008  R dev +0.873  hasard -0.015  p 0.45  P(réussite) 0.1 % / hasard 15.0 %
+  JOUR_US        T_MIN 0.0 : n  72  R oos +0.262  R dev +0.607  hasard +0.181  p 0.32  P(réussite) 58.2 % / hasard 54.1 %
+  JOUR_US        T_MIN 1.5 : n  24  R oos +0.033  R dev +0.859  hasard -0.035  p 0.39  P(réussite) 0.5 % / hasard 12.2 %
   JOUR_US        T_MIN 2.5 : n   0  R oos —  R dev —  hasard —  p -1.00  P(réussite) 0.0 % / hasard —
-fini en 1304 s
+fini en 203 s
