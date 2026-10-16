@@ -29,4 +29,11 @@ des confluences de l'indicateur maison `CompletV3.pine`, et calibrée pour les r
 Spécification complète : [`SPEC.md`](SPEC.md).
 
 ## État
-- 16/10/2026 — lancement, vague 0 en cours.
+- 16/10/2026 — vague 0 terminée :
+  - moteur de backtest commun (23 tests, 374/374 trades identiques à l'ancien moteur) ;
+  - simulateur Monte-Carlo propfirm (22 tests), règles de 17 comptes 50k ;
+  - **Apex exclue** (automatisation interdite) ; propfirm recommandée : **Tradeify Select → Flex** ;
+  - voie bot : TradingView → PickMyTrade → Tradovate ;
+  - préréglage A (3 ans) : pas mieux que le hasard, et ses gains dépendent de trades gardés la nuit
+    (interdit en propfirm) → toute la suite est testée **en intrajournée forcée** ;
+  - `DATASET.pine` prêt (compile sans erreur) — en attente des exports.
