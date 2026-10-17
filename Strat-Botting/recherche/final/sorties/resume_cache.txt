@@ -1,0 +1,99 @@
+SOURCE cache | 3 jeux : MES_15 1468 barres 2026-09-15->2026-10-06, MES1_15 3337 barres 2026-04-29->2026-06-18, NQ_15 1272 barres 2026-09-18->2026-10-07 | 67 jours | N_MIN 30
+  MES_15 : niveaux alignés 100 % | couverture niveaux (long) {'piv': 1.0, 'pivdet': 1.0, 'tous': 1.0} | votes à 0 : trend_5 100%, dash_5 100%, s_orb 76%, s_pd 72%
+  MES1_15 : niveaux alignés 100 % | couverture niveaux (long) {'piv': 0.79, 'pivdet': 0.79, 'tous': 0.99} | votes à 0 : trend_5 100%, dash_5 100%, s_orb 77%, s_pd 69%
+  NQ_15 : niveaux alignés 100 % | couverture niveaux (long) {'piv': 1.0, 'pivdet': 1.0, 'tous': 1.0} | votes à 0 : trend_5 100%, dash_5 100%, s_orb 78%, s_pd 65%
+VÉRIFICATION simulation FIN vs moteur.backtest : 1404 trades comparés, 0 écarts
+50 entrées x 117 gestions = 5850 variantes candidates (+ références sans biais)
+balayage + Tradeify : 3 s
+palier de la règle : 1 (1 = règle complète) ; éligibles palier 1 : 311 / 5850
+
+AGRÉGATS (variantes n >= 30 : 3615)
+  biais vs sans biais (mêmes déclencheurs/confirmation/sortie) : taux +5.5 pts (95 % mieux), R +0.194 (99 % mieux)
+  déclencheurs vs hasard dans le biais : taux +0.4 pts, R -0.002 (48 % des variantes > 0)
+  sortie R fixe            :  837 variantes | 1.27 trades/jour | 55.0 % gagnants | R +0.194 | écart au placebo +0.070 R | VE moy. 4593 $ | P(réussite) moy. 0.90
+  sortie niveau            : 1116 variantes | 1.04 trades/jour | 44.9 % gagnants | R +0.275 | écart au placebo +0.020 R | VE moy. 4075 $ | P(réussite) moy. 0.87
+  sortie niveau + partiel  : 1662 variantes | 0.95 trades/jour | 43.6 % gagnants | R +0.271 | écart au placebo -0.053 R | VE moy. 3061 $ | P(réussite) moy. 0.75
+  stop 1.5 ATR : R +0.269, 44.1 % gagnants, VE moy. 3782 $
+  stop 2 ATR : R +0.250, 47.4 % gagnants, VE moy. 3998 $
+  stop 2.5 ATR : R +0.245, 48.3 % gagnants, VE moy. 3403 $
+  forme R1                                                   :  93 | 1.33 /j | 61.9 % | R +0.219 | écart placebo +0.088 | VE 5190 $
+  forme R1+N8                                                :  93 | 1.47 /j | 59.3 % | R +0.139 | écart placebo +0.090 | VE 4564 $
+  forme R1.5                                                 :  93 | 1.15 /j | 52.4 % | R +0.254 | écart placebo +0.070 | VE 5257 $
+  forme R1.5+N12                                             :  93 | 1.32 /j | 55.3 % | R +0.170 | écart placebo +0.072 | VE 4146 $
+  forme R1.5+N8                                              :  93 | 1.38 /j | 55.4 % | R +0.165 | écart placebo +0.100 | VE 4680 $
+  forme R2                                                   :  93 | 1.05 /j | 45.5 % | R +0.245 | écart placebo +0.037 | VE 4140 $
+  forme R2+BE1                                               :  93 | 1.10 /j | 58.6 % | R +0.212 | écart placebo +0.019 | VE 4971 $
+  forme R2+N12                                               :  93 | 1.26 /j | 53.3 % | R +0.178 | écart placebo +0.068 | VE 3999 $
+  forme R2+N8                                                :  93 | 1.34 /j | 53.6 % | R +0.166 | écart placebo +0.084 | VE 4394 $
+  forme niv1 pivots partiel->2e niveau                       :  93 | 0.91 /j | 44.4 % | R +0.275 | écart placebo -0.018 | VE 2865 $
+  forme niv1 pivots partiel->2e niveau +Hei                  :  93 | 0.99 /j | 42.0 % | R +0.233 | écart placebo -0.045 | VE 2713 $
+  forme niv1 pivots partiel->reste Heishinator               :  92 | 0.95 /j | 40.9 % | R +0.224 | écart placebo -0.081 | VE 2281 $
+  forme niv1 pivots sans partiel                             :  93 | 1.01 /j | 45.0 % | R +0.258 | écart placebo +0.044 | VE 3637 $
+  forme niv1 pivots sans partiel +Hei                        :  93 | 1.07 /j | 43.1 % | R +0.232 | écart placebo +0.031 | VE 3637 $
+  forme niv1 pivots+Detector partiel->2e niveau              :  93 | 0.91 /j | 46.6 % | R +0.307 | écart placebo -0.007 | VE 3614 $
+  forme niv1 pivots+Detector partiel->2e niveau +Hei         :  93 | 0.99 /j | 44.0 % | R +0.261 | écart placebo -0.032 | VE 3506 $
+  forme niv1 pivots+Detector partiel->reste Heishinator      :  92 | 0.95 /j | 43.1 % | R +0.254 | écart placebo -0.068 | VE 3037 $
+  forme niv1 pivots+Detector sans partiel                    :  93 | 1.02 /j | 47.1 % | R +0.293 | écart placebo +0.044 | VE 4464 $
+  forme niv1 pivots+Detector sans partiel +Hei               :  93 | 1.09 /j | 45.0 % | R +0.264 | écart placebo +0.033 | VE 4516 $
+  forme niv1 pivots+Detector+Monday+sessions partiel->2e niveau :  93 | 0.94 /j | 49.6 % | R +0.331 | écart placebo -0.032 | VE 3959 $
+  forme niv1 pivots+Detector+Monday+sessions partiel->2e niveau +Hei :  93 | 1.01 /j | 46.9 % | R +0.285 | écart placebo -0.045 | VE 3916 $
+  forme niv1 pivots+Detector+Monday+sessions partiel->reste Heishinator :  92 | 0.93 /j | 45.1 % | R +0.273 | écart placebo -0.091 | VE 3325 $
+  forme niv1 pivots+Detector+Monday+sessions sans partiel    :  93 | 1.06 /j | 49.6 % | R +0.306 | écart placebo +0.007 | VE 4678 $
+  forme niv1 pivots+Detector+Monday+sessions sans partiel +Hei :  93 | 1.12 /j | 47.4 % | R +0.278 | écart placebo +0.010 | VE 4671 $
+  forme niv1.5 pivots partiel->2e niveau                     :  92 | 0.91 /j | 43.0 % | R +0.277 | écart placebo -0.030 | VE 2641 $
+  forme niv1.5 pivots partiel->2e niveau +Hei                :  92 | 0.98 /j | 40.5 % | R +0.233 | écart placebo -0.057 | VE 2527 $
+  forme niv1.5 pivots partiel->reste Heishinator             :  92 | 0.94 /j | 39.3 % | R +0.225 | écart placebo -0.099 | VE 2145 $
+  forme niv1.5 pivots sans partiel                           :  93 | 0.97 /j | 43.4 % | R +0.265 | écart placebo +0.020 | VE 3389 $
+  forme niv1.5 pivots sans partiel +Hei                      :  93 | 1.04 /j | 41.2 % | R +0.233 | écart placebo +0.003 | VE 3408 $
+  forme niv1.5 pivots+Detector partiel->2e niveau            :  92 | 0.91 /j | 44.6 % | R +0.305 | écart placebo -0.017 | VE 3166 $
+  forme niv1.5 pivots+Detector partiel->2e niveau +Hei       :  92 | 0.98 /j | 41.9 % | R +0.259 | écart placebo -0.044 | VE 3084 $
+  forme niv1.5 pivots+Detector partiel->reste Heishinator    :  92 | 0.94 /j | 40.8 % | R +0.251 | écart placebo -0.085 | VE 2652 $
+  forme niv1.5 pivots+Detector sans partiel                  :  93 | 0.97 /j | 44.6 % | R +0.296 | écart placebo +0.030 | VE 3975 $
+  forme niv1.5 pivots+Detector sans partiel +Hei             :  93 | 1.04 /j | 42.4 % | R +0.262 | écart placebo +0.013 | VE 4034 $
+  forme niv1.5 pivots+Detector+Monday+sessions partiel->2e niveau :  92 | 0.92 /j | 46.1 % | R +0.332 | écart placebo -0.031 | VE 3398 $
+  forme niv1.5 pivots+Detector+Monday+sessions partiel->2e niveau +Hei :  92 | 0.99 /j | 43.4 % | R +0.280 | écart placebo -0.056 | VE 3332 $
+  forme niv1.5 pivots+Detector+Monday+sessions partiel->reste Heishinator :  92 | 0.93 /j | 41.4 % | R +0.273 | écart placebo -0.107 | VE 2905 $
+  forme niv1.5 pivots+Detector+Monday+sessions sans partiel  :  93 | 0.99 /j | 45.9 % | R +0.329 | écart placebo +0.008 | VE 4218 $
+  forme niv1.5 pivots+Detector+Monday+sessions sans partiel +Hei :  93 | 1.06 /j | 43.7 % | R +0.290 | écart placebo -0.002 | VE 4271 $
+
+PRÉRÉGLAGE 25 tel quel (15:30-22:15, 2 ATR, 1R, 8 bougies) : n=73 (1.09 /jour) 72.6 % gagnants R +0.323 PF 2.58 | P(réussite)=1.0 VE=7004.277862458055
+
+WHITE (5031 variantes n>=10, 67 jours) : meilleure t(R brut)=3.03 p=0.04 ; meilleure t(R - placebo)=3.03 p=0.04
+WALK-FORWARD (4 plis, 166 s) : n=46 gagnants 54.3 % (placebo 51.0 %) R +0.066 PF 1.29 net +620 $ (1 micro)
+   pli 0 (palier 1) : préréglage 25 + biais F>=0.33 I>=0.2 | stop 1.5 ATR | R1.5+N8 | appr. 30 tr. 77 % R +0.60 | test 5 tr. 20 % R -0.54
+   pli 1 (palier 1) : préréglage 25 | stop 1.5 ATR | R1+N8 | appr. 30 tr. 63 % R +0.15 | test 8 tr. 75 % R +0.56
+   pli 2 (palier 1) : biais F>=0.33 I>=0.2 | union | Detector+TREND 4 h | stop 2 ATR | R1+N8 | appr. 51 tr. 57 % R +0.02 | test 25 tr. 64 % R +0.15
+   pli 3 (palier 1) : préréglage 25 | stop 1.5 ATR | R1.5+N12 | appr. 30 tr. 63 % R +0.46 | test 8 tr. 25 % R -0.32
+
+#1 [recommandé] préréglage 25 | stop 1.5 ATR | R2+N8
+   n=67 (1.00 /jour) gagnants 62.7 % R +0.505 PF 2.43 net +2804 $/micro
+   placebo (hasard, même gestion) : gagnants 45.0 % R +0.016 | écart +17.7 pts, +0.489 R (z=2.9, p(R)=0.00)
+   (pas de référence sans biais)
+   Tradeify Select Flex : 4 micros P(réussite)=0.99 P(1er payout)=0.99 VE=+7585 $ | score lissé +7536 $ (4 voisines) | White p: R brut 0.05, R-placebo 0.05
+   issues de la table (toutes barres) : temps 47 %, stop 37 %, objectif 10 %, heure 6 %
+
+#2 [plus de trades] biais F>=0.55 I>=0.45 | union | Detector+Feu 60 | stop 2 ATR | R1
+   n=104 (1.55 /jour) gagnants 63.5 % R +0.251 PF 1.80 net +2676 $/micro
+   placebo (hasard dans le sens du biais, même gestion) : gagnants 57.8 % R +0.122 | écart +5.7 pts, +0.129 R (z=1.2, p(R)=0.07)
+   SANS biais, mêmes déclencheurs : n=249 gagnants 55.0 % R +0.074 PF 1.13
+   Tradeify Select Flex : 4 micros P(réussite)=0.99 P(1er payout)=0.98 VE=+7571 $ | score lissé +6264 $ (8 voisines) | White p: R brut 0.18, R-placebo 0.79
+   issues de la table (toutes barres) : stop 45 %, objectif 43 %, heure 12 %
+
+#3 [niveaux + partiel (55 % de gagnants NON atteint)] biais F>=0.55 I>=0.45 | union | Detector+Feu 60 | stop 1.5 ATR | niv1 pivots+Detector+Monday+sessions partiel->2e niveau
+   n=76 (1.13 /jour) gagnants 50.0 % R +0.463 PF 2.30 net +3064 $/micro
+   placebo (hasard dans le sens du biais, même gestion) : gagnants 42.7 % R +0.361 | écart +7.3 pts, +0.102 R (z=1.4, p(R)=0.30)
+   SANS biais, mêmes déclencheurs : n=213 gagnants 40.4 % R +0.013 PF 1.02
+   Tradeify Select Flex : 4 micros P(réussite)=0.89 P(1er payout)=0.84 VE=+6477 $ | score lissé +5343 $ (8 voisines) | White p: R brut 0.39, R-placebo 0.99
+   issues de la table (toutes barres) : stop 59 %, partiel+objectif 17 %, heure 11 %, partiel+stop_be 8 %, partiel+heure 3 %, objectif 1 %
+
+TOP 10 par score lissé (éligibles palier 1) :
+    +7536 $ | préréglage 25 | stop 1.5 ATR | R2+N8 | n=67 1.00/j 63 % R +0.50 | VE +7585 $ P=0.99
+    +7238 $ | préréglage 25 | stop 1.5 ATR | R1.5+N12 | n=70 1.04/j 64 % R +0.42 | VE +6875 $ P=0.95
+    +7228 $ | préréglage 25 | stop 1.5 ATR | R1.5+N8 | n=72 1.07/j 65 % R +0.43 | VE +7632 $ P=0.98
+    +7207 $ | préréglage 25 | stop 2 ATR | R1.5+N8 | n=67 1.00/j 69 % R +0.41 | VE +7540 $ P=1.00
+    +6866 $ | préréglage 25 + biais F>=0.33 I>=0.2 | stop 1.5 ATR | R1+N8 | n=71 1.06/j 69 % R +0.28 | VE +6886 $ P=1.00
+    +6829 $ | préréglage 25 | stop 2 ATR | R1+N8 | n=73 1.09/j 73 % R +0.32 | VE +7004 $ P=1.00
+    +6525 $ | biais F>=0.78 I>=0.45 | union | sans confirmation | stop 2 ATR | R1 | n=70 1.04/j 67 % R +0.32 | VE +8729 $ P=0.99
+    +6386 $ | préréglage 25 | stop 2.5 ATR | R1+N8 | n=68 1.01/j 74 % R +0.32 | VE +6502 $ P=0.94
+    +6376 $ | préréglage 25 | stop 1.5 ATR | R1+N8 | n=81 1.21/j 67 % R +0.27 | VE +5611 $ P=0.99
+    +6264 $ | biais F>=0.55 I>=0.45 | union | Detector+Feu 60 | stop 2 ATR | R1 | n=104 1.55/j 63 % R +0.25 | VE +7571 $ P=0.99

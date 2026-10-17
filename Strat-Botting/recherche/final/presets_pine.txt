@@ -1,0 +1,15 @@
+// Optimiseur final (FIN), source cache, 17/10/2026 17:57. 3 lignes MAXIMUM pour f_pr_def() de STRATEGIE_V1.pine (1 recommandée + au plus 2 alternatives).
+// Palier de la règle : 1 (1 = règle complète : >= 1 trade/jour, >= 55 % gagnants, R > 0). Source cache = 2 mois : REJETÉ comme décision, à relancer sur le DATASET.
+// Ajouter chaque nom EXACT dans options=[...] du menu « Préréglage », puis coller la ligne dans f_pr_def().
+// Réglages à la main (non modifiables par préréglage) : « Niveaux mesurés sur » = Vrais prix ; graphique en 15 MIN ; unité TREND supérieur = 4 h.
+// Taille : contrats FIXES (micros). Avec sortie partielle, au moins 2 micros, nombre pair (50 % de chaque côté).
+
+// préréglage 25 | stop 1.5 ATR | R2+N8 | n=67 (1.00/jour) gagnants 63 % R +0.50 PF 2.43 | 4 micros P=0.99 VE=+7585 $
+     nom == "43 FIN-1 P25 · 1.5ATR · R2+N8" ? "sens=Les deux;clx=1;sig=1;sigNiv=Fort seulement;hei=1;tl=1;lvl=1;div=0;tr=1;tr4h=1;feu=0;ema=0;adx=0;det=1;detK=2;clxF=0;bo=0;maxJour=0;hr=1;hr1On=1;hr1=1530-2215;hr2On=0;stop=ATR × k;atrK=1.5;trail=Aucun;oppArr=0;fin=0;pf=1;beTk=4;be=0;oppHei=0;tBar=8;tp=En R;tpR=2;part=0;taille=Contrats fixes;fixe=4" :
+
+// biais F>=0.55 I>=0.45 | union | Detector+Feu 60 | stop 2 ATR | R1 | n=104 (1.55/jour) gagnants 63 % R +0.25 PF 1.80 | 4 micros P=0.99 VE=+7571 $
+     nom == "44 FIN-2 biais0.55/0.45 union Det+feu · 2ATR · R1" ? "sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=1;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;hr=1;hr1On=1;hr1=0020-2215;hr2On=0;feuMode=Part dans le sens ≥ seuil;feuSeuil=60;bias=1;bF=0.55;bI=0.45;stop=ATR × k;atrK=2;trail=Aucun;oppArr=0;fin=0;pf=1;beTk=4;be=0;oppHei=0;tBar=0;tp=En R;tpR=1;part=0;taille=Contrats fixes;fixe=4" :
+
+// biais F>=0.55 I>=0.45 | union | Detector+Feu 60 | stop 1.5 ATR | niv1 pivots+Detector+Monday+sessions partiel->2e niveau | n=76 (1.13/jour) gagnants 50 % R +0.46 PF 2.30 | 4 micros P=0.89 VE=+6477 $
+     nom == "45 FIN-3 biais0.55/0.45 union Det+feu · 1.5ATR · niv1 tous niv. partiel+2e" ? "sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=1;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;hr=1;hr1On=1;hr1=0020-2215;hr2On=0;feuMode=Part dans le sens ≥ seuil;feuSeuil=60;bias=1;bF=0.55;bI=0.45;stop=ATR × k;atrK=1.5;trail=Aucun;oppArr=0;fin=0;pf=1;beTk=4;be=0;oppHei=0;tBar=0;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=1;tpMo=1;tpSe=1;tpRo=0;rrMin=1;tpMarge=4;tpSans=Objectif en R;tpR=1.5;part=1;partPct=50;partRest=2e niveau;partBE=1;taille=Contrats fixes;fixe=4" :
+
