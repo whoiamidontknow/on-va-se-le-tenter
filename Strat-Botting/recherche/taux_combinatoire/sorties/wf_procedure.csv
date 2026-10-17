@@ -1,0 +1,5 @@
+pli,n_eligibles,choix,taux_train,z_train,n_train,n_test,taux_test,placebo_test,r_test,pf_test
+0,67421,"tous|les_deux|15m|det1|SL 1.5 ATR, TP 0.75R, sortie 120 min",0.6722,3.8233,180.0000,65.0000,0.4462,0.5134,-0.2314,0.6080
+1,37806,"tous|les_deux|30m|adx20+bo|SL 1.5 ATR, TP 1R",0.7069,3.1225,58.0000,17.0000,0.2353,0.4557,-0.4439,0.4164
+2,22775,"tous|les_deux|30m|adx20+det2|SL 1 ATR, TP 1.5R, sortie Hei",0.7059,3.5814,34.0000,9.0000,0.2222,0.3868,-0.4751,0.2267
+3,44125,"lvl|long|60m|-|SL 1.5 ATR, TP 1R, sortie 120 min",0.7500,3.8334,44.0000,8.0000,0.5000,0.4318,-0.1832,0.3295
