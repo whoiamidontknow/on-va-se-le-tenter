@@ -1,0 +1,3 @@
+étape A2 : 244 placebos, 96 s
+stops gardés pour B : ['atr1.5', 'atr2', 'atr3', 'niv:ORB:0.1a:1-3:2', 'niv:RF:0.25a:1-3:2', 'niv:PW:0.25a:0.75-2:saute']
+étape B : 3024 lignes, 324 placebos, 118 s

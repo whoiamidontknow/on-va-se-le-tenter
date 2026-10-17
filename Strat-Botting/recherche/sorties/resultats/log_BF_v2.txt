@@ -1,0 +1,28 @@
+stops gardés pour B : ['atr1.5', 'atr2', 'atr3', 'niv:RF:0.25a:1-3:2', 'niv:ORB:2t:0.5-3:2', 'niv:PW:0.25a:0.75-2:saute', 'niv:PIV:0.25a:0.75-2:saute']
+étape B : 3591 lignes, 324 placebos, 11 s
+étape C : 1225 lignes, 16 s
+étape D : 1 s
+    dimension       situation                     choix     r_app  n_test    r_test  ref_hei_test  ref_R2_test
+0  regime_vol       vol_basse  niv:RF:0.25a:1-3:2 + hei  0.302257      45  0.740308      1.056826     0.433143
+1  regime_vol       vol_haute                 atr2 + R1 -0.081670      59 -0.037891      0.216461     0.107345
+2  regime_vol     vol_normale   niv:ORB:2t:0.5-3:2 + R2 -0.135833      62  0.179704      0.524149     0.109209
+3      seance         Londres              atr2 + heure -0.059763      48  0.682518      0.679761     0.288655
+4      seance              US   niv:ORB:2t:0.5-3:2 + R2 -0.020907     107  0.168340      0.534800     0.155423
+5    tendance    avec_trend1H                 atr2 + R1 -0.040098     109  0.251429      0.798906     0.366878
+6    tendance  contre_trend1H  niv:RF:0.25a:1-3:2 + hei -0.042522      60  0.129592      0.270230    -0.092227
+7        type         cassure                atr3 + hei -0.106983      62  0.266584      0.386716     0.212758
+8        type    retournement              atr2 + heure  0.351797      21  0.568378      0.542902     0.253337
+9        type        tendance                atr2 + N16 -0.156107      58  0.164787      0.799481     0.145372
+White RC : meilleure gestion panel ('niv:PIV:0.25a:0.75-2:saute', 'R4'), gain +0.330 R/signal contre atr2+hei, p = 0.281 (399 gestions)
+          decl                       stop           sortie  risque_usd    n   r_moyen  p_reussite  p_1er_payout            ve      base_ve  base_p  p_ref_hasard  ve_ref_hasard  r_ref_hasard  p_hasard_ve
+0  A_clx_trend                       atr2           BE1+R3         300   23  0.849772      1.0000        0.9975  10607.492366  6134.370757  0.7950      0.382333    1475.130649      0.225937     0.047619
+1      clx_buy                       atr3              hei         150   31  0.480282      1.0000        1.0000  10451.932788  8944.048366  1.0000      0.585833    2567.202191      0.352609     0.047619
+2     clx_sell         niv:RF:0.25a:1-3:2        BE0.5+hei         150   19  0.011022      0.9975        0.9975   9107.475139  6097.830934  1.0000      0.117167     552.097589     -0.153668     0.095238
+4          hei  niv:PW:0.25a:0.75-2:saute           BE1+R2         500   14  0.446114      0.9550        0.9300   5053.826657   424.515557  0.3650      0.341500     492.168486      0.079827     0.047619
+3       hasard         niv:RF:0.25a:1-3:2              tr3         100  143  0.300512      0.7975        0.7800   3774.750012  1762.995873  0.7100      0.338167     564.437833      0.086068     0.095238
+6          orb                       atr3              hei         200   77  0.030732      0.7475        0.7375   1836.267458   118.568698  0.2125      0.183000     169.067848      0.055332     0.095238
+8           tl                     atr1.5     niv:SW:2+hei         100   66  0.464115      0.6875        0.6650   1409.008064   -20.700068  0.1825      0.215667     152.886248      0.044027     0.095238
+7         sigF         niv:ORB:2t:0.5-3:2  niv:DET:1.5+hei         100   83  0.117138      0.5400        0.5225    806.718700   384.585855  0.4100      0.165167     149.533799      0.040442     0.190476
+5          mon                       atr2               R2         500   34 -0.004775      0.0975        0.0250   -125.319705  -165.000000  0.0000      0.292667     580.210400      0.030869     0.761905
+étape E : 32 s
+étape F : 2394 lignes, 29 s
