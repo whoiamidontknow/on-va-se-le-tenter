@@ -1,0 +1,21 @@
+/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/meta_ml/candidats.py:171: RuntimeWarning: invalid value encountered in divide
+  V[_g('vol_rel', 'Volatilité')] = vol / pd.Series(vol).rolling(20, min_periods=10).mean().to_numpy()
+MES_15_0915 : 1468 barres, 405 candidats (7 s)
+MES1_15_0429 : 3337 barres, 365 candidats (7 s)
+NQZ_15_0918 : 1272 barres, 335 candidats (14 s)
+(1105, 87)
+trig_sig_fort       101.0
+trig_sig_moyen        0.0
+trig_hei_flip       206.0
+trig_clx            115.0
+trig_tl              88.0
+trig_orb             76.0
+trig_sess           218.0
+trig_mon             13.0
+trig_det_rebond     316.0
+trig_det_cassure    152.0
+trig_div              0.0
+dtype: float64
+A15R2 résolus 1089 R moyen 0.016 % gagnants 36.9
+A1R1 résolus 1089 R moyen -0.124 % gagnants 45.4
+NIV résolus 1089 R moyen -0.063 % gagnants 35.8
