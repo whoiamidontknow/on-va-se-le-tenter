@@ -1,0 +1,74 @@
+=== S1R1 : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.461) ===
+|--- d_pwr_dessous <= 15.354
+|   |--- d_pwr_dessous <= 7.232
+|   |   |--- weights: [417.000, 386.000] class: 0
+|   |--- d_pwr_dessous >  7.232
+|   |   |--- weights: [156.000, 80.000] class: 0
+|--- d_pwr_dessous >  15.354
+|   |--- weights: [14.000, 36.000] class: 1
+
+=== S1R1_BE : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.327) ===
+|--- vol_rel <= 4.394
+|   |--- d_mon_h <= 7.137
+|   |   |--- weights: [466.000, 175.000] class: 0
+|   |--- d_mon_h >  7.137
+|   |   |--- weights: [249.000, 155.000] class: 0
+|--- vol_rel >  4.394
+|   |--- weights: [18.000, 26.000] class: 1
+
+=== S15R1 : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.491) ===
+|--- d_pwr_dessous <= 12.347
+|   |--- d_pwr_dessous <= 4.360
+|   |   |--- weights: [322.000, 353.000] class: 1
+|   |--- d_pwr_dessous >  4.360
+|   |   |--- weights: [203.000, 116.000] class: 0
+|--- d_pwr_dessous >  12.347
+|   |--- vol_rel <= 1.242
+|   |   |--- weights: [8.000, 39.000] class: 1
+|   |--- vol_rel >  1.242
+|   |   |--- weights: [21.000, 27.000] class: 1
+
+=== S15R1_BE : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.339) ===
+|--- d_orb_l <= 0.131
+|   |--- x_long_d_zb_sup_b <= 1.466
+|   |   |--- weights: [604.000, 262.000] class: 0
+|   |--- x_long_d_zb_sup_b >  1.466
+|   |   |--- weights: [65.000, 53.000] class: 0
+|--- d_orb_l >  0.131
+|   |--- d_ld_h <= -2.041
+|   |   |--- weights: [33.000, 18.000] class: 0
+|   |--- d_ld_h >  -2.041
+|   |   |--- weights: [18.000, 36.000] class: 1
+
+=== S2R1 : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.503) ===
+|--- atr_pct <= 5.180
+|   |--- weights: [4.000, 39.000] class: 1
+|--- atr_pct >  5.180
+|   |--- d_pwr_dessous <= 2.598
+|   |   |--- weights: [271.000, 319.000] class: 1
+|   |--- d_pwr_dessous >  2.598
+|   |   |--- weights: [266.000, 190.000] class: 0
+
+=== S2R1_BE : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.357) ===
+|--- d_orb_h <= -1.910
+|   |--- atr_pct <= 5.100
+|   |   |--- weights: [14.000, 26.000] class: 1
+|   |--- atr_pct >  5.100
+|   |   |--- weights: [557.000, 241.000] class: 0
+|--- d_orb_h >  -1.910
+|   |--- d_mon_l <= -0.601
+|   |   |--- weights: [76.000, 43.000] class: 0
+|   |--- d_mon_l >  -0.601
+|   |   |--- weights: [53.000, 79.000] class: 1
+
+=== S2R05 : arbre profondeur 2 sur TOUT le dev (in-sample, taux de base 0.645) ===
+|--- atr_rel <= 1.403
+|   |--- d_pwr_dessous <= 12.347
+|   |   |--- weights: [302.000, 559.000] class: 1
+|   |--- d_pwr_dessous >  12.347
+|   |   |--- weights: [15.000, 78.000] class: 1
+|--- atr_rel >  1.403
+|   |--- d_as_l <= -0.814
+|   |   |--- weights: [53.000, 32.000] class: 0
+|   |--- d_as_l >  -0.814
+|   |   |--- weights: [17.000, 33.000] class: 1

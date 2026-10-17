@@ -1,0 +1,27 @@
+09:19:08 1105 candidats, 109 variables, plis [(197, 63), (262, 60), (328, 114), (427, 336), (724, 322)]
+09:19:55 B test global haut 5-10 % : z moyen 0.98, p 0.0015 (42 politiques)
+09:19:56 B fini : 259 politiques
+09:20:20 C S1R1|logit|frac100 {'n': 528, 'pct_gagnants': 0.462, 'pct_gagnants_hasard': 0.471, 'p_gagnants': 0.665, 'r_moyen': -0.113, 'p_r': 0.621, 'pf': 0.851, 'p_reussite': 0.0, 'ref_p_reussite': 0.025}
+09:20:33 C S1R1|regle|nuit_0_8h {'n': 125, 'pct_gagnants': 0.504, 'pct_gagnants_hasard': 0.479, 'p_gagnants': 0.263, 'r_moyen': -0.037, 'p_r': 0.271, 'pf': 0.936, 'p_reussite': 0.164, 'ref_p_reussite': 0.161}
+09:20:58 C S1R1_BE|logit|frac100 {'n': 585, 'pct_gagnants': 0.333, 'pct_gagnants_hasard': 0.328, 'p_gagnants': 0.385, 'r_moyen': -0.131, 'p_r': 0.844, 'pf': 0.771, 'p_reussite': 0.0, 'ref_p_reussite': 0.001}
+09:21:12 C S1R1_BE|regle|nuit_0_8h {'n': 146, 'pct_gagnants': 0.315, 'pct_gagnants_hasard': 0.299, 'p_gagnants': 0.303, 'r_moyen': -0.109, 'p_r': 0.557, 'pf': 0.842, 'p_reussite': 0.055, 'ref_p_reussite': 0.106}
+09:21:35 C S15R1|logit|frac100 {'n': 364, 'pct_gagnants': 0.522, 'pct_gagnants_hasard': 0.48, 'p_gagnants': 0.042, 'r_moyen': 0.016, 'p_r': 0.04, 'pf': 1.004, 'p_reussite': 0.27, 'ref_p_reussite': 0.116}
+09:21:47 C S15R1|regle|nuit_0_8h {'n': 85, 'pct_gagnants': 0.529, 'pct_gagnants_hasard': 0.487, 'p_gagnants': 0.204, 'r_moyen': 0.033, 'p_r': 0.204, 'pf': 1.044, 'p_reussite': 0.456, 'ref_p_reussite': 0.152}
+09:22:04 C S15R1_BE|logit|frac100 {'n': 432, 'pct_gagnants': 0.324, 'pct_gagnants_hasard': 0.334, 'p_gagnants': 0.697, 'r_moyen': -0.053, 'p_r': 0.493, 'pf': 0.897, 'p_reussite': 0.032, 'ref_p_reussite': 0.073}
+09:22:17 C S15R1_BE|regle|nuit_0_8h {'n': 96, 'pct_gagnants': 0.292, 'pct_gagnants_hasard': 0.328, 'p_gagnants': 0.798, 'r_moyen': -0.105, 'p_r': 0.741, 'pf': 0.831, 'p_reussite': 0.086, 'ref_p_reussite': 0.095}
+09:22:38 C S2R1|logit|frac100 {'n': 270, 'pct_gagnants': 0.515, 'pct_gagnants_hasard': 0.487, 'p_gagnants': 0.154, 'r_moyen': 0.023, 'p_r': 0.11, 'pf': 1.028, 'p_reussite': 0.308, 'ref_p_reussite': 0.2}
+09:22:51 C S2R1|regle|nuit_0_8h {'n': 69, 'pct_gagnants': 0.551, 'pct_gagnants_hasard': 0.493, 'p_gagnants': 0.16, 'r_moyen': 0.076, 'p_r': 0.164, 'pf': 1.155, 'p_reussite': 0.717, 'ref_p_reussite': 0.17}
+09:23:09 C S2R1_BE|logit|frac100 {'n': 333, 'pct_gagnants': 0.33, 'pct_gagnants_hasard': 0.336, 'p_gagnants': 0.595, 'r_moyen': -0.027, 'p_r': 0.349, 'pf': 0.932, 'p_reussite': 0.058, 'ref_p_reussite': 0.115}
+09:23:21 C S2R1_BE|regle|nuit_0_8h {'n': 74, 'pct_gagnants': 0.324, 'pct_gagnants_hasard': 0.339, 'p_gagnants': 0.625, 'r_moyen': -0.047, 'p_r': 0.463, 'pf': 0.974, 'p_reussite': 0.209, 'ref_p_reussite': 0.178}
+09:23:47 C S2R05|logit|frac100 {'n': 407, 'pct_gagnants': 0.673, 'pct_gagnants_hasard': 0.639, 'p_gagnants': 0.064, 'r_moyen': 0.018, 'p_r': 0.042, 'pf': 1.123, 'p_reussite': 0.808, 'ref_p_reussite': 0.092}
+09:24:00 C S2R05|regle|nuit_0_8h {'n': 87, 'pct_gagnants': 0.701, 'pct_gagnants_hasard': 0.628, 'p_gagnants': 0.052, 'r_moyen': 0.033, 'p_r': 0.052, 'pf': 1.156, 'p_reussite': 0.705, 'ref_p_reussite': 0.082}
+09:24:12 C S15R1_BE|logit|frac05 {'n': 30, 'pct_gagnants': 0.533, 'pct_gagnants_hasard': 0.35, 'p_gagnants': 0.008, 'r_moyen': 0.162, 'p_r': 0.076, 'pf': 1.326, 'p_reussite': 0.341, 'ref_p_reussite': 0.213}
+09:24:25 C S15R1_BE|logit|frac50 {'n': 150, 'pct_gagnants': 0.353, 'pct_gagnants_hasard': 0.349, 'p_gagnants': 0.435, 'r_moyen': -0.04, 'p_r': 0.553, 'pf': 0.949, 'p_reussite': 0.02, 'ref_p_reussite': 0.176}
+09:24:39 C S15R1_BE|logit|frac10 {'n': 43, 'pct_gagnants': 0.419, 'pct_gagnants_hasard': 0.355, 'p_gagnants': 0.136, 'r_moyen': -0.005, 'p_r': 0.443, 'pf': 0.889, 'p_reussite': 0.0, 'ref_p_reussite': 0.076}
+09:24:48 C S2R1|arbre|frac10 {'n': 49, 'pct_gagnants': 0.531, 'pct_gagnants_hasard': 0.459, 'p_gagnants': 0.082, 'r_moyen': 0.007, 'p_r': 0.132, 'pf': 0.85, 'p_reussite': 0.037, 'ref_p_reussite': 0.079}
+09:25:00 C S2R05|hgb|frac10 {'n': 64, 'pct_gagnants': 0.766, 'pct_gagnants_hasard': 0.613, 'p_gagnants': 0.004, 'r_moyen': 0.129, 'p_r': 0.004, 'pf': 2.025, 'p_reussite': 0.831, 'ref_p_reussite': 0.151}
+09:25:21 C S1R1_BE|arbre|frac50 {'n': 386, 'pct_gagnants': 0.365, 'pct_gagnants_hasard': 0.332, 'p_gagnants': 0.06, 'r_moyen': -0.079, 'p_r': 0.335, 'pf': 0.915, 'p_reussite': 0.027, 'ref_p_reussite': 0.036}
+09:25:32 C S1R1_BE|logit|frac30 {'n': 108, 'pct_gagnants': 0.37, 'pct_gagnants_hasard': 0.327, 'p_gagnants': 0.15, 'r_moyen': -0.03, 'p_r': 0.126, 'pf': 0.865, 'p_reussite': 0.074, 'ref_p_reussite': 0.12}
+09:25:45 C S15R1_BE|logit|frac20 {'n': 62, 'pct_gagnants': 0.355, 'pct_gagnants_hasard': 0.358, 'p_gagnants': 0.527, 'r_moyen': -0.12, 'p_r': 0.886, 'pf': 0.633, 'p_reussite': 0.0, 'ref_p_reussite': 0.064}
+09:26:04 C S15R1_BE|hgb|frac50 {'n': 229, 'pct_gagnants': 0.38, 'pct_gagnants_hasard': 0.329, 'p_gagnants': 0.044, 'r_moyen': 0.036, 'p_r': 0.032, 'pf': 1.207, 'p_reussite': 0.761, 'ref_p_reussite': 0.126}
+09:26:14 C S2R1|arbre|frac05 {'n': 40, 'pct_gagnants': 0.525, 'pct_gagnants_hasard': 0.46, 'p_gagnants': 0.098, 'r_moyen': -0.011, 'p_r': 0.152, 'pf': 0.839, 'p_reussite': 0.046, 'ref_p_reussite': 0.054}
