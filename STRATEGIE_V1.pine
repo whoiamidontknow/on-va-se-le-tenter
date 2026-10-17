@@ -148,6 +148,11 @@
 //                   suit break-even et suiveur) et TP (vert) sur chaque
 //                   position, tracées en plot() : toujours visibles, sans
 //                   limite de nombre. Version affichée dans le tableau de bord.
+//   V7  2026-10-17  5 préréglages finalistes Strat-Botting (20-24 : SOR-0001
+//                   à 0003, ML-0001 et sa variante de nuit), non probants.
+//                   Nouveaux réglages : à plat avant 15:59 Chicago (pf),
+//                   stop sauté si aucun niveau (slSans), unité de marge et
+//                   taille / risque en $ pilotables par préréglage.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -170,7 +175,7 @@ grp_e = "=== 1. ENTRÉES ==="
 // Pour AJOUTER un préréglage : son nom ici (littéral, cf. piège Pine v6) ET une
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 preset    = input.string("C — Cassure de trendline", "Préréglage", group=grp_e,
-     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "01 A jour 08-23h · SL 2 ATR · Heishi", "02 A réf · SL 2 ATR · Heishi", "03 A · SL pivots HA 1-3 ATR", "04 A · SL 2,5 ATR · Heishi", "05 A · SL 3 ATR · Heishi", "06 A · SL+TP pivots HA · Heishi", "07 A · SL 1,5 ATR · Heishi", "08 C · SL 2 ATR · TP pivots + Heishi", "09 C réf · SL 1,5 ATR · 2R", "10 A · SL fixe 80 pts (NQ)", "11 A · SL fixe 13 pts (ES)", "12 A · SL 1 ATR · Heishi", "13 A · SL niveaux (défaut)", "14 A · SL Detector d'abord", "15 A · SL Monday/sessions d'abord", "16 A · TP pivots HA + Heishi", "17 A · TP pivots+Detector + Heishi", "18 A · TP fixe 3R", "19 A · TP pivots ≥2R sinon rien", "Personnalisé"],
+     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "01 A jour 08-23h · SL 2 ATR · Heishi", "02 A réf · SL 2 ATR · Heishi", "03 A · SL pivots HA 1-3 ATR", "04 A · SL 2,5 ATR · Heishi", "05 A · SL 3 ATR · Heishi", "06 A · SL+TP pivots HA · Heishi", "07 A · SL 1,5 ATR · Heishi", "08 C · SL 2 ATR · TP pivots + Heishi", "09 C réf · SL 1,5 ATR · 2R", "10 A · SL fixe 80 pts (NQ)", "11 A · SL fixe 13 pts (ES)", "12 A · SL 1 ATR · Heishi", "13 A · SL niveaux (défaut)", "14 A · SL Detector d'abord", "15 A · SL Monday/sessions d'abord", "16 A · TP pivots HA + Heishi", "17 A · TP pivots+Detector + Heishi", "18 A · TP fixe 3R", "19 A · TP pivots ≥2R sinon rien", "20 SOR-1 climax BUY · SL 3 ATR · Heishi", "21 SOR-2 climax+TREND · SL 2 ATR · BE · 3R", "22 SOR-3 Heishi · SL pivot weekly · BE · 2R", "23 ML-1 tous déclencheurs · SL 1,5 ATR · 2R", "24 ML-1 nuit 0-8h · SL 1,5 ATR · 2R", "Personnalisé"],
      tooltip="Un préréglage IMPOSE ses valeurs : les réglages qu'il ne cite pas sont coupés (entrées, filtres, sorties) ou gardent ta valeur (paramètres numériques). C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur. B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur. Personnalisé : tous tes réglages.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
@@ -243,6 +248,8 @@ x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", gro
      tooltip="Ferme la position à la clôture de la bougie qui finit à cette heure ou après, et interdit toute nouvelle entrée ensuite jusqu'à minuit (Paris).")
 x_finH    = input.int(21, "h", group=grp_x, inline="fin", minval=0, maxval=23)
 x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
+x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
+     tooltip="Ferme la position à la clôture de la dernière bougie qui finit avant 15:59 heure de Chicago, et interdit toute entrée jusqu'à la réouverture de 17:00 Chicago. Même règle que le moteur Strat-Botting ; suit les changements d'heure américains, contrairement à la sortie à heure de Paris.")
 
 grp_nv = "=== 3b. NIVEAUX : STOP DE PROTECTION ET OBJECTIF ==="
 nv_src    = input.string("Heiken Ashi (comme l'indicateur)", "Niveaux mesurés sur", group=grp_nv,
@@ -260,6 +267,8 @@ x_slRo_in = input.bool(true, "ronds", group=grp_nv, inline="sl2")
 x_slMin_in = input.float(0.5, "Stop : distance minimum (× ATR)", group=grp_nv, minval=0.0, step=0.1)
 x_slMax_in = input.float(3.5, "Stop : distance maximum (× ATR)", group=grp_nv, minval=0.1, step=0.1)
 nv_margeU = input.string("Ticks", "Marges : unité", group=grp_nv, options=["Ticks", "× ATR"])
+x_slSans_in = input.string("Repli ATR × k", "Stop : si aucun niveau utilisable", group=grp_nv,
+     options=["Repli ATR × k", "Ne pas prendre le trade"])
 x_slMarge_in = input.float(4.0, "Stop : marge derrière le niveau", group=grp_nv, minval=0.0, step=0.5,
      tooltip="Long : stop = niveau − marge ; short : niveau + marge. En ticks ou en fraction d'ATR selon « Marges : unité ».")
 x_tpA_in  = input.bool(true, "Objectif sur : pivot annuel", group=grp_nv, inline="tp1")
@@ -306,12 +315,14 @@ rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_
 //            Fixe (points) | Zone Detector la plus proche), atrK, fixPts,
 //            tp ⓘ (Aucun | En R | Prochain niveau), tpR, trail ⓘ (Aucun | ATR |
 //            Sous chaque nouveau swing), trK, trAct, be ⓘ, beR, oppArr ⓘ,
-//            oppHei ⓘ, fin ⓘ
+//            oppHei ⓘ, fin ⓘ, pf ⓘ (à plat avant 15:59 Chicago)
 //   NIVEAUX  prio, slA slM slW slD slMo slSe slRo, slMin, slMax, slMarge,
 //            tpA tpM tpW tpD tpMo tpSe tpRo, rrMin, tpMarge, tpSans (Objectif
 //            en R | Pas d'objectif | Ne pas prendre le trade), part ⓘ, partPct,
 //            partRest (2e niveau | Stop seulement (suiveur, break-even, signaux)),
-//            partBE
+//            partBE, slSans (Repli ATR × k | Ne pas prendre le trade),
+//            margeU (Ticks | × ATR)
+//   TAILLE   taille (Contrats fixes | Risque fixe en $), risque
 // Non modifiables par préréglage (valeur fixe exigée par Pine) : unité du
 // TREND supérieur, « Niveaux mesurés sur ».
 f_pr_def(string nom) =>
@@ -339,6 +350,14 @@ f_pr_def(string nom) =>
      nom == "17 A · TP pivots+Detector + Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=1;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
      nom == "18 A · TP fixe 3R" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=En R;tpR=3;oppHei=0" :
      nom == "19 A · TP pivots ≥2R sinon rien" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=2;tpMarge=0.1;tpSans=Ne pas prendre le trade;oppHei=0" :
+     // 5 finalistes Strat-Botting du 17/10 (registre SOR-0001..0003, ML-0001) :
+     // AUCUN N'EST PROBANT (2 à 4 mois, biais de sélection non écarté). Tous à
+     // plat avant 15:59 Chicago, risque fixe en $ comme dans le registre.
+     nom == "20 SOR-1 climax BUY · SL 3 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=0;taille=Risque fixe en $;stop=ATR × k;atrK=3;tp=Aucun;oppHei=1;risque=150" :
+     nom == "21 SOR-2 climax+TREND · SL 2 ATR · BE · 3R" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=1;beR=1;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=0;taille=Risque fixe en $;stop=ATR × k;atrK=2;tp=En R;tpR=3;oppHei=0;risque=300" :
+     nom == "22 SOR-3 Heishi · SL pivot weekly · BE · 2R" ? "sens=Les deux;clx=0;sig=0;hei=1;tl=0;lvl=0;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=0;be=1;beR=1;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=0;taille=Risque fixe en $;stop=Niveau de protection;prio=weekly;slA=0;slM=0;slW=1;slD=0;slMo=0;slSe=0;slRo=0;slMin=0.75;slMax=2;margeU=× ATR;slMarge=0.25;slSans=Ne pas prendre le trade;tp=En R;tpR=2;oppHei=0;risque=500" :
+     nom == "23 ML-1 tous déclencheurs · SL 1,5 ATR · 2R" ? "sens=Les deux;clx=1;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=0;taille=Risque fixe en $;stop=ATR × k;atrK=1.5;tp=En R;tpR=2;oppHei=0;risque=150" :
+     nom == "24 ML-1 nuit 0-8h · SL 1,5 ATR · 2R" ? "sens=Les deux;clx=1;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=1;hr1On=1;hr1=0000-0800;hr2On=0;taille=Risque fixe en $;stop=ATR × k;atrK=1.5;tp=En R;tpR=2;oppHei=0;risque=150" :
      ""
 
 pP     = preset == "Personnalisé"
@@ -412,6 +431,9 @@ var float  x_beR    = f_gf("beR",    x_beR_in)
 var bool   x_oppArr = f_gb("oppArr", x_oppArr_in, false)
 var bool   x_oppHei = f_gb("oppHei", x_oppHei_in, false)
 var bool   x_finOn  = f_gb("fin",    x_finOn_in,  false)
+var bool   x_pfOn   = f_gb("pf",     x_pfOn_in,   false)
+var string x_slSans = f_gs("slSans", x_slSans_in, "Repli ATR × k", "Repli ATR × k|Ne pas prendre le trade")
+var string nv_marge = f_gs("margeU", nv_margeU,   nv_margeU, "Ticks|× ATR")
 var string x_prio   = str.lower(f_gs("prio", x_prio_in, x_prio_in, f_pv("prio")))
 var bool   x_slA    = f_gb("slA",  x_slA_in,  x_slA_in)
 var bool   x_slM    = f_gb("slM",  x_slM_in,  x_slM_in)
@@ -439,11 +461,13 @@ var string x_partRest = f_gs("partRest", x_partRest_in, x_partRest_in, "2e nivea
 var bool   x_partBE = f_gb("partBE", x_partBE_in, x_partBE_in)
 
 grp_q = "=== 4. TAILLE ==="
-q_mode    = input.string("Contrats fixes", "Taille de position", group=grp_q, options=["Contrats fixes", "Risque fixe en $"])
+q_mode_in = input.string("Contrats fixes", "Taille de position", group=grp_q, options=["Contrats fixes", "Risque fixe en $"])
 q_fixe    = input.int(1, "Contrats fixes", group=grp_q, minval=1)
-q_risque  = input.float(200.0, "Risque par trade ($)", group=grp_q, minval=1.0, step=10.0,
+q_risque_in = input.float(200.0, "Risque par trade ($)", group=grp_q, minval=1.0, step=10.0,
      tooltip="Contrats = arrondi inférieur de risque / (distance du stop en points × valeur du point du symbole). Si le résultat est 0, le trade est sauté.")
 q_max     = input.int(10, "Contrats maximum", group=grp_q, minval=1)
+var string q_mode   = f_gs("taille", q_mode_in, q_mode_in, "Contrats fixes|Risque fixe en $")
+var float  q_risque = f_gf("risque", q_risque_in)
 
 grp_a = "=== 5. AFFICHAGE ==="
 a_bar     = input.bool(true, "Colorer les bougies (Heishinator)", group=grp_a)
@@ -1335,7 +1359,7 @@ f_nv_tpOn(int typ) => typ == 1 ? x_tpA : typ == 2 ? x_tpM : typ == 3 ? x_tpD : t
 f_nv_rang(int typ) =>
     i = str.pos(x_prio, f_nv_mot(typ))
     f_nv_slOn(typ) and not na(i) ? i : -1
-f_marge(float v) => nv_margeU == "Ticks" ? v * tick : v * r_atr
+f_marge(float v) => nv_marge == "Ticks" ? v * tick : v * r_atr
 
 // STOP « Niveau de protection » : long = niveau SOUS l'entrée, stop = niveau −
 // marge, distance du stop dans [min ; max] × ATR ; on garde le type le plus
@@ -1412,7 +1436,12 @@ f_minParis(t) => hour(t, "Europe/Paris") * 60 + minute(t, "Europe/Paris")
 
 // fin de séance : à partir de la bougie qui FINIT à l'heure réglée
 fin_min   = x_finH * 60 + x_finM
-fin_apres = x_finOn and timeframe.isintraday and f_minParis(time_close) >= fin_min
+// à plat avant 15:59 Chicago : la bougie suivante finirait après 15:59 ->
+// on sort à cette clôture ; ni entrée ni position jusqu'à 17:00 Chicago.
+f_minChi(t) => hour(t, "America/Chicago") * 60 + minute(t, "America/Chicago")
+pf_min    = f_minChi(time_close)
+pf_apres  = x_pfOn and timeframe.isintraday and pf_min + timeframe.in_seconds() / 60 > 15 * 60 + 59 and pf_min <= 17 * 60
+fin_apres = (x_finOn and timeframe.isintraday and f_minParis(time_close) >= fin_min) or pf_apres
 
 // fenêtres horaires
 in_h1  = not na(time(timeframe.period, f_hr1, "Europe/Paris"))
@@ -1749,7 +1778,7 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
     float tp0  = na
     string tpN = "aucun"
     float tpRk = na
-    bool saute = false
+    bool saute = x_slSans == "Ne pas prendre le trade" and x_stopMode != "ATR × k" and str.contains(sNom, "(repli")
     if x_tpMode == "En R"
         tpRk := x_tpR
     else if x_tpMode == "Prochain niveau"
@@ -1875,4 +1904,4 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V6 · 16/10 · lignes SL/TP", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V7 · 17/10 · finalistes 20-24", color.rgb(245, 166, 35))
