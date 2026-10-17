@@ -166,6 +166,9 @@
 //   V10 2026-10-17  Fenêtre de trading autorisée 00:20-22:15 Paris (réglage
 //                   global, actif par défaut) : pas d'entrée hors fenêtre,
 //                   position fermée à 22:15.
+//   V11 2026-10-17  Biais global (groupe 1b) : fond 1 h / 4 h / 1 j (TREND,
+//                   Dashator, STRENGTH) + intraday (TREND et Dashator 5 / 15
+//                   min, 7 lignes SIGNAL) ; ne trader que dans son sens.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -237,6 +240,11 @@ f_clxOn_in   = input.bool(false, "Climax : ne jamais trader contre le dernier cl
      tooltip="Règle de la méthode : le dernier climax donne le biais. Long bloqué si le dernier climax est vendeur, short bloqué s'il est acheteur.")
 f_clxAge_in  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
 
+grp_bi = "=== 1b. BIAIS GLOBAL (les tableaux donnent la direction) ==="
+bi_on_in = input.bool(false, "Ne trader que dans le sens du biais global", group=grp_bi,
+     tooltip="Fond (9 voix) : TREND, Dashator et STRENGTH sur 1 h, 4 h, 1 jour. Intraday (11 voix) : TREND et Dashator 5 et 15 min + les 7 lignes INDICATOR | SIGNAL. Long permis si fond ≥ seuil ET intraday ≥ seuil ; short : symétrique ; sinon aucun trade. Spécification : Strat-Botting/recherche/BIAIS_GLOBAL.md")
+bi_F_in  = input.float(0.33, "Seuil fond (−1 à +1)", group=grp_bi, inline="bi", minval=0.0, maxval=1.0, step=0.11)
+bi_I_in  = input.float(0.2, "intraday", group=grp_bi, inline="bi", minval=0.0, maxval=1.0, step=0.09)
 grp_x = "=== 3. SORTIES ==="
 x_stopMode_in= input.string("ATR × k", "Stop initial", group=grp_x, options=["ATR × k", "Niveau de protection", "Dernier swing + marge", "Fixe (points)", "Zone Detector la plus proche", "Extrême 2 bougies + marge", "Adaptatif"],
      tooltip="Niveau de protection : derrière le niveau de marché le plus prioritaire (pivots, Detector, Monday, sessions, ronds) situé entre min et max × ATR de l'entrée — réglages du groupe 3b. Zone Detector : long = sous le bas de la zone haussière la plus proche sous le prix ; short = au-dessus du haut de la zone baissière la plus proche au-dessus. Sans niveau utilisable, repli sur ATR × k.")
@@ -350,6 +358,7 @@ rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_
 //   ENTRÉES  sens ⓘ (Les deux | Long seulement | Short seulement), sig ⓘ,
 //            sigNiv ⓘ (Fort seulement | Fort + Moyen), hei ⓘ, tl ⓘ, lvl ⓘ, clx ⓘ,
 //            div ⓘ (divergence après excès), divX
+//   BIAIS    bias ⓘ (ne trader que dans le sens du biais global), bF, bI
 //   FILTRES  feu ⓘ, feuMode, feuSeuil, tr ⓘ, tr4h ⓘ (TREND sur 4 h), ema ⓘ, hr ⓘ, hr1On, hr1 (ex.
 //            1430-0800), hr2On, hr2, bo, adx ⓘ, adxMin, maxJour, det ⓘ, detK,
 //            clxF ⓘ (filtre climax), clxAge
@@ -471,6 +480,9 @@ var bool   e_clxOn  = f_gb("clx",    e_clxOn_in,  false)
 var bool   e_divOn  = f_gb("div",    e_divOn_in,  false)
 var float  e_divX   = f_gf("divX",   e_divX_in)
 var bool   f_tr4h   = f_gb("tr4h",   f_tr4h_in,   false)
+var bool   bi_on    = f_gb("bias",   bi_on_in,    false)
+var float  bi_bF    = f_gf("bF",     bi_F_in)
+var float  bi_bI    = f_gf("bI",     bi_I_in)
 var bool   f_feuOn  = f_gb("feu",    f_feuOn_in,  false)
 var string f_feuMode = f_gs("feuMode", f_feuMode_in, f_feuMode_in, "Part dans le sens ≥ seuil|Pas de Feu opposé")
 var float  f_feuSeuil = f_gf("feuSeuil", f_feuSeuil_in)
@@ -1247,6 +1259,12 @@ t3_nTot   = array.size(t3_votes)
 t3_pLong  = 100.0 * t3_nLong  / t3_nTot
 t3_pShort = 100.0 * t3_nShort / t3_nTot
 
+// BIAIS GLOBAL (Strat-Botting/recherche/BIAIS_GLOBAL.md)
+f_bi_v(bool b) => b ? 1 : -1
+f_bi_st(int s) => s >= 3 ? 1 : s <= 1 ? -1 : 0
+bi_F = (f_bi_v(t3_tr4) + f_bi_v(t3_tr5) + f_bi_v(t3_tr6) + f_bi_v(t3_d4) + f_bi_v(t3_d5) + f_bi_v(t3_d6) + f_bi_st(t3_st4) + f_bi_st(t3_st5) + f_bi_st(t3_st6)) / 9.0
+bi_I = (f_bi_v(t3_tr2) + f_bi_v(t3_tr3) + f_bi_v(t3_d2) + f_bi_v(t3_d3) + f_bi_v(t3_sigST) + f_bi_v(t3_sigMA) + f_bi_v(t3_sigVW) + f_bi_v(t3_sigLR) + t3_cpr + t3_orb + t3_pd) / 11.0
+
 // ══════════════════════════════════════════════════════════════
 // NIVEAUX : SOURCE (HA de l'indicateur, ou vrais prix) — réglage du groupe 3b
 // ══════════════════════════════════════════════════════════════
@@ -1588,8 +1606,10 @@ clx_okS = not f_clxOn or not (clx_last == 1 and clx_frais)
 commun_ok = hr_ok and bo_ok and jour_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
 sens_okL  = e_sens != "Short seulement"
 sens_okS  = e_sens != "Long seulement"
-go_long   = sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
-go_short  = sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
+bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
+go_long   = bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
 // ══════════════════════════════════════════════════════════════
 // GESTION DES ORDRES (tout en vrais prix)
@@ -2052,6 +2072,6 @@ if a_tbl and barstate.islast
     f_tb(6, "Stop", enPos ? f_px(tr_stop) + (tr_stop != tr_stop0 ? " (déplacé)" : " · " + tr_slNom) : "—", color.rgb(255, 82, 99))
     f_tb(7, "Objectif", enPos and not na(tr_tp) ? f_px(tr_tp) + " · " + tr_tpNom : "—", color.rgb(76, 175, 80))
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
-    f_tb(9, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
+    f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V10 · 17/10 · fenêtre + préréglage 37", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V11 · 17/10 · biais global", color.rgb(245, 166, 35))
