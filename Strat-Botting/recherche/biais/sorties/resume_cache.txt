@@ -1,0 +1,40 @@
+SOURCE cache | 432 variantes | n_min 30 | palier de la règle 1
+COUVERTURE DES VOTES (cache) :
+  MES_15 : F moyen +0.17, I moyen +0.13 ; votes à 0 : trend_5 100%, dash_5 100%, s_orb 76%, s_pd 72%
+  MES1_15 : F moyen +0.41, I moyen +0.10 ; votes à 0 : trend_5 100%, dash_5 100%, s_orb 77%, s_pd 69%
+  NQ_15 : F moyen +0.61, I moyen +0.13 ; votes à 0 : trend_5 100%, dash_5 100%, s_orb 78%, s_pd 65%
+  MES_5 : F moyen +0.50, I moyen +0.05 ; votes à 0 : s_orb 71%, s_pd 78%
+  NQ_5 : F moyen +0.15, I moyen -0.09 ; votes à 0 : s_cpr 31%, s_orb 88%, s_pd 77%
+LIMITES DU CACHE :
+  TREND/Dashator 5 min sur un graphique 15 min : pas de série 5 min alignée sur 15 min (le cache 5 min ne couvre que ~8 jours) -> vote 0 (2 voix sur 11 perdues).
+  STRENGTH 60/240/1D : recalculé sur les séries HA exportées (ou agrégées des vrais prix) ; avant 50 bougies de l'unité (échauffement EMA50) -> 0.
+  SuperTrend / VWAP : repli du chargeur (HA, pas les valeurs exactes de l'indicateur) ; EMA50 = close HA > EMA50 ; Lin Regress = close réel > régression linéaire 100 barres du graphique ; CPR sur la veille CME ; ORB = plage 09:30-09:45 NY (vrais prix) ; PDH/PDL = veille CME (vrais prix).
+(a) AVEC biais - SANS biais (variantes n>=30, 180) : taux +4.5 pts en moyenne (89 % des variantes mieux), R +0.062 (88 % mieux)
+(b) déclencheurs - hasard dans le sens du biais : taux +1.6 pts (67 % des variantes mieux), R +0.045 (79 % mieux)
+   15 min : n moyen 107, trades/jour moyen 1.59, gagnants 53.6 %, R +0.111 ; sans biais : 3.78 /jour, 47.2 %, R +0.014 ; hasard-biais : 51.6 %, R +0.055
+   5 min : n moyen 42, trades/jour moyen 4.65, gagnants 43.0 %, R -0.121 ; sans biais : 12.03 /jour, 51.0 %, R +0.045 ; hasard-biais : 44.7 %, R -0.095
+(c) PRÉRÉGLAGE 25 (fenêtre 00:20-22:15, 15 min) : n=73 (1.09 /jour) gagnants 72.6 % R +0.323 PF 2.58 | P(réussite)=1.0 VE=7004.277862458055 (4 micros)
+WHITE (279 variantes n>=10, 76 jours) : meilleure t(R brut)=2.04 p=0.30 ; meilleure t(R - hasard-dans-le-biais)=1.74 p=0.39
+WALK-FORWARD (4 plis) : n=41 gagnants 43.9 % (hasard-biais 51.5 %) R -0.068 PF 0.80 net -237 $ (1 micro)
+   pli 0 (palier 1) : biais F>=0.55 I>=0.2 | union | qualité det | 1R | 15 min | appr. 54 tr. 69 % R +0.30 | test 13 tr. 54 % R -0.04
+   pli 1 (palier 1) : biais F>=0 I>=0.2 | union | qualité det | 1.5R | 5 min | appr. 16 tr. 75 % R +0.63 | test 6 tr. 17 % R -0.43
+   pli 2 (palier 1) : biais F>=0 I>=0.2 | union | qualité det+clx | 1.5R | 5 min | appr. 16 tr. 56 % R +0.38 | test 0 tr. - R -
+   pli 3 (palier 1) : biais F>=0.33 I>=0.45 | union | qualité det+clx | 1.5R | 15 min | appr. 56 tr. 61 % R +0.21 | test 22 tr. 45 % R +0.02
+
+#1 biais F>=0.78 I>=0.45 | union | qualité det | 1R | 15 min
+   n=73 (1.09 /jour) gagnants 60.3 % R +0.181 PF 1.69 net +1230 $/micro
+   (a) SANS biais : n=330 (4.93 /jour) gagnants 52.4 % R +0.050 PF 1.16 VE=1728.2758025858739
+   (b) HASARD dans le sens du biais : gagnants 57.8 % R +0.106 | écart déclencheurs : +2.5 pts, +0.075 R (z=0.5, p(R)=0.18)
+   Tradeify Select Flex : 4 micros P(réussite)=0.92 P(1er payout)=0.89 VE=+6929 $ | score lissé +5383 $ (6 voisines) | White p: R brut 0.62, vs hasard 0.96 | moteur=identique
+
+#2 biais F>=0.78 I>=0.45 | union | qualité det | 1.5R | 15 min
+   n=67 (1.00 /jour) gagnants 56.7 % R +0.192 PF 1.79 net +1221 $/micro
+   (a) SANS biais : n=312 (4.66 /jour) gagnants 47.8 % R +0.059 PF 1.17 VE=1644.4230541400805
+   (b) HASARD dans le sens du biais : gagnants 54.8 % R +0.131 | écart déclencheurs : +1.9 pts, +0.061 R (z=0.3, p(R)=0.26)
+   Tradeify Select Flex : 4 micros P(réussite)=0.91 P(1er payout)=0.87 VE=+6628 $ | score lissé +5364 $ (7 voisines) | White p: R brut 0.70, vs hasard 0.99 | moteur=identique
+
+#3 biais F>=0.55 I>=0.2 | union | qualité det | 1R | 15 min
+   n=124 (1.85 /jour) gagnants 61.3 % R +0.167 PF 1.72 net +2105 $/micro
+   (a) SANS biais : n=330 (4.93 /jour) gagnants 52.4 % R +0.050 PF 1.16 VE=1728.2758025858739
+   (b) HASARD dans le sens du biais : gagnants 53.9 % R +0.046 | écart déclencheurs : +7.4 pts, +0.122 R (z=1.7, p(R)=0.04)
+   Tradeify Select Flex : 4 micros P(réussite)=0.98 P(1er payout)=0.97 VE=+6916 $ | score lissé +5252 $ (8 voisines) | White p: R brut 0.32, vs hasard 0.53 | moteur=identique

@@ -1,0 +1,15 @@
+// Biais global (BIA), source cache, 17/10/2026 17:24. 3 meilleures lignes pour f_pr_def() de STRATEGIE_V1.pine.
+// Palier de la règle : 1 (1 = règle complète : >= 1 trade/jour, >= 55 % gagnants, R > 0 ; 2 = sans le >= 1/jour ; 3 = sans le 55 %).
+// Ajouter chaque nom EXACT dans options=[...] du menu « Préréglage », puis coller la ligne dans f_pr_def().
+// Fenêtre 00:20-22:15 Paris via hr1 ; « Niveaux mesurés sur » = Vrais prix (lvl). UNITÉ DU GRAPHIQUE à régler à la main (voir chaque commentaire).
+// REJETÉ si la source est le cache (2 mois) : à passer au testeur sur 3 ans, pas à trader.
+
+// biais F>=0.78 I>=0.45 | union | qualité det | 1R | 15 min | n=73 (1.09/jour) gagnants 60 % R +0.18 PF 1.69 | 4 micros P=0.92 VE=+6929 $ | GRAPHIQUE 15 MIN
+     nom == "40 BIA-1 biais F0.78 I0.45 · union · Detector 1,5 · 1R · 15 min" ? "bias=1;bF=0.78;bI=0.45;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=0;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;part=0;hr=1;hr1On=1;hr1=0020-2215;hr2On=0;stop=ATR × k;atrK=2;tp=En R;tpR=1;tBar=8;pf=1;taille=Contrats fixes;fixe=4" :
+
+// biais F>=0.78 I>=0.45 | union | qualité det | 1.5R | 15 min | n=67 (1.00/jour) gagnants 57 % R +0.19 PF 1.79 | 4 micros P=0.91 VE=+6628 $ | GRAPHIQUE 15 MIN
+     nom == "41 BIA-2 biais F0.78 I0.45 · union · Detector 1,5 · 1.5R · 15 min" ? "bias=1;bF=0.78;bI=0.45;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=0;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;part=0;hr=1;hr1On=1;hr1=0020-2215;hr2On=0;stop=ATR × k;atrK=2;tp=En R;tpR=1.5;tBar=8;pf=1;taille=Contrats fixes;fixe=4" :
+
+// biais F>=0.55 I>=0.2 | union | qualité det | 1R | 15 min | n=124 (1.85/jour) gagnants 61 % R +0.17 PF 1.72 | 4 micros P=0.98 VE=+6916 $ | GRAPHIQUE 15 MIN
+     nom == "42 BIA-3 biais F0.55 I0.2 · union · Detector 1,5 · 1R · 15 min" ? "bias=1;bF=0.55;bI=0.2;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=0;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;part=0;hr=1;hr1On=1;hr1=0020-2215;hr2On=0;stop=ATR × k;atrK=2;tp=En R;tpR=1;tBar=8;pf=1;taille=Contrats fixes;fixe=4" :
+
