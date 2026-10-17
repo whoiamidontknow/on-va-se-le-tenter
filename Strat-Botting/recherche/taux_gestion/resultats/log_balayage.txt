@@ -1,0 +1,10 @@
+  1 / 264 gestions, 2 s
+  31 / 264 gestions, 7 s
+  61 / 264 gestions, 12 s
+  91 / 264 gestions, 17 s
+  121 / 264 gestions, 21 s
+  151 / 264 gestions, 28 s
+  181 / 264 gestions, 35 s
+  211 / 264 gestions, 41 s
+  241 / 264 gestions, 46 s
+balayage : 3432 lignes, 243688 trades, 50 s
