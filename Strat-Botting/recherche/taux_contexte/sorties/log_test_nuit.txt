@@ -1,0 +1,19 @@
+09:11:26 A15R2 nuit MES_15_0915 25 2s
+09:11:28 A15R2 nuit MES1_15_0429 43 2s
+09:11:29 A15R2 nuit NQZ_15_0918 26 2s
+A15R2 nuit {'gestion': 'A15R2', 'fenetre': 'nuit', 'serie': 'TOUTES', 'n': 94, 'pct_gagnants': 0.426, 'pct_gagnants_placebo': 0.358, 'r_moyen': 0.246, 'r_ic95': (-0.029968711107271687, 0.4913864967888285), 'r_placebo': 0.039, 'pf': 1.543, 'net_usd': 2283.338, 'p_r': 0.085, 'p_taux': 0.089, 'contrats': 3, 'p_reussite': 0.844, 'p_1er_payout': 0.796, 've_usd': 4565.83, 'ref_p_reussite': 0.391, 'ref_p_1er_payout': 0.283, 'ref_ve_usd': 917.297}
+09:11:34 A15R2 reste MES_15_0915 92 2s
+09:11:37 A15R2 reste MES1_15_0429 151 3s
+09:11:39 A15R2 reste NQZ_15_0918 58 2s
+A15R2 reste {'gestion': 'A15R2', 'fenetre': 'reste', 'serie': 'TOUTES', 'n': 301, 'pct_gagnants': 0.372, 'pct_gagnants_placebo': 0.353, 'r_moyen': -0.007, 'r_ic95': (-0.17838564047353814, 0.1863644021000239), 'r_placebo': -0.057, 'pf': 1.053, 'net_usd': 734.163, 'p_r': 0.24, 'p_taux': 0.233, 'contrats': 1, 'p_reussite': 0.244, 'p_1er_payout': 0.12, 've_usd': 52.693, 'ref_p_reussite': 0.179, 'ref_p_1er_payout': 0.132, 'ref_ve_usd': 118.985}
+A15R2 delta nuit - reste {'delta_r': 0.2528768827122147, 'ic95': (-0.07395867935229293, 0.5537548443266346), 'p_unilateral': 0.0612}
+09:11:48 A15R1 nuit MES_15_0915 29 2s
+09:11:50 A15R1 nuit MES1_15_0429 48 2s
+09:11:52 A15R1 nuit NQZ_15_0918 39 2s
+A15R1 nuit {'gestion': 'A15R1', 'fenetre': 'nuit', 'serie': 'TOUTES', 'n': 116, 'pct_gagnants': 0.5, 'pct_gagnants_placebo': 0.487, 'r_moyen': -0.028, 'r_ic95': (-0.19588630765176382, 0.15393721396142596), 'r_placebo': -0.056, 'pf': 0.959, 'net_usd': -195.718, 'p_r': 0.383, 'p_taux': 0.412, 'contrats': 2, 'p_reussite': 0.322, 'p_1er_payout': 0.231, 've_usd': 120.489, 'ref_p_reussite': 0.197, 'ref_p_1er_payout': 0.146, 'ref_ve_usd': 159.039}
+09:11:59 A15R1 reste MES_15_0915 129 2s
+09:12:02 A15R1 reste MES1_15_0429 184 3s
+09:12:04 A15R1 reste NQZ_15_0918 91 2s
+A15R1 reste {'gestion': 'A15R1', 'fenetre': 'reste', 'serie': 'TOUTES', 'n': 404, 'pct_gagnants': 0.498, 'pct_gagnants_placebo': 0.482, 'r_moyen': -0.04, 'r_ic95': (-0.1530989521895933, 0.08487966445945684), 'r_placebo': -0.061, 'pf': 0.92, 'net_usd': -1260.893, 'p_r': 0.323, 'p_taux': 0.265, 'contrats': 1, 'p_reussite': 0.038, 'p_1er_payout': 0.013, 've_usd': -154.346, 'ref_p_reussite': 0.179, 'ref_p_1er_payout': 0.141, 'ref_ve_usd': 156.81}
+A15R1 delta nuit - reste {'delta_r': 0.01197248987166542, 'ic95': (-0.20137420702622683, 0.2250753095558334), 'p_unilateral': 0.464}
+{'A15R2': {'delta_r': 0.2528768827122147, 'ic95': (-0.07395867935229293, 0.5537548443266346), 'p_unilateral': 0.0612}, 'A15R1': {'delta_r': 0.01197248987166542, 'ic95': (-0.20137420702622683, 0.2250753095558334), 'p_unilateral': 0.464}, 'decision': 'H-NUIT non confirmée'}
