@@ -1,8 +1,8 @@
 # Mémoire du projet — réplique d'Ephore Market Ultimate
 
 > **À lire en premier à chaque nouvelle session.** Ce fichier résume ce qui a été fait, ce qui est
-> validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-02
-> (sections 9 et 10 ajoutées ce jour-là).
+> validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-17
+> (§16 : Strat-Botting, préréglage 45 confirmé sur 3 ans, trading manuel).
 >
 > **Nouvelle session sur un nouveau compte ?** Lis ce fichier, puis **`PASSATION.md`** : il
 > contient l'état de l'ENVIRONNEMENT (un vérificateur de syntaxe Pine installé mais non branché,
@@ -25,6 +25,10 @@ contiennent des valeurs HA, et les règles retrouvées ne valent que sur graphiq
 | `PORSCHEONARRIVE.pine` | Indicateur principal de Jeremy (V8). Version + journal en en-tête | **Ne pas modifier sans accord** |
 | `TABLEAU.pine` | Indicateur séparé « Ephore Tableaux » (V8) : tableaux + flèches Signator | Chantier en cours |
 | `TL_LAB.pine` + `TL_LAB_COMBOS.md` | Outil de diagnostic des trendlines | Terminé |
+| `CompletV3.pine` | Indicateur complet (fichier de travail depuis le 15/10, sans mention « Ephore ») | En cours |
+| `STRATEGIE_V1.pine` | Stratégie testeur (V14, préréglage 45 par défaut) | Référence de la recette |
+| `STRATEGIE_45_46.pine` | Copie fidèle de V14 réduite aux modèles 45/46, avec alertes | **Utilisé en trading manuel** |
+| `Strat-Botting/` | Chantier bot propfirm (spec, moteur, simulateur propfirm, recherche) | Bot en pause (§16) |
 | `tools/` | Sources publiques d'origine + simulateurs Python | Référence |
 | `EPHORE_METHODE.md` | Logique officielle tirée de la formation | Référence |
 
@@ -806,3 +810,31 @@ n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la du
   objectif au prochain pivot ≥ 1,5 R EN GARDANT la sortie Heishinator (préréglages 06, 08, 16).
 - Ordre de test conseillé : 02 puis 01 (NQ et ES) ; puis 03, 06, 16 ; stops fixes 04, 05, 07, 10-12 en
   référence ; 13-19 pour réfuter ou confirmer l'idée niveaux. Comparer en R moyen et PF.
+
+---
+
+## 16. STRAT-BOTTING ET PRÉRÉGLAGE 45 (16/10 → 17/10)
+
+Dossier `Strat-Botting/` (SPEC.md, registre `registre/registre_tests.csv`, journal `recherche/JOURNAL.md`).
+
+- **Vague 0 (16/10)** : moteur commun, simulateur Monte-Carlo propfirm (`propfirm/`, règles dans REGLES.md),
+  voie d'exécution PickMyTrade → Tradovate. **Apex exclue pour un bot** (bots interdits) ; cible Tradeify.
+- **Vagues ML, SOR, « taux de réussite » (17/10) : rien de probant** sur les 2 mois de cache. Le taux de
+  réussite vient de la géométrie stop/objectif ; seul l'effet heure/séance porte. Stop utile 2-3 ATR.
+  **Ne plus relancer de vague sur les 2 mois de cache.**
+- **Fenêtre de trading imposée 00:20-22:15 Paris** (V10). Préréglage 44 (V12) = 40 sans entrée 8h-9h59,
+  2 micros : PF 1,35 sur 3 ans MNQ.
+- **Méthode qui a débloqué** : préréglage 99 JOURNAL (V13) = les variables de contexte sont écrites dans le
+  commentaire d'entrée ; l'export xlsx du backtest profond (3 ans) devient une vérité terrain exploitable
+  hors ligne (`~/Ephore/Strat-Botting-data/dataset/`). Le graphique ne charge que 3 mois : DATASET.pine inutile.
+- **Recette JR3 → préréglage 45** (V14, défaut) : Dashator 1h ET 4h dans le sens + repli ≤ 0,6 ATR sur l'EMA50.
+  **Confirmé au testeur 3 ans** (`Strat-Botting/recherche/journal3ans/CONFIRMATION_TV.md`) :
+  MNQ1! 656 trades, 75,5 %, PF 4,51, baisse max 1 162 $ (2 micros), chaque année ≥ 73 % / PF 3,9 ;
+  tient sur MES (70 % / 3,11) et ES (72 % / 3,54), non utilisés pour la recherche.
+  **46** (eMax 1,5, plus de volume) : MNQ 66 % / PF 2,34.
+- **Propfirm (MNQ 45)** : Tradeify Select Flex 4 micros P(réussite) 0,96 ; Growth 3 micros 0,99 ;
+  Apex EOD 6 micros 0,83 (`recherche/journal3ans/propfirm/`).
+- **Décision du 17/10 : PAS de bot pour l'instant.** Jeremy prend les trades du 45 À LA MAIN avec
+  `STRATEGIE_45_46.pine` (alertes « alert() function calls only ») et gère lui-même le risque.
+  Toute modification de la recette se fait d'abord dans `STRATEGIE_V1.pine`.
+- **Page registre** (Dashboard) : https://claude.ai/artifact/6JW6HPvUAXbV3YiUzaTFRY — pas à jour depuis le 16/10.

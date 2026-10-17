@@ -5,6 +5,11 @@
 > et de la REPRISE. La substance du projet (ce qui est validé, les formules, les
 > données) est dans **`MEMOIRE_PROJET.md`** — ce fichier ne la recopie pas.
 
+> **MAJ 17/10** : l'environnement ci-dessous est toujours valable (Node 22 fait). L'état du projet a beaucoup
+> avancé depuis : stratégie et préréglage 45 en trading manuel → voir `MEMOIRE_PROJET.md` §15-16.
+> Règle d'équipe : Sonnet par défaut pour les agents, Haiku pour le simple, 2 agents max en parallèle ;
+> un hook met Claude en pause à 85 % d'utilisation (5 h ou 7 j).
+
 ## 0bis. ÉTAT DES INSTALLATIONS — fait le 2026-10-10
 
 Le compte a changé le 10/10. **La mémoire auto a survécu** et a bien amené la session
