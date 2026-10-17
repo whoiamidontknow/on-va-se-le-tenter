@@ -1,0 +1,15 @@
+// Optimiseur 25 (OPT), source cache, 17/10/2026 16:27. 3 meilleures lignes pour f_pr_def() de STRATEGIE_V1.pine.
+// Ajouter chaque nom EXACT dans options=[...] du menu « Préréglage », puis coller la ligne dans f_pr_def().
+// Fenêtre 00:20-22:15 Paris via hr1 ; « Niveaux mesurés sur » = Vrais prix à régler à la main (lvl=1) ;
+// TREND 4 h : tr4h=1 ; taille : fixe=N micros (Contrats fixes) ; sortie temps : tBar=N bougies.
+// REJETÉ si la source est le cache (2 mois) : à passer au testeur sur 3 ans, pas à trader.
+
+// tous | TREND 240 | Detector 2.5 | Feu 60 | 1530-2215 | SL 2 | TP 2R | sortie 8 | BE non | n=63 gagnants 67 % R +0.44 PF 2.77 | 4 micros P=0.99 VE=+8046 $
+     nom == "37 OPT-1 tous · TREND 4h+Detector 2.5+Feu 60 · 15h30-22h15 · 2 ATR · 2R · 8 bougies" ? "sens=Les deux;clx=1;sig=1;hei=1;tl=1;lvl=1;div=0;tr=1;tr4h=1;feu=1;ema=0;adx=0;det=1;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=1;tBar=8;taille=Contrats fixes;sigNiv=Fort seulement;feuMode=Part dans le sens ≥ seuil;feuSeuil=60;detK=2.5;hr1On=1;hr1=1530-2215;hr2On=0;stop=ATR × k;atrK=2;tp=En R;tpR=2;fixe=4" :
+
+// tous | TREND 240 | Detector 2.5 | Feu 60 | 1530-2215 | SL 2 | TP 1.5R | sortie 8 | BE non | n=65 gagnants 68 % R +0.40 PF 2.63 | 4 micros P=0.99 VE=+7752 $
+     nom == "38 OPT-2 tous · TREND 4h+Detector 2.5+Feu 60 · 15h30-22h15 · 2 ATR · 1.5R · 8 bougies" ? "sens=Les deux;clx=1;sig=1;hei=1;tl=1;lvl=1;div=0;tr=1;tr4h=1;feu=1;ema=0;adx=0;det=1;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=1;tBar=8;taille=Contrats fixes;sigNiv=Fort seulement;feuMode=Part dans le sens ≥ seuil;feuSeuil=60;detK=2.5;hr1On=1;hr1=1530-2215;hr2On=0;stop=ATR × k;atrK=2;tp=En R;tpR=1.5;fixe=4" :
+
+// tous | TREND 240 | Detector 2.5 | Feu - | 1530-2215 | SL 1.5 | TP 2R | sortie 8 | BE non | n=66 gagnants 62 % R +0.51 PF 2.43 | 4 micros P=1.00 VE=+7617 $
+     nom == "39 OPT-3 tous · TREND 4h+Detector 2.5 · 15h30-22h15 · 1.5 ATR · 2R · 8 bougies" ? "sens=Les deux;clx=1;sig=1;hei=1;tl=1;lvl=1;div=0;tr=1;tr4h=1;feu=0;ema=0;adx=0;det=1;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=1;tBar=8;taille=Contrats fixes;sigNiv=Fort seulement;detK=2.5;hr1On=1;hr1=1530-2215;hr2On=0;stop=ATR × k;atrK=1.5;tp=En R;tpR=2;fixe=4" :
+

@@ -1,0 +1,20 @@
+SOURCE cache | 2488 variantes | n_min 30 | White: meilleure t(R)=3.13 p=0.06, t(taux)=3.50 p=0.03
+PRÉRÉGLAGE 25 (fenêtre 22:15) : n=73 gagnants 72.6 % (placebo 50.0 %) R +0.323 PF 2.58 | P=1.0 VE=7004.277862458055 (4 micros)
+
+#1 tous | TREND 240 | Detector 2.5 | Feu 60 | 1530-2215 | SL 2 | TP 2R | sortie 8 | BE non
+   n=63 gagnants 66.7 % (placebo 46.3 %, écart +20.3 pts, z=3.3) R moyen +0.442 (placebo +0.005) PF 2.77 net +3256 $/micro
+   Tradeify Select Flex : 4 micros, P(réussite)=0.99 P(1er payout)=0.98 VE=+8046 $ | score lissé +7883 $ (3 voisines) | White p: R 0.10, taux 0.11 | moteur=identique
+
+#2 tous | TREND 240 | Detector 2.5 | Feu 60 | 1530-2215 | SL 2 | TP 1.5R | sortie 8 | BE non
+   n=65 gagnants 67.7 % (placebo 46.9 %, écart +20.8 pts, z=3.4) R moyen +0.403 (placebo -0.013) PF 2.63 net +3004 $/micro
+   Tradeify Select Flex : 4 micros, P(réussite)=0.99 P(1er payout)=0.99 VE=+7752 $ | score lissé +7696 $ (4 voisines) | White p: R 0.07, taux 0.10 | moteur=identique
+
+#3 tous | TREND 240 | Detector 2.5 | Feu - | 1530-2215 | SL 1.5 | TP 2R | sortie 8 | BE non
+   n=66 gagnants 62.1 % (placebo 43.7 %, écart +18.4 pts, z=3.0) R moyen +0.512 (placebo -0.005) PF 2.43 net +2801 $/micro
+   Tradeify Select Flex : 4 micros, P(réussite)=1.00 P(1er payout)=0.99 VE=+7617 $ | score lissé +7675 $ (3 voisines) | White p: R 0.07, taux 0.16 | moteur=identique
+
+WALK-FORWARD (4 plis ; choix sur 3 blocs, test sur le suivant) : n=24 gagnants 58.3 % (placebo 44.3 %) R +0.374 PF 1.67 net +808 $ (1 micro)
+   pli 0 : clx | TREND 240 | Detector 2.0 | Feu - | 0900-2215 | SL 2 | TP 1R | sortie 8 | BE non | appr. 15 tr. 80 % R +0.57 | test 1 tr. 0 % (placebo 55 %) R -1.01
+   pli 1 : hei_flip | TREND 60 | Detector 2.0 | Feu - | 1530-2215 | SL 2 | TP 1R | sortie 8 | BE non | appr. 16 tr. 62 % R +0.26 | test 5 tr. 80 % (placebo 50 %) R +0.64
+   pli 2 : tous | TREND 240 | Detector 2.0 | Feu 50 | 1530-2215 | SL 1.5 | TP 2R | sortie 8 | BE non | appr. 19 tr. 63 % R +0.26 | test 16 tr. 62 % (placebo 42 %) R +0.49
+   pli 3 : hei_flip | TREND 240 | Detector 2.0 | Feu - | 1530-2215 | SL 2 | TP 2R | sortie 12 | BE non | appr. 15 tr. 80 % R +0.65 | test 2 tr. 0 % (placebo 41 %) R -0.51
