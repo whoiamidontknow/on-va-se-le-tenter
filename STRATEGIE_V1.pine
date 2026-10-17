@@ -174,6 +174,9 @@
 //   V13 2026-10-17  Mode JOURNAL (clé jr) + préréglage 99 : tous les signaux,
 //                   variables des tableaux dans le commentaire d'entrée, pour
 //                   rejouer hors ligne les filtres sur 3 ans (backtest profond).
+//   V14 2026-10-17  Filtres Dashator 1 h / 4 h dans le sens et écart maximum
+//                   à l'EMA50 (dsh60, dsh240, eOn, eMax) ; préréglages 45
+//                   (par défaut) et 46, recette JR3 du journal 3 ans.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -195,8 +198,8 @@ grp_e = "=== 1. ENTRÉES ==="
 // historique long. « Personnalisé » = tous les réglages ci-dessous s'appliquent.
 // Pour AJOUTER un préréglage : son nom ici (littéral, cf. piège Pine v6) ET une
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
-preset    = input.string("44 ⭐ FINAL · 40 sans 8h-10h · 2 micros · MNQ 15 min", "Préréglage", group=grp_e,
-     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "01 A jour 08-23h · SL 2 ATR · Heishi", "02 A réf · SL 2 ATR · Heishi", "03 A · SL pivots HA 1-3 ATR", "04 A · SL 2,5 ATR · Heishi", "05 A · SL 3 ATR · Heishi", "06 A · SL+TP pivots HA · Heishi", "07 A · SL 1,5 ATR · Heishi", "08 C · SL 2 ATR · TP pivots + Heishi", "09 C réf · SL 1,5 ATR · 2R", "10 A · SL fixe 80 pts (NQ)", "11 A · SL fixe 13 pts (ES)", "12 A · SL 1 ATR · Heishi", "13 A · SL niveaux (défaut)", "14 A · SL Detector d'abord", "15 A · SL Monday/sessions d'abord", "16 A · TP pivots HA + Heishi", "17 A · TP pivots+Detector + Heishi", "18 A · TP fixe 3R", "19 A · TP pivots ≥2R sinon rien", "20 SOR-1 climax BUY · SL 3 ATR · Heishi", "21 SOR-2 climax+TREND · SL 2 ATR · BE · 3R", "22 SOR-3 Heishi · SL pivot weekly · BE · 2R", "23 ML-1 tous déclencheurs · SL 1,5 ATR · 2R", "24 ML-1 nuit 0-8h · SL 1,5 ATR · 2R", "25 WRX-1 tous · TREND 4h+Detector · 15h30-22h · 2 ATR · 1R · 2h", "26 WRX-2 tous · Feu 60+Detector · 14h30-8h · 2 ATR · 0,5R · 2h", "27 WRX-3 Heishi · Detector · 14h30-8h · 3 ATR · 1,5R", "28 WRS-3 A · 3 ATR · BE 0,5R+2tk · 1R", "29 WRS-2 ML-1 · 3 ATR · BE 0,5R+4tk · 2R", "30 WRF-1 divergence excès · SL extrême · 0,75R · 8 bougies", "31 ADA A · climax BUY + TREND · adaptatif", "32 ADA Heishi · adaptatif", "33 ADA Signator Fort · adaptatif", "34 ADA trendline · adaptatif", "35 ADA tous déclencheurs · adaptatif", "36 ADA tous · variante 1-1,5R + stop niveau", "37 OPT-1 tous · TREND 4h+Detector 2.5+Feu 60 · 15h30-22h15 · 2 ATR · 2R · 8 bougies", "38 BIA-1 biais F0.78 I0.45 · union · Detector 1,5 · 1R · 15 min", "39 BIA-2 biais F0.78 I0.45 · union · Detector 1,5 · 1.5R · 15 min", "40 BIA-3 biais F0.55 I0.2 · union · Detector 1,5 · 1R · 15 min", "41 FIN-1 P25 · 1.5ATR · R2+N8", "42 FIN-2 biais0.55/0.45 union Det+feu · 2ATR · R1", "43 FIN-3 biais0.55/0.45 union Det+feu · 1.5ATR · niv1 tous niv. partiel+2e", "44 ⭐ FINAL · 40 sans 8h-10h · 2 micros · MNQ 15 min", "99 JOURNAL · tous signaux sans filtre · 2 ATR · 1R · 8 bougies", "Personnalisé"],
+preset    = input.string("45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies", "Préréglage", group=grp_e,
+     options=["C — Cassure de trendline", "A — Climax BUY dans la tendance", "B — Signator Fort + TREND", "01 A jour 08-23h · SL 2 ATR · Heishi", "02 A réf · SL 2 ATR · Heishi", "03 A · SL pivots HA 1-3 ATR", "04 A · SL 2,5 ATR · Heishi", "05 A · SL 3 ATR · Heishi", "06 A · SL+TP pivots HA · Heishi", "07 A · SL 1,5 ATR · Heishi", "08 C · SL 2 ATR · TP pivots + Heishi", "09 C réf · SL 1,5 ATR · 2R", "10 A · SL fixe 80 pts (NQ)", "11 A · SL fixe 13 pts (ES)", "12 A · SL 1 ATR · Heishi", "13 A · SL niveaux (défaut)", "14 A · SL Detector d'abord", "15 A · SL Monday/sessions d'abord", "16 A · TP pivots HA + Heishi", "17 A · TP pivots+Detector + Heishi", "18 A · TP fixe 3R", "19 A · TP pivots ≥2R sinon rien", "20 SOR-1 climax BUY · SL 3 ATR · Heishi", "21 SOR-2 climax+TREND · SL 2 ATR · BE · 3R", "22 SOR-3 Heishi · SL pivot weekly · BE · 2R", "23 ML-1 tous déclencheurs · SL 1,5 ATR · 2R", "24 ML-1 nuit 0-8h · SL 1,5 ATR · 2R", "25 WRX-1 tous · TREND 4h+Detector · 15h30-22h · 2 ATR · 1R · 2h", "26 WRX-2 tous · Feu 60+Detector · 14h30-8h · 2 ATR · 0,5R · 2h", "27 WRX-3 Heishi · Detector · 14h30-8h · 3 ATR · 1,5R", "28 WRS-3 A · 3 ATR · BE 0,5R+2tk · 1R", "29 WRS-2 ML-1 · 3 ATR · BE 0,5R+4tk · 2R", "30 WRF-1 divergence excès · SL extrême · 0,75R · 8 bougies", "31 ADA A · climax BUY + TREND · adaptatif", "32 ADA Heishi · adaptatif", "33 ADA Signator Fort · adaptatif", "34 ADA trendline · adaptatif", "35 ADA tous déclencheurs · adaptatif", "36 ADA tous · variante 1-1,5R + stop niveau", "37 OPT-1 tous · TREND 4h+Detector 2.5+Feu 60 · 15h30-22h15 · 2 ATR · 2R · 8 bougies", "38 BIA-1 biais F0.78 I0.45 · union · Detector 1,5 · 1R · 15 min", "39 BIA-2 biais F0.78 I0.45 · union · Detector 1,5 · 1.5R · 15 min", "40 BIA-3 biais F0.55 I0.2 · union · Detector 1,5 · 1R · 15 min", "41 FIN-1 P25 · 1.5ATR · R2+N8", "42 FIN-2 biais0.55/0.45 union Det+feu · 2ATR · R1", "43 FIN-3 biais0.55/0.45 union Det+feu · 1.5ATR · niv1 tous niv. partiel+2e", "44 ⭐ FINAL · 40 sans 8h-10h · 2 micros · MNQ 15 min", "45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies", "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies", "99 JOURNAL · tous signaux sans filtre · 2 ATR · 1R · 8 bougies", "Personnalisé"],
      tooltip="Un préréglage IMPOSE ses valeurs : les réglages qu'il ne cite pas sont coupés (entrées, filtres, sorties) ou gardent ta valeur (paramètres numériques). C : cassure de trendline, hors séance de Londres (08:00-14:30 Paris), stop 1,5 ATR, objectif 2R. A : climax BUY, long seulement, TREND 1H haussier, stop 2 ATR, sortie au changement de couleur. B : flèche Fort + TREND 1H, hors Londres, stop 1 ATR, sortie au changement de couleur. Personnalisé : tous tes réglages.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
@@ -222,6 +225,11 @@ f_feuMode_in = input.string("Part dans le sens ≥ seuil", "Feu : règle", group
      tooltip="Part dans le sens ≥ seuil : un long exige au moins « seuil » % de voix long sur 29. Pas de Feu opposé : on bloque seulement si le Feu est franchement dans l'autre sens (au seuil).")
 f_feuSeuil_in = input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
 f_trOn_in = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
+f_dsh60_in  = input.bool(false, "Dashator 1 h dans le sens du trade (bougie clôturée)", group=grp_f)
+f_dsh240_in = input.bool(false, "Dashator 4 h dans le sens du trade (bougie clôturée)", group=grp_f)
+f_eOn_in  = input.bool(false, "Écart à l'EMA50 maximum dans le sens du trade (× ATR)", group=grp_f, inline="eM",
+     tooltip="Long : (clôture − EMA50) / ATR14 ≤ max ; short : ≥ −max. On achète un repli près de l'EMA50, pas une extension. Recette JR3 (journal 3 ans).")
+f_eMax_in = input.float(0.6, "", group=grp_f, inline="eM", step=0.1)
 f_tr4h_in = input.bool(false, "TREND : utiliser l'unité 4 h (au lieu de l'unité ci-dessous)", group=grp_f)
 f_trTf    = input.timeframe("60", "TREND : unité", group=grp_f,
      tooltip="Règle TREND de l'indicateur : clôture de la dernière bougie clôturée de cette unité au-dessus (long) ou au-dessous (short) de son EMA50. (Non modifiable par un préréglage : Pine exige une valeur fixe pour request.security.)")
@@ -367,7 +375,8 @@ rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_
 //            div ⓘ (divergence après excès), divX
 //   JOURNAL  jr ⓘ (variables dans le commentaire d'entrée)
 //   BIAIS    bias ⓘ (ne trader que dans le sens du biais global), bF, bI
-//   FILTRES  feu ⓘ, feuMode, feuSeuil, tr ⓘ, tr4h ⓘ (TREND sur 4 h), ema ⓘ, hr ⓘ, hr1On, hr1 (ex.
+//   FILTRES  feu ⓘ, feuMode, feuSeuil, tr ⓘ, tr4h ⓘ (TREND sur 4 h), ema ⓘ,
+//            dsh60 ⓘ, dsh240 ⓘ (Dashator 1 h / 4 h dans le sens), eOn ⓘ, eMax, hr ⓘ, hr1On, hr1 (ex.
 //            1430-0800), hr2On, hr2, bo, adx ⓘ, adxMin, maxJour, det ⓘ, detK,
 //            clxF ⓘ (filtre climax), clxAge
 //   SORTIES  stop ⓘ (ATR × k | Niveau de protection | Dernier swing + marge |
@@ -457,6 +466,10 @@ f_pr_def(string nom) =>
      // Paris, 2 micros pour Tradeify. MNQ1! seulement, 15 min. 3 ans : PF 1,35, 12 trimestres positifs sur 13.
      nom == "44 ⭐ FINAL · 40 sans 8h-10h · 2 micros · MNQ 15 min" ? "bias=1;bF=0.55;bI=0.2;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=0;tr=0;feu=0;ema=0;adx=0;det=1;detK=1.5;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;part=0;hr=1;hr1On=1;hr1=0020-0800;hr2On=1;stop=ATR × k;atrK=2;tp=En R;tpR=1;tBar=8;pf=1;taille=Contrats fixes;fixe=2;hr2=1000-2215" :
      // Mode recherche : tous les signaux des deux sens, sans biais ni filtre (fenêtre 00:20-22:15 et 15:59 Chicago gardées), variables dans le commentaire.
+     // Recette JR3 (journal 3 ans, choisie sur 2 ans, vérifiée sur la 3e) : tous les signaux, Dashator 1 h et 4 h
+     // dans le sens, clôture à ≤ 0,6 ATR de l'EMA50 (repli). Journal : 77 % de gagnants, PF 5,3 — À CONFIRMER au testeur.
+     nom == "45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
+     nom == "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=1.5" :
      nom == "99 JOURNAL · tous signaux sans filtre · 2 ATR · 1R · 8 bougies" ? "jr=1;bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2" :
      ""
 
@@ -503,6 +516,10 @@ var bool   e_clxOn  = f_gb("clx",    e_clxOn_in,  false)
 var bool   e_divOn  = f_gb("div",    e_divOn_in,  false)
 var float  e_divX   = f_gf("divX",   e_divX_in)
 var bool   f_tr4h   = f_gb("tr4h",   f_tr4h_in,   false)
+var bool   f_dsh60  = f_gb("dsh60",  f_dsh60_in,  false)
+var bool   f_dsh240 = f_gb("dsh240", f_dsh240_in, false)
+var bool   f_eOn    = f_gb("eOn",    f_eOn_in,    false)
+var float  f_eMax   = f_gf("eMax",   f_eMax_in)
 var bool   bi_on    = f_gb("bias",   bi_on_in,    false)
 var bool   jr_on    = f_gb("jr",     jr_on_in,    false)
 var float  bi_bF    = f_gf("bF",     bi_F_in)
@@ -1630,10 +1647,13 @@ clx_okS = not f_clxOn or not (clx_last == 1 and clx_frais)
 commun_ok = hr_ok and bo_ok and jour_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
 sens_okL  = e_sens != "Short seulement"
 sens_okS  = e_sens != "Long seulement"
+jr_e     = math.round((close - ema_m1) / sg_atr * 10) / 10
+x2_okL   = (not f_dsh60 or t3_d4) and (not f_dsh240 or t3_d5) and (not f_eOn or (not na(jr_e) and jr_e <= f_eMax))
+x2_okS   = (not f_dsh60 or not t3_d4) and (not f_dsh240 or not t3_d5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
 bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
 bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
-go_long   = bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
-go_short  = bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+go_long   = x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
 // ══════════════════════════════════════════════════════════════
 // GESTION DES ORDRES (tout en vrais prix)
@@ -2119,4 +2139,4 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V13 · 17/10 · journal 99", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V14 · 17/10 · préréglage 45 JR3", color.rgb(245, 166, 35))
