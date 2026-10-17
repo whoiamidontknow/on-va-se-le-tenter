@@ -163,6 +163,9 @@
 //                   niveau), objectif 1 / 1,5 / 2 R selon le score de
 //                   confluence, obstacle, trade sauté sous 1 R. Préréglages
 //                   31-35.
+//   V10 2026-10-17  Fenêtre de trading autorisée 00:20-22:15 Paris (réglage
+//                   global, actif par défaut) : pas d'entrée hors fenêtre,
+//                   position fermée à 22:15.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -267,6 +270,9 @@ x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", gro
      tooltip="Ferme la position à la clôture de la bougie qui finit à cette heure ou après, et interdit toute nouvelle entrée ensuite jusqu'à minuit (Paris).")
 x_finH    = input.int(21, "h", group=grp_x, inline="fin", minval=0, maxval=23)
 x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
+x_fenOn   = input.bool(true, "Fenêtre de trading autorisée (heure de Paris)", group=grp_x, inline="fen",
+     tooltip="Règle de Jeremy (17/10) : trader seulement de 00:20 à 22:15 heure de Paris (UTC+2 en été). Aucune entrée hors fenêtre ; position fermée à la clôture de la bougie qui finit à 22:15 ou après. S'applique à TOUS les préréglages.")
+x_fen     = input.session("0020-2215", "", group=grp_x, inline="fen")
 x_tBar_in = input.int(0, "Sortie après N bougies en position (0 = jamais)", group=grp_x, minval=0,
      tooltip="Ferme au marché à l'ouverture qui suit la clôture de la N-ième bougie en position (bougie d'entrée comprise). 8 en 15 min = 2 h.")
 x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
@@ -1535,7 +1541,11 @@ fin_min   = x_finH * 60 + x_finM
 f_minChi(t) => hour(t, "America/Chicago") * 60 + minute(t, "America/Chicago")
 pf_min    = f_minChi(time_close)
 pf_apres  = x_pfOn and timeframe.isintraday and pf_min + timeframe.in_seconds() / 60 > 15 * 60 + 59 and pf_min <= 17 * 60
-fin_apres = (x_finOn and timeframe.isintraday and f_minParis(time_close) >= fin_min) or pf_apres
+// fenêtre de trading autorisée : fin = la bougie qui finit à l'heure de fin ou après
+fen_fin   = str.tonumber(str.substring(x_fen, 5, 7)) * 60 + str.tonumber(str.substring(x_fen, 7, 9))
+fen_in    = not na(time(timeframe.period, x_fen, "Europe/Paris"))
+fen_apres = x_fenOn and timeframe.isintraday and (not fen_in or f_minParis(time_close) >= fen_fin)
+fin_apres = (x_finOn and timeframe.isintraday and f_minParis(time_close) >= fin_min) or pf_apres or fen_apres
 
 // fenêtres horaires
 in_h1  = not na(time(timeframe.period, f_hr1, "Europe/Paris"))
@@ -2042,4 +2052,4 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S)", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " %", color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V9 · 17/10 · adaptatif 31-36", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V10 · 17/10 · fenêtre 00:20-22:15", color.rgb(245, 166, 35))
