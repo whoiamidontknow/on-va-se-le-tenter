@@ -179,6 +179,10 @@
 //                   (par défaut) et 46, recette JR3 du journal 3 ans.
 //   V15 2026-10-19  Tableau de bord : part des trades stoppés dont le prix
 //                   atteint ensuite l'objectif dans les 8 / 16 bougies.
+//   V16 2026-10-19  Même mesure écrite dans le commentaire d'entrée du trade
+//                   suivant (« |SPn » = objectif atteint n bougies après le
+//                   stop, « |SP0 » = pas dans les 16 bougies) : lisible dans
+//                   l'export xlsx du backtest profond.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -1762,6 +1766,7 @@ f_qty(float dist) =>
 
 // État du trade (le testeur ne garde ni le stop ni l'objectif : on les mémorise).
 var int    tr_dir    = 0      // 1 long, -1 short, 0 rien
+var string ws_tag    = ""     // issue des stops précédents (« stop puis objectif »), écrite à l'entrée suivante
 var bool   tr_fixe   = false  // prix d'entrée réel connu ?
 var float  tr_entry  = na
 var float  tr_stop   = na     // stop en cours (break-even, suiveur)
@@ -2059,11 +2064,12 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         tr_dess   := false
         nb_jour   += 1
         if d > 0
-            strategy.entry("L", strategy.long, qty=q, comment=jr_on ? f_jr(1, dist) : "L " + str.tostring(q))
+            strategy.entry("L", strategy.long, qty=q, comment=(jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + ws_tag)
             entree_L := true
         else
-            strategy.entry("S", strategy.short, qty=q, comment=jr_on ? f_jr(-1, dist) : "S " + str.tostring(q))
+            strategy.entry("S", strategy.short, qty=q, comment=(jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + ws_tag)
             entree_S := true
+        ws_tag := ""
         // Bougie de remplissage : stop / objectif « en distance » posés en TICKS
         // relatifs au prix réellement obtenu (V3) ; stop / objectif sur niveau
         // posés au prix du niveau. Dès la clôture suivante : prix absolus.
@@ -2135,8 +2141,10 @@ if ws_dir != 0
         if ws_age <= 8
             ws_hit8 += 1
         ws_hit16 += 1
+        ws_tag += " |SP" + str.tostring(ws_age)
         ws_dir := 0
     else if ws_age >= 16
+        ws_tag += " |SP0"
         ws_dir := 0
 if strategy.closedtrades > strategy.closedtrades[1]
     kw = strategy.closedtrades - 1
@@ -2173,5 +2181,5 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V15 · 19/10 · stop puis objectif", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V16 · 19/10 · stop puis objectif (export)", color.rgb(245, 166, 35))
     f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
