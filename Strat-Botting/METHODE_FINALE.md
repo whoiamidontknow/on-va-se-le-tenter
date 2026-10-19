@@ -1,7 +1,7 @@
 # Méthode finale — préréglage 48 (19/10/2026)
 
 ## La méthode
-- Code : `STRATEGIE_45_46.pine`, **Modèle 48** (par défaut). Recette identique dans `STRATEGIE_V1.pine`, préréglage 48.
+- Code : `STRATEGIE_48_52.pine`, **Modèle 48** (par défaut ; 52 = option volume). Recette identique dans `STRATEGIE_V1.pine`, préréglage 48.
 - Marché : **MNQ1!**, **15 min**, bougies **Heikin Ashi**. Pas MES, pas BTC.
 - Entrée : n'importe quel signal (flèche Signator Fort ou Moyen, flip Heishinator, cassure de trendline,
   cassure de session / Monday, climax, divergence) **seulement si** le Dashator 1 h **et** 4 h (dernière

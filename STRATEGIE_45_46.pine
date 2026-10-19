@@ -1,17 +1,14 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// STRATÉGIE 45-46 (ALERTES) — V2 du 19/10/2026
-// Copie FIDÈLE de STRATEGIE_V1.pine V18 (même moteur, mêmes calculs) réduite
-// aux modèles confirmés sur 3 ans de MNQ1! 15 min (2 micros), avec des alertes
-// pour prendre les trades à la main :
-//   48 = le 45 avec stop 3 ATR (objectif inchangé à 2 ATR) — RECOMMANDÉ :
-//        78,5 % gagnants, PF 5,54, +84 k$, baisse max 1 157 $, ~18 trades/mois
-//   45 = stop 2 ATR : 75,5 % gagnants, PF 4,51
-//   46 = volume (~44 trades/mois) : 66,3 % gagnants, PF 2,34
-// Graphique : MNQ1! 15 min, bougies Heikin Ashi.
+// STRATÉGIE 45-46 (ALERTES) — 17/10/2026
+// Copie FIDÈLE de STRATEGIE_V1.pine V14 (même moteur, mêmes calculs) réduite
+// aux deux modèles confirmés sur 3 ans de MNQ1! 15 min, avec des alertes pour
+// prendre les trades à la main :
+//   45 = sélectif : ~18 trades/mois, 75,5 % gagnants, PF 4,51 (3 ans MNQ1!)
+//   46 = volume   : ~44 trades/mois, 66,3 % gagnants, PF 2,34
+// Graphique : MNQ1! (ou MES1!), 15 min, bougies Heikin Ashi.
 // Alerte TradingView : condition = cette stratégie → « alert() function calls
-// only » (appels de la fonction alert() uniquement). Après toute mise à jour
-// du code : supprimer l'alerte et la recréer.
+// only » (appels de la fonction alert() uniquement).
 // Toute modification de la recette se fait d'abord dans STRATEGIE_V1.pine.
 // ══════════════════════════════════════════════════════════════
 // STRATÉGIE V1 — VERSION V4 (2026-10-16)
@@ -191,16 +188,6 @@
 //   V14 2026-10-17  Filtres Dashator 1 h / 4 h dans le sens et écart maximum
 //                   à l'EMA50 (dsh60, dsh240, eOn, eMax) ; préréglages 45
 //                   (par défaut) et 46, recette JR3 du journal 3 ans.
-//   V15 2026-10-19  Tableau de bord : part des trades stoppés dont le prix
-//                   atteint ensuite l'objectif dans les 8 / 16 bougies.
-//   V16 2026-10-19  Même mesure écrite dans le commentaire d'entrée du trade
-//                   suivant (« |SPn » = objectif atteint n bougies après le
-//                   stop, « |SP0 » = pas dans les 16 bougies) : lisible dans
-//                   l'export xlsx du backtest profond.
-//   V17 2026-10-19  Préréglages 47 et 48 : le 45 avec stop 2,5 / 3 ATR et
-//                   objectif gardé à la même distance (2 ATR).
-//   V18 2026-10-19  Préréglages 49 (stop 3 ATR, objectif 3 ATR = RR 1) et 50
-//                   (stop 3,5 ATR, objectif 2 ATR).
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie 45-46 (alertes)", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -222,11 +209,11 @@ grp_e = "=== 1. ENTRÉES ==="
 // historique long. « Personnalisé » = tous les réglages ci-dessous s'appliquent.
 // Pour AJOUTER un préréglage : son nom ici (littéral, cf. piège Pine v6) ET une
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
-modele    = input.string("48 — recommandé : stop 3 ATR (≈ 18 trades/mois, 78 % gagnants)", "Modèle", group=grp_e,
-     options=["48 — recommandé : stop 3 ATR (≈ 18 trades/mois, 78 % gagnants)", "45 — stop 2 ATR (≈ 18 trades/mois, 75 % gagnants)", "46 — volume (≈ 44 trades/mois, 66 % gagnants)"],
-     tooltip="Tous : tous les signaux (Signator Fort et Moyen, Heishinator, cassures, climax, divergence) seulement si le Dashator 1 h et 4 h va dans le sens du trade, objectif 2 ATR, sortie après 8 bougies, fenêtre 00:20-22:15 Paris. 48 : prix à 0,6 ATR au plus de l'EMA50, stop 3 ATR. 45 : idem, stop 2 ATR. 46 : jusqu'à 1,5 ATR de l'EMA50, stop 2 ATR.")
+modele    = input.string("45 — sélectif (≈ 18 trades/mois, 75 % gagnants)", "Modèle", group=grp_e,
+     options=["45 — sélectif (≈ 18 trades/mois, 75 % gagnants)", "46 — volume (≈ 44 trades/mois, 66 % gagnants)"],
+     tooltip="45 : Dashator 1 h et 4 h dans le sens du trade, prix à 0,6 ATR au plus de l'EMA50. 46 : idem jusqu'à 1,5 ATR (plus de trades, un peu moins de gagnants). Les deux : tous les signaux (Signator Fort et Moyen, Heishinator, cassures, climax, divergence), stop 2 ATR, objectif 1 R, sortie après 8 bougies, fenêtre 00:20-22:15 Paris.")
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
-preset    = str.startswith(modele, "48") ? "48 · 45 avec stop 3 ATR (objectif à la même distance)" : str.startswith(modele, "45") ? "45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies" : "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies"
+preset    = str.startswith(modele, "45") ? "45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies" : "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies"
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -495,13 +482,6 @@ f_pr_def(string nom) =>
      // Recette JR3 (journal 3 ans, choisie sur 2 ans, vérifiée sur la 3e) : tous les signaux, Dashator 1 h et 4 h
      // dans le sens, clôture à ≤ 0,6 ATR de l'EMA50 (repli). Journal : 77 % de gagnants, PF 5,3 — À CONFIRMER au testeur.
      nom == "45 ⭐ JR3 · Dashator 1h+4h · repli ≤ 0,6 ATR de l'EMA50 · 1R · 8 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
-     // Variantes du 45 (19/10) : 53 % des stops du 45 sont suivis de l'objectif dans les 8 bougies (mesure V16).
-     // Stop élargi, objectif gardé à 2 ATR de l'entrée (tpR = 2 / k).
-     nom == "47 · 45 avec stop 2,5 ATR (objectif à la même distance)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2.5;tp=En R;tpR=0.8;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
-     nom == "48 · 45 avec stop 3 ATR (objectif à la même distance)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
-     // 19/10 : 48 (stop 3 ATR) > 47 > 45 sur 3 ans. 49 = RR nominal 1 ; 50 = stop encore plus large.
-     nom == "49 · 45 avec stop 3 ATR et objectif 3 ATR (RR 1)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
-     nom == "50 · 45 avec stop 3,5 ATR (objectif 2 ATR)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=3.5;tp=En R;tpR=0.5714;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
      nom == "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=1.5" :
      nom == "99 JOURNAL · tous signaux sans filtre · 2 ATR · 1R · 8 bougies" ? "jr=1;bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2" :
      ""
@@ -1793,7 +1773,6 @@ f_qty(float dist) =>
 
 // État du trade (le testeur ne garde ni le stop ni l'objectif : on les mémorise).
 var int    tr_dir    = 0      // 1 long, -1 short, 0 rien
-var string ws_tag    = ""     // issue des stops précédents (« stop puis objectif »), écrite à l'entrée suivante
 var bool   tr_fixe   = false  // prix d'entrée réel connu ?
 var float  tr_entry  = na
 var float  tr_stop   = na     // stop en cours (break-even, suiveur)
@@ -2095,10 +2074,10 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         tr_dess   := false
         nb_jour   += 1
         if d > 0
-            strategy.entry("L", strategy.long, qty=q, comment=(jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + ws_tag)
+            strategy.entry("L", strategy.long, qty=q, comment=jr_on ? f_jr(1, dist) : "L " + str.tostring(q))
             entree_L := true
         else
-            strategy.entry("S", strategy.short, qty=q, comment=(jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + ws_tag)
+            strategy.entry("S", strategy.short, qty=q, comment=jr_on ? f_jr(-1, dist) : "S " + str.tostring(q))
             entree_S := true
         if al_on
             tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
@@ -2108,7 +2087,6 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
                  "\nObjectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") +
                  "\nSortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris) si ni stop ni objectif" +
                  "\n" + str.tostring(q) + " contrat(s) dans le backtest", alert.freq_once_per_bar_close)
-        ws_tag := ""
         // Bougie de remplissage : stop / objectif « en distance » posés en TICKS
         // relatifs au prix réellement obtenu (V3) ; stop / objectif sur niveau
         // posés au prix du niveau. Dès la clôture suivante : prix absolus.
@@ -2163,41 +2141,7 @@ f_tb_pos(p) =>
     p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
      p == "Bottom Left" ? position.bottom_left : p == "Middle Right" ? position.middle_right : position.bottom_right
 
-// STATISTIQUE « STOP PUIS OBJECTIF » : après chaque trade sorti au stop, le prix
-// (vrais prix) atteint-il l'objectif de ce trade dans les 8 / 16 bougies
-// suivantes ? (la bougie du stop elle-même n'est pas comptée : ordre inconnu)
-var float ws_tpPrev = na
-var float ws_tp  = na
-var int   ws_dir = 0
-var int   ws_age = 0
-var int   ws_nStop = 0
-var int   ws_hit8  = 0
-var int   ws_hit16 = 0
-var bool  ws_vu8 = false
-if ws_dir != 0
-    ws_age += 1
-    if (ws_dir > 0 ? r_h >= ws_tp : r_l <= ws_tp)
-        if ws_age <= 8
-            ws_hit8 += 1
-        ws_hit16 += 1
-        ws_tag += " |SP" + str.tostring(ws_age)
-        ws_dir := 0
-    else if ws_age >= 16
-        ws_tag += " |SP0"
-        ws_dir := 0
-if strategy.closedtrades > strategy.closedtrades[1]
-    kw = strategy.closedtrades - 1
-    if str.startswith(strategy.closedtrades.exit_comment(kw), "Stop") and not na(ws_tpPrev)
-        ws_nStop += 1
-        ws_tp  := ws_tpPrev
-        ws_dir := strategy.closedtrades.size(kw) > 0 ? 1 : -1
-        ws_age := 0
-if tr_dir != 0 and not na(tr_tp)
-    ws_tpPrev := tr_tp
-else if tr_dir == 0
-    ws_tpPrev := na
-
-var table tb = table.new(f_tb_pos(a_pos), 2, 12, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
+var table tb = table.new(f_tb_pos(a_pos), 2, 11, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
 f_tb(r, k, v, col) =>
     table.cell(tb, 0, r, k, text_color=color.rgb(190, 190, 205), text_size=size.small, text_halign=text.align_left)
     table.cell(tb, 1, r, v, text_color=col, text_size=size.small, text_halign=text.align_right)
@@ -2220,8 +2164,7 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "Alertes V2 · 19/10 · modèle 48", color.rgb(245, 166, 35))
-    f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
+    f_tb(10, "Version du code", "45-46 alertes · 17/10", color.rgb(245, 166, 35))
 
 // ALERTES : stop ou objectif touché pendant la bougie (information)
 if al_on and strategy.closedtrades > strategy.closedtrades[1]
