@@ -177,6 +177,8 @@
 //   V14 2026-10-17  Filtres Dashator 1 h / 4 h dans le sens et écart maximum
 //                   à l'EMA50 (dsh60, dsh240, eOn, eMax) ; préréglages 45
 //                   (par défaut) et 46, recette JR3 du journal 3 ans.
+//   V15 2026-10-19  Tableau de bord : part des trades stoppés dont le prix
+//                   atteint ensuite l'objectif dans les 8 / 16 bougies.
 // ══════════════════════════════════════════════════════════════
 strategy("Stratégie V1", overlay=true,
      initial_capital=25000, currency=currency.USD,
@@ -2116,7 +2118,39 @@ f_tb_pos(p) =>
     p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
      p == "Bottom Left" ? position.bottom_left : p == "Middle Right" ? position.middle_right : position.bottom_right
 
-var table tb = table.new(f_tb_pos(a_pos), 2, 11, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
+// STATISTIQUE « STOP PUIS OBJECTIF » : après chaque trade sorti au stop, le prix
+// (vrais prix) atteint-il l'objectif de ce trade dans les 8 / 16 bougies
+// suivantes ? (la bougie du stop elle-même n'est pas comptée : ordre inconnu)
+var float ws_tpPrev = na
+var float ws_tp  = na
+var int   ws_dir = 0
+var int   ws_age = 0
+var int   ws_nStop = 0
+var int   ws_hit8  = 0
+var int   ws_hit16 = 0
+var bool  ws_vu8 = false
+if ws_dir != 0
+    ws_age += 1
+    if (ws_dir > 0 ? r_h >= ws_tp : r_l <= ws_tp)
+        if ws_age <= 8
+            ws_hit8 += 1
+        ws_hit16 += 1
+        ws_dir := 0
+    else if ws_age >= 16
+        ws_dir := 0
+if strategy.closedtrades > strategy.closedtrades[1]
+    kw = strategy.closedtrades - 1
+    if str.startswith(strategy.closedtrades.exit_comment(kw), "Stop") and not na(ws_tpPrev)
+        ws_nStop += 1
+        ws_tp  := ws_tpPrev
+        ws_dir := strategy.closedtrades.size(kw) > 0 ? 1 : -1
+        ws_age := 0
+if tr_dir != 0 and not na(tr_tp)
+    ws_tpPrev := tr_tp
+else if tr_dir == 0
+    ws_tpPrev := na
+
+var table tb = table.new(f_tb_pos(a_pos), 2, 12, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
 f_tb(r, k, v, col) =>
     table.cell(tb, 0, r, k, text_color=color.rgb(190, 190, 205), text_size=size.small, text_halign=text.align_left)
     table.cell(tb, 1, r, v, text_color=col, text_size=size.small, text_halign=text.align_right)
@@ -2139,4 +2173,5 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "V14 · 17/10 · préréglage 45 JR3", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "V15 · 19/10 · stop puis objectif", color.rgb(245, 166, 35))
+    f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
