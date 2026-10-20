@@ -7,8 +7,8 @@
 > Code : **`STRATEGIE_63.pine`**. Le reste ci-dessous (règles, garde-fous) s'applique tel quel.
 
 ## La méthode
-- Code : **`STRATEGIE_56.pine`** (« Stratégie 56 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
-  préréglage 56.
+- Code : **`STRATEGIE_63.pine`** (« Stratégie 63 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
+  préréglage 63 (= 56 + Dashator corps ≥ 0,03 ATR).
 - Marché : **MNQ1!**, **15 min**, bougies **Heikin Ashi**. Pas MES, pas BTC.
 - Entrée : n'importe quel signal (flèche Signator Fort ou Moyen, flip Heishinator, cassure de trendline,
   cassure de session / Monday, climax, divergence) **seulement si** le Dashator 1 h **et** 4 h (dernière
