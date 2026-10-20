@@ -1701,6 +1701,19 @@ bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
 go_long   = x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
 go_short  = x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
+// DIAGNOSTIC (fenêtre de données) : comparer le calcul en direct / replay et sur l'historique.
+// Codes des déclencheurs : 1 Signator Fort, 2 Moyen, 4 Heishinator, 8 trendline, 16 niveau, 32 climax, 64 divergence.
+dg_codeL = (e_sigOn and sg_long ? 1 : 0) + (e_sigOn and e_moyen and sg_longM ? 2 : 0) + (e_heiOn and hei_bull_flip ? 4 : 0) + (e_tlOn and tl_rBreak ? 8 : 0) + (e_lvlOn and lvl_up ? 16 : 0) + (e_clxOn and clx_buy ? 32 : 0) + (e_divOn and dv_lo ? 64 : 0)
+dg_codeS = (e_sigOn and sg_short ? 1 : 0) + (e_sigOn and e_moyen and sg_shortM ? 2 : 0) + (e_heiOn and hei_bear_flip ? 4 : 0) + (e_tlOn and tl_sBreak ? 8 : 0) + (e_lvlOn and lvl_dn ? 16 : 0) + (e_clxOn and clx_sell ? 32 : 0) + (e_divOn and dv_sh ? 64 : 0)
+plot(dg_codeL, "DIAG signaux long (code)", display=display.data_window)
+plot(dg_codeS, "DIAG signaux short (code)", display=display.data_window)
+plot(t3_d4 ? 1 : -1, "DIAG Dashator 1h (1 haussier)", display=display.data_window)
+plot(t3_d5 ? 1 : -1, "DIAG Dashator 4h (1 haussier)", display=display.data_window)
+plot(jr_e, "DIAG écart clôture-EMA50 (ATR)", display=display.data_window)
+plot(commun_ok ? 1 : 0, "DIAG horaires / fenêtre ok", display=display.data_window)
+plot(go_long ? 1 : go_short ? -1 : 0, "DIAG entrée décidée (1 long, -1 short)", display=display.data_window)
+plot(strategy.position_size, "DIAG position déjà ouverte", display=display.data_window)
+
 // ══════════════════════════════════════════════════════════════
 // GESTION DES ORDRES (tout en vrais prix)
 // ══════════════════════════════════════════════════════════════
@@ -2120,7 +2133,8 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
                  "\nStop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" +
                  "\nObjectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") +
                  "\nSortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris) si ni stop ni objectif" +
-                 "\n" + str.tostring(q) + " contrat(s) dans le backtest", alert.freq_once_per_bar_close)
+                 "\n" + str.tostring(q) + " contrat(s) dans le backtest" +
+                 "\nDétail : " + f_jr(d, dist), alert.freq_once_per_bar_close)
         ws_tag := ""
         // Bougie de remplissage : stop / objectif « en distance » posés en TICKS
         // relatifs au prix réellement obtenu (V3) ; stop / objectif sur niveau
@@ -2233,7 +2247,7 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "56 alertes · 19/10 · méthode finale", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "56 alertes · 20/10 · diagnostic", color.rgb(245, 166, 35))
     f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
 
 // ALERTES : stop ou objectif touché pendant la bougie (information)
