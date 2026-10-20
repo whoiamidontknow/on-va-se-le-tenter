@@ -1,4 +1,10 @@
-# Méthode finale — préréglage 56 (19/10/2026)
+# Méthode finale — préréglage 63 (20/10/2026)
+
+> 20/10 : le 56 devient le **63** = le 56 + Dashator 1 h / 4 h compté seulement si le corps de sa bougie HA
+> ≥ 0,03 × ATR de son unité (supprime les « trades fantômes » : alerte en direct, trade absent de l'historique
+> quand une bougie Dashator est quasi neutre). 3 ans : 531 trades (~15/mois), 84,7 % gagnants, PF 7,16,
+> +89 958 $, baisse max 783 $, aucun mois perdant ; arbitre indépendant : k = 0,03 (recherche/arbitre_seuil).
+> Code : **`STRATEGIE_63.pine`**. Le reste ci-dessous (règles, garde-fous) s'applique tel quel.
 
 ## La méthode
 - Code : **`STRATEGIE_56.pine`** (« Stratégie 56 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
