@@ -1713,6 +1713,14 @@ plot(jr_e, "DIAG écart clôture-EMA50 (ATR)", display=display.data_window)
 plot(commun_ok ? 1 : 0, "DIAG horaires / fenêtre ok", display=display.data_window)
 plot(go_long ? 1 : go_short ? -1 : 0, "DIAG entrée décidée (1 long, -1 short)", display=display.data_window)
 plot(strategy.position_size, "DIAG position déjà ouverte", display=display.data_window)
+dg_on = input.bool(true, "Diagnostic : étiquette sur chaque bougie de signal", group=grp_e)
+f_dgt(int c) => (c % 2 >= 1 ? "F" : "") + (c % 4 >= 2 ? "M" : "") + (c % 8 >= 4 ? "H" : "") + (c % 16 >= 8 ? "T" : "") + (c % 32 >= 16 ? "N" : "") + (c % 64 >= 32 ? "C" : "") + (c >= 64 ? "D" : "")
+if dg_on and (dg_codeL > 0 or dg_codeS > 0)
+    label.new(bar_index, high, str.format_time(time, "HH:mm", "Europe/Paris") + (dg_codeL > 0 ? " L:" + f_dgt(dg_codeL) : "") + (dg_codeS > 0 ? " S:" + f_dgt(dg_codeS) : "") +
+         "\n1h " + (t3_d4 ? "+" : "-") + " 4h " + (t3_d5 ? "+" : "-") + " e " + str.tostring(jr_e, "0.0") +
+         "\nh " + (commun_ok ? "ok" : "non") + " pos " + str.tostring(strategy.position_size) + " → " + (go_long ? "LONG" : go_short ? "SHORT" : "rien") +
+         "\nHA " + str.tostring(close, format.mintick) + " / vrai " + str.tostring(r_c, format.mintick),
+         style=label.style_label_down, size=size.tiny, color=color.new(color.gray, 70), textcolor=color.black)
 
 // ══════════════════════════════════════════════════════════════
 // GESTION DES ORDRES (tout en vrais prix)
@@ -2247,7 +2255,7 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "56 alertes · 20/10 · diagnostic", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "56 alertes · 20/10 · diagnostic 2", color.rgb(245, 166, 35))
     f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
 
 // ALERTES : stop ou objectif touché pendant la bougie (information)
