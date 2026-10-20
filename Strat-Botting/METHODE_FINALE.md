@@ -1,14 +1,14 @@
-# Méthode finale — préréglage 63 (20/10/2026)
+# Méthode finale — préréglage 69 (20/10/2026)
 
-> 20/10 : le 56 devient le **63** = le 56 + Dashator 1 h / 4 h compté seulement si le corps de sa bougie HA
-> ≥ 0,03 × ATR de son unité (supprime les « trades fantômes » : alerte en direct, trade absent de l'historique
-> quand une bougie Dashator est quasi neutre). 3 ans : 531 trades (~15/mois), 84,7 % gagnants, PF 7,16,
-> +89 958 $, baisse max 783 $, aucun mois perdant ; arbitre indépendant : k = 0,03 (recherche/arbitre_seuil).
-> Code : **`STRATEGIE_63.pine`**. Le reste ci-dessous (règles, garde-fous) s'applique tel quel.
+> 20/10 : la méthode devient le **69** = le 56 + Dashator 1 h / 4 h compté seulement si le corps de sa bougie
+> HA ≥ **0,025** × ATR de son unité. C'est le plus petit seuil qui supprime le « trade fantôme » du 20/10 05:00
+> (alerte en direct, trade absent de l'historique : Dashator 4 h quasi neutre ; testé en replay par Jeremy :
+> présent à 0,01 et 0,02, absent à 0,025). 3 ans : 546 trades (~15/mois), 84,6 % gagnants, PF 7,05,
+> +91 411 $, baisse max 783 $. Code : **`STRATEGIE_69.pine`**. Règles et garde-fous ci-dessous inchangés.
 
 ## La méthode
-- Code : **`STRATEGIE_63.pine`** (« Stratégie 63 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
-  préréglage 63 (= 56 + Dashator corps ≥ 0,03 ATR).
+- Code : **`STRATEGIE_69.pine`** (« Stratégie 69 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
+  préréglage 69 (= 56 + Dashator corps ≥ 0,025 ATR).
 - Marché : **MNQ1!**, **15 min**, bougies **Heikin Ashi**. Pas MES, pas BTC.
 - Entrée : n'importe quel signal (flèche Signator Fort ou Moyen, flip Heishinator, cassure de trendline,
   cassure de session / Monday, climax, divergence) **seulement si** le Dashator 1 h **et** 4 h (dernière
