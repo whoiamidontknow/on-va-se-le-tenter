@@ -22,12 +22,12 @@ L = []
 for f in sorted(glob.glob(os.path.join(D, '*.xlsx'))):
     P = dict(zip(*[pd.read_excel(f, 'Propriétés')[c].astype(str) for c in ('name', 'value')]))
     m = re.search(r'≥ ([\d,]+) ATR', P.get('Préréglage', '')); seuil = float(m.group(1).replace(',', '.')) if m else 0.0
-    if seuil not in (0.0, 0.03, 0.05, 0.07, 0.1):
+    if seuil not in (0.0, 0.01, 0.02, 0.03, 0.04):
         continue
     _, t = charge(f)
     for c in (2, 3, 4):
         r = S.monte_carlo(t, R['tradeify_50k_select_flex'], c, **KW)
         L.append(dict(seuil=seuil, micros=c, p_reussite=round(r['p_reussite'], 3), delai_j=r['delai_median_jours'],
                       p_1er_payout=round(r['p_1er_payout'], 3), p_3_payouts=round(r['p_3_payouts'], 3), ve=round(r.get('valeur_esperee_usd') or 0)))
-out = pd.DataFrame(L).sort_values(['seuil', 'micros']); out.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultats_seuils.csv'), index=False)
+out = pd.DataFrame(L).sort_values(['seuil', 'micros']); out.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultats_seuils_bas.csv'), index=False)
 print(out.to_string(index=False))
