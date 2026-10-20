@@ -1,14 +1,15 @@
-# Méthode finale — préréglage 69 (20/10/2026)
+# Méthode en test — Strat5669 (20/10/2026)
 
-> 20/10 : la méthode devient le **69** = le 56 + Dashator 1 h / 4 h compté seulement si le corps de sa bougie
-> HA ≥ **0,025** × ATR de son unité. C'est le plus petit seuil qui supprime le « trade fantôme » du 20/10 05:00
-> (alerte en direct, trade absent de l'historique : Dashator 4 h quasi neutre ; testé en replay par Jeremy :
-> présent à 0,01 et 0,02, absent à 0,025). 3 ans : 546 trades (~15/mois), 84,6 % gagnants, PF 7,05,
-> +91 411 $, baisse max 783 $. Code : **`STRATEGIE_69.pine`**. Règles et garde-fous ci-dessous inchangés.
+> **Décision de Jeremy (20/10)** : on trade **tous les trades du 56** avec **`Strat5669.pine`**, qui marque chaque
+> trade **GODLIKE** (règle du 69 respectée : corps HA du Dashator 1 h ET 4 h ≥ 0,025 × ATR de son unité) ou
+> **« 56 seul »** (Dashator quasi neutre, trade fragile qui peut devenir « fantôme »). On ne change plus rien
+> pendant 30 trades ; bilan : nombre et résultats (objectif / stop / temps) des GODLIKE contre les « 56 seul »,
+> et réussite ou non de l'éval Tradeify. 3 ans : 56 = 630 trades, 83,5 %, PF 6,64, +100 558 $ ; dont GODLIKE
+> = 546 trades, 84,6 %, PF 7,05, +91 411 $. (Ci-dessous : la recette, inchangée, et les règles.)
 
 ## La méthode
-- Code : **`STRATEGIE_69.pine`** (« Stratégie 69 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
-  préréglage 69 (= 56 + Dashator corps ≥ 0,025 ATR).
+- Code : **`Strat5669.pine`** (« Strat5669 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
+  préréglage 56 ; marque GODLIKE = règle du préréglage 69.
 - Marché : **MNQ1!**, **15 min**, bougies **Heikin Ashi**. Pas MES, pas BTC.
 - Entrée : n'importe quel signal (flèche Signator Fort ou Moyen, flip Heishinator, cassure de trendline,
   cassure de session / Monday, climax, divergence) **seulement si** le Dashator 1 h **et** 4 h (dernière
