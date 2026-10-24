@@ -32,12 +32,19 @@ logs["t"] = pd.to_datetime(logs["Heure"]).dt.tz_convert("Europe/Paris").dt.tz_lo
 logs["sym"] = logs["Ticker"].str.split(",").str[0].str.split(":").str[-1]
 logs["tf"] = logs["Ticker"].str.split(", ").str[1]
 logs = logs.sort_values("t", kind="stable")
+# nom de la stratégie de chaque alerte (lu dans les messages « ordre … effectué » qui commencent par le nom)
+STRATS = ("correctifstest", "Bot5669", "Strat5669", "Stratégie 56")
+strat_id = {}
+for _, a in logs.iterrows():
+    for n in STRATS:
+        if str(a["Description"]).startswith(n):
+            strat_id[a["ID de l'alerte"]] = n
 
 trades, ouverts = [], {}
 for _, a in logs.iterrows():
     d, cle = str(a["Description"]), (a["ID de l'alerte"], a["sym"])
     if "au marché maintenant" in d and re.search("GODLIKE|56 seul", d):
-        ouverts[cle] = dict(entree=a.t, sym=a.sym, tf=a.tf, sens="L" if "ACHAT" in d else "S",
+        ouverts[cle] = dict(strat=strat_id.get(a["ID de l'alerte"], "Strat5669"), entree=a.t, sym=a.sym, tf=a.tf, sens="L" if "ACHAT" in d else "S",
                             etiq="GODLIKE" if "GODLIKE" in d else "56 seul",
                             px=nombre(d, r"Entrée ≈ ([\d.,]+)"), stop=nombre(d, r"Stop ([\d.,]+)"),
                             obj=nombre(d, r"Objectif ([\d.,]+)"), sortie=None, raison=None, px_sortie=None, pnl=None)
@@ -58,16 +65,18 @@ for _, a in logs.iterrows():
 exports = {}
 for f in fichiers("*.xlsx"):
     nom = os.path.basename(f)
-    m = re.search(r"(MNQ1!|MES1!|BTCUSD)", nom)
-    if not m or not re.match(r"(Strat5669|Stratégie_56|Bot5669)", nom):
+    m = re.search(r"(MNQ1!|MES1!|BTCUSD|BTC1!|MBT1!)", nom)
+    st = re.match(r"(correctifstest|Strat5669|Stratégie_56|Bot5669)", nom)
+    if not m or not st:
         continue
+    st = {"Stratégie_56": "Strat5669"}.get(st.group(1), st.group(1))
     tf = "5m" if (os.sep + "5min" + os.sep in f or nom.startswith("Bot")) else "15m"
     t = pd.read_excel(f, "Trades")
     t["Date et heure"] = pd.to_datetime(t["Date et heure"])
-    exports.setdefault((m.group(1), tf), []).append((t["Date et heure"].max(), t))
+    exports.setdefault((st, m.group(1), tf), []).append((t["Date et heure"].max(), t))
 
 for tr in trades:
-    couverts = [t for mx, t in exports.get((tr["sym"], tr["tf"]), []) if tr["entree"] <= mx]
+    couverts = [t for mx, t in exports.get((tr["strat"] if tr["strat"] != "Stratégie 56" else "Strat5669", tr["sym"], tr["tf"]), []) if tr["entree"] <= mx]
     tr["historique"], tr["pnl_hist"] = "pas encore exporté", None
     if not couverts:
         continue
@@ -91,7 +100,7 @@ if df.empty:
 print("TRADES SIGNALÉS EN DIRECT (journal d'alertes)\n")
 for tr in trades:
     pnl = "en cours" if tr["sortie"] is None else ("P&L ?" if tr["pnl"] is None else f"{tr['pnl']:+,.0f} $")
-    print(f"{tr['entree']:%d/%m %H:%M} {tr['sym']:7}{tr['tf']:>4} {tr['sens']} {tr['etiq']:8} @ {tr['px']:<10} "
+    print(f"{tr['strat'][:14]:14} {tr['entree']:%d/%m %H:%M} {tr['sym']:7}{tr['tf']:>4} {tr['sens']} {tr['etiq']:8} @ {tr['px']:<10} "
           f"→ {tr['raison'] or '—':<16} {pnl:>10}   historique : {tr['historique']}")
 
 
@@ -105,12 +114,12 @@ def stats(sous, titre):
 
 
 print("\nBILAN EN DIRECT")
-for (sym, tf), s in df.groupby(["sym", "tf"]):
-    stats(s, f"{sym} {tf} tous")
+for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
+    stats(s, f"{st[:14]} {sym} {tf} tous")
     for etiq, s2 in s.groupby("etiq"):
-        stats(s2, f"{sym} {tf} {etiq}")
+        stats(s2, f"{st[:14]} {sym} {tf} {etiq}")
 print("\nFANTÔMES (trades en direct comparés à l'historique)")
-print(df.groupby(["etiq", "historique"]).size().to_string())
+print(df.groupby(["strat", "etiq", "historique"]).size().to_string())
 if sortie:
     df.to_csv(sortie, index=False)
     print(f"\nTable écrite dans {sortie}")
