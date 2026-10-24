@@ -14,6 +14,13 @@
 //   3. Sans volume : le volume d'une bougie vue en direct n'est pas celui enregistré ensuite.
 //      Signator sans terme de volume, climax (C) désactivé (il exige un pic de volume ET un
 //      open HA égal au plus bas au 1/100 de tick près).
+//   4. Trades indépendants (24/10, idée de Jeremy, ACTIF par défaut) : chaque signal valide ouvre
+//      son propre trade (stop, objectif, sortie après 16 bougies), jusqu'à 3 en même temps dans le
+//      même sens ; un signal dans l'autre sens ferme tout et se retourne. L'entrée ne dépend plus
+//      de la position : plus d'effet domino où une sortie décalée efface les trades suivants.
+//      Constat qui l'a motivé : les fantômes apparaissent aussi en mode replay, où les données sont
+//      identiques → la cause est l'enchaînement des positions, pas les données.
+//   Par défaut, 2 et 3 sont coupés (zone morte 0, volume utilisé) : seuls 1 et 4 changent.
 // Le reste est IDENTIQUE à Strat5669 (préréglage 56, marque GODLIKE, alertes).
 // ──────────────────────────────────────────────────────────────
 // Base : STRAT5669 (ALERTES) — 56 + MARQUE « GODLIKE » (règle du 69) — 20/10/2026
@@ -236,7 +243,7 @@
 // ══════════════════════════════════════════════════════════════
 strategy("correctifstest (alertes)", overlay=true,
      initial_capital=25000, currency=currency.USD,
-     default_qty_type=strategy.fixed, default_qty_value=1, pyramiding=0,
+     default_qty_type=strategy.fixed, default_qty_value=1, pyramiding=3, close_entries_rule="ANY",
      commission_type=strategy.commission.cash_per_contract, commission_value=1.25,
      slippage=1,
      margin_long=5, margin_short=5,
@@ -783,9 +790,12 @@ f_piv_trad(h, l, c) =>
 // HEISHINATOR — formule exacte (CompletV3 V4, 2600/2600 sur l'API)
 // ══════════════════════════════════════════════════════════════
 grp_cor = "=== CORRECTIFS FANTÔMES ==="
-c_hyst = input.float(0.05, "Zone morte EMA4 / EMA32 (× ATR) — 0 = comme Strat5669", group=grp_cor, minval=0.0, step=0.01,
+c_hyst = input.float(0.0, "Zone morte EMA4 / EMA32 (× ATR) — 0 = comme Strat5669", group=grp_cor, minval=0.0, step=0.01,
      tooltip="L'état haussier / baissier (flip Heishinator H, flèches Signator F / M) ne bascule que si EMA4 − EMA32 dépasse ce seuil × ATR 14 ; sinon il garde l'état précédent.")
-c_vol  = input.bool(true, "Ne plus utiliser le volume (Signator sans volume, pas de climax)", group=grp_cor)
+c_vol  = input.bool(false, "Ne plus utiliser le volume (Signator sans volume, pas de climax)", group=grp_cor)
+m_on   = input.bool(true, "Trades indépendants (plusieurs positions)", group=grp_cor,
+     tooltip="Chaque signal valide ouvre SON trade, avec son stop, son objectif et sa sortie après N bougies, même si un trade est déjà ouvert. Un signal dans l'autre sens ferme tout et se retourne. Plus de règle « une seule position » : un trade ne peut plus en effacer un autre.")
+m_max  = input.int(3, "Trades ouverts en même temps (max, même sens)", group=grp_cor, minval=1, maxval=3)
 
 hei_ohlc4_src = (open + high + low + close) / 4
 hei_dif  = ta.ema(hei_ohlc4_src, 4) - ta.ema(hei_ohlc4_src, 32)
@@ -2036,8 +2046,8 @@ if tr_dir != 0 and tr_fixe and pos == 0
     tr_fixe := false
     tr_dess := false
 
-// 3. Position ouverte : gestion du stop, de l'objectif et des sorties.
-if pos != 0
+// 3. Position ouverte : gestion du stop, de l'objectif et des sorties (mode une seule position).
+if pos != 0 and not m_on
     if tr_dir == 0
         // sécurité : position sans état (ne devrait pas arriver)
         tr_dir   := pos > 0 ? 1 : -1
@@ -2124,7 +2134,7 @@ if pos != 0
 // 4. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
 bool entree_L = false
 bool entree_S = false
-if pos == 0 and tr_dir == 0 and (go_long or go_short)
+if not m_on and pos == 0 and tr_dir == 0 and (go_long or go_short)
     d  = go_long ? 1 : -1
     e0 = r_c
     if nv_stopNv or nv_tpNv
@@ -2216,6 +2226,54 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         ex_loss := sAbs ? na : math.max(1, math.round(dist / tick))
         ex_tp1  := na(tpRk) ? tp0 : na
         ex_prof := na(tpRk) ? na : math.max(1, math.round(tpRk * dist / tick))
+
+// 4 bis. TRADES INDÉPENDANTS (correctif) : chaque signal a son trade, sans attendre que le précédent soit fini.
+var int m_n = 0
+if m_on
+    nOT = strategy.opentrades
+    // sorties au temps et fin de séance, trade par trade
+    if fin_apres and nOT > 0
+        strategy.close_all(comment="Fin de séance")
+        if al_on
+            alert(syminfo.ticker + " · FERMER TOUTES les positions maintenant : fin de la fenêtre de trading", alert.freq_once_per_bar_close)
+    else if x_tBar > 0 and nOT > 0
+        for k = 0 to nOT - 1
+            if bar_index - strategy.opentrades.entry_bar_index(k) + 1 >= x_tBar
+                idk = strategy.opentrades.entry_id(k)
+                strategy.close(idk, comment="Temps (" + str.tostring(x_tBar) + " bougies)")
+                if al_on
+                    dk = str.startswith(idk, "L") ? 1 : -1
+                    pk = (r_c - strategy.opentrades.entry_price(k)) * dk * math.abs(strategy.opentrades.size(k)) * syminfo.pointvalue
+                    alert(syminfo.ticker + " · FERMER le trade " + idk + " maintenant : " + str.tostring(x_tBar) + " bougies écoulées · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring(pk, "#,##0") + " $", alert.freq_once_per_bar_close)
+    // nouvelle entrée : décidée par le signal seul, jamais par la position
+    if (go_long or go_short) and not fin_apres
+        d  = go_long ? 1 : -1
+        e0 = r_c
+        [s0, sNom, sAbs] = f_stop(d, e0)
+        dist = math.abs(e0 - s0)
+        q    = f_qty(dist)
+        memeSens = pos * d > 0
+        if q >= 1 and dist > 0 and not (memeSens and nOT >= m_max)
+            m_n += 1
+            idE = (d > 0 ? "L" : "S") + str.tostring(m_n)
+            tpD = x_tpR * dist
+            strategy.entry(idE, d > 0 ? strategy.long : strategy.short, qty=q, comment=(d > 0 ? "L " : "S ") + str.tostring(q) + f_gdTag(d))
+            strategy.exit("X" + idE, idE, loss=math.max(1, math.round(dist / tick)), profit=math.max(1, math.round(tpD / tick)), comment_loss=d > 0 ? "Stop L" : "Stop S", comment_profit=d > 0 ? "Obj L" : "Obj S")
+            if d > 0
+                entree_L := true
+            else
+                entree_S := true
+            if al_on
+                tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
+                alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " au marché maintenant · trade " + idE +
+                     (pos * d < 0 ? "\n⚠ RETOURNEMENT : fermer d'abord toutes les positions " + (d > 0 ? "short" : "long") : memeSens ? "\n➕ trade EN PLUS de celui (ceux) déjà ouvert(s)" : "") +
+                     ((d > 0 ? gd_L : gd_S) ? "\n⭐ GODLIKE (56 + règle du 69)" : "\n56 seul : Dashator 1 h ou 4 h quasi neutre, trade fragile") +
+                     "\nEntrée ≈ " + f_px(e0) +
+                     "\nStop " + f_px(e0 - d * dist) + " (" + str.tostring(dist, "0.00") + " pts)" +
+                     "\nObjectif " + f_px(e0 + d * tpD) + " (" + str.tostring(tpD, "0.00") + " pts)" +
+                     "\nSortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris) si ni stop ni objectif" +
+                     "\n" + str.tostring(q) + " contrat(s) dans le backtest" +
+                     "\nSignal : " + f_dgt(d > 0 ? dg_codeL : dg_codeS) + " · " + f_dgDiag(), alert.freq_once_per_bar_close)
 
 // 5. Envoi des ordres de sortie (bracket stop + objectif ; 2 brackets si sortie partielle).
 if ex_go
