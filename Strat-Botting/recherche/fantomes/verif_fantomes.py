@@ -95,6 +95,74 @@ for tr in trades:
     if tr["pnl"] is None and tr["sortie"] is not None:
         tr["pnl"], tr["raison"] = r["P&L net USD"], tr["raison"] + " (P&L de l'historique)"
 
+# --- fiche de suivi (xlsx, une feuille par actif) -----------------------------------------------------------------
+FEUILLES = {"MNQ": ("MNQ1!",), "MES": ("MES1!",), "BTC": ("BTC1!", "MBT1!", "BTCUSD")}
+AUTO = ["Date", "Heure", "Sens", "Étiquette", "Résultat", "P&L alerte $", "Fantôme ?"]
+PERSO = ["Pris ?", "Si non, pourquoi", "Mon entrée", "Ma sortie", "Mon P&L $", "Remarque"]
+RAISONS = "absent,risque trop gros,entrée trop tardive,56 seul,oublié / pas vu,autre"
+
+
+def ecrire_suivi(df, chemin):
+    """Fiche à remplir par Jeremy. Colonnes grises = remplies depuis les alertes ; colonnes jaunes = les siennes,
+    jamais écrasées (relues dans l'ancien fichier, clé = feuille + symbole + date + heure + sens)."""
+    from openpyxl import Workbook, load_workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.worksheet.datavalidation import DataValidation
+    from openpyxl.formatting.rule import FormulaRule
+
+    anciens = {}
+    if os.path.exists(chemin):
+        wb0 = load_workbook(chemin)
+        for ws in wb0.worksheets:
+            tete = [c.value for c in ws[1]]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                r = dict(zip(tete, row))
+                if r.get("Date"):
+                    dt, hr = r["Date"], r["Heure"]   # Excel peut avoir converti les textes en date / heure
+                    dt = dt.strftime("%d/%m/%Y") if hasattr(dt, "strftime") else str(dt)
+                    hr = hr.strftime("%H:%M") if hasattr(hr, "strftime") else str(hr)[:5]
+                    k = (ws.title, r.get("Symbole") or "", dt, hr, r["Sens"])
+                    anciens[k] = {c: r.get(c) for c in PERSO}
+    d = df[df["strat"] == "Strat5669"].sort_values("entree")
+    wb = Workbook()
+    wb.remove(wb.active)
+    gris, jaune = PatternFill("solid", fgColor="D9D9D9"), PatternFill("solid", fgColor="FFE699")
+    for nom, syms in FEUILLES.items():
+        ws = wb.create_sheet(nom)
+        cols = (["Symbole"] if nom == "BTC" else []) + AUTO + PERSO
+        ws.append(cols)
+        for i, c in enumerate(cols, 1):
+            cell = ws.cell(1, i)
+            cell.font = Font(bold=True)
+            cell.fill = jaune if c in PERSO else gris
+            cell.alignment = Alignment(wrap_text=True, vertical="center")
+            ws.column_dimensions[cell.column_letter].width = {"Remarque": 40, "Si non, pourquoi": 22, "Résultat": 15,
+                                                              "Fantôme ?": 18}.get(c, 12)
+        for r in d[d["sym"].isin(syms)].itertuples():
+            fant = {"présent": "non", "ABSENT (fantôme)": "OUI"}.get(r.historique, r.historique.replace("présent, devenu", "non, devenu").replace("pas encore exporté", "à vérifier"))
+            ligne = {"Symbole": r.sym, "Date": f"{r.entree:%d/%m/%Y}", "Heure": f"{r.entree:%H:%M}",
+                     "Sens": "long" if r.sens == "L" else "short", "Étiquette": r.etiq,
+                     "Résultat": (r.raison or "en cours").replace(" (P&L de l'historique)", ""),
+                     "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else round(r.pnl), "Fantôme ?": fant}
+            k = (nom, r.sym if nom == "BTC" else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
+            ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "")})
+            ws.append([ligne.get(c) for c in cols])
+        ws.freeze_panes = "A2"
+        n = max(ws.max_row, 200)
+        lettre = {c: ws.cell(1, i).column_letter for i, c in enumerate(cols, 1)}
+        for c, liste in (("Pris ?", "oui,non"), ("Si non, pourquoi", RAISONS)):
+            dv = DataValidation(type="list", formula1=f'"{liste}"', allow_blank=True)
+            ws.add_data_validation(dv)
+            dv.add(f"{lettre[c]}2:{lettre[c]}{n}")
+        e, fa = lettre["Étiquette"], lettre["Fantôme ?"]
+        ws.conditional_formatting.add(f"{e}2:{e}{n}", FormulaRule(formula=[f'{e}2="GODLIKE"'], fill=PatternFill("solid", fgColor="FFD966")))
+        ws.conditional_formatting.add(f"{fa}2:{fa}{n}", FormulaRule(formula=[f'{fa}2="OUI"'], fill=PatternFill("solid", fgColor="F4B084")))
+        p = lettre["P&L alerte $"]
+        ws.conditional_formatting.add(f"{p}2:{p}{n}", FormulaRule(formula=[f"AND(ISNUMBER({p}2),{p}2<0)"], font=Font(color="C00000")))
+    wb.save(chemin)
+    print(f"Fiche de suivi : {chemin}")
+
+
 # --- 3. affichage ------------------------------------------------------------------------------------------------
 df = pd.DataFrame(trades)
 if df.empty:
@@ -135,22 +203,7 @@ if verrou:
         open(nom, "w", encoding="utf-8").write("\n".join(lignes) + "\n")
         print(f"Liste verrou : {nom} ({len(s)} trades)")
 if suivi:
-    # Fiche de suivi à remplir par Jeremy : une ligne par alerte d'entrée (ajoutée automatiquement), les colonnes
-    # « Pris ? » à « Remarque » sont à lui et ne sont jamais écrasées.
-    cle = ["Date", "Heure alerte", "Actif", "Sens"]
-    perso = ["Pris ? (oui/non)", "Pourquoi pas pris", "Mon entrée", "Ma sortie", "Mon P&L $", "Remarque (fantôme vu, capture…)"]
-    auto = pd.DataFrame({"Date": df["entree"].dt.strftime("%Y-%m-%d"), "Heure alerte": df["entree"].dt.strftime("%H:%M"),
-                         "Actif": df["sym"], "Sens": df["sens"].map({"L": "long", "S": "short"}), "Étiquette": df["etiq"],
-                         "Résultat alerte": df["raison"].fillna("en cours"),
-                         "P&L alerte $ (2 micros)": df["pnl"].round(0), "Dans l'historique": df["historique"]})
-    if os.path.exists(suivi):
-        old = pd.read_csv(suivi, sep=";", dtype=str).fillna("")
-        auto = auto.astype(str).replace("nan", "").merge(old[cle + [c for c in perso if c in old.columns]], on=cle, how="left")
-    for c in perso:
-        if c not in auto.columns:
-            auto[c] = ""
-    auto.astype(object).fillna("").sort_values(["Date", "Heure alerte"]).to_csv(suivi, sep=";", index=False)
-    print(f"Fiche de suivi : {suivi} ({len(auto)} alertes)")
+    ecrire_suivi(df, suivi)
 if sortie:
     df.to_csv(sortie, index=False)
     print(f"\nTable écrite dans {sortie}")
