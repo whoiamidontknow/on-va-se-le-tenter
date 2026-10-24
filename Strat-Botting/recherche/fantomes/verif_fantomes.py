@@ -15,6 +15,7 @@ args = [a for a in sys.argv[1:] if not a.startswith("--")]
 racine = args[0] if args else "."
 sortie = sys.argv[sys.argv.index("--csv") + 1] if "--csv" in sys.argv else None
 verrou = sys.argv[sys.argv.index("--verrou") + 1] if "--verrou" in sys.argv else None
+suivi = sys.argv[sys.argv.index("--suivi") + 1] if "--suivi" in sys.argv else None
 
 
 def fichiers(motif):
@@ -133,6 +134,23 @@ if verrou:
         nom = os.path.join(verrou, f"verrou_{st}_{sym.replace('!', '')}_{tf}.txt")
         open(nom, "w", encoding="utf-8").write("\n".join(lignes) + "\n")
         print(f"Liste verrou : {nom} ({len(s)} trades)")
+if suivi:
+    # Fiche de suivi à remplir par Jeremy : une ligne par alerte d'entrée (ajoutée automatiquement), les colonnes
+    # « Pris ? » à « Remarque » sont à lui et ne sont jamais écrasées.
+    cle = ["Date", "Heure alerte", "Actif", "Sens"]
+    perso = ["Pris ? (oui/non)", "Pourquoi pas pris", "Mon entrée", "Ma sortie", "Mon P&L $", "Remarque (fantôme vu, capture…)"]
+    auto = pd.DataFrame({"Date": df["entree"].dt.strftime("%Y-%m-%d"), "Heure alerte": df["entree"].dt.strftime("%H:%M"),
+                         "Actif": df["sym"], "Sens": df["sens"].map({"L": "long", "S": "short"}), "Étiquette": df["etiq"],
+                         "Résultat alerte": df["raison"].fillna("en cours"),
+                         "P&L alerte $ (2 micros)": df["pnl"].round(0), "Dans l'historique": df["historique"]})
+    if os.path.exists(suivi):
+        old = pd.read_csv(suivi, sep=";", dtype=str).fillna("")
+        auto = auto.astype(str).replace("nan", "").merge(old[cle + [c for c in perso if c in old.columns]], on=cle, how="left")
+    for c in perso:
+        if c not in auto.columns:
+            auto[c] = ""
+    auto.astype(object).fillna("").sort_values(["Date", "Heure alerte"]).to_csv(suivi, sep=";", index=False)
+    print(f"Fiche de suivi : {suivi} ({len(auto)} alertes)")
 if sortie:
     df.to_csv(sortie, index=False)
     print(f"\nTable écrite dans {sortie}")
