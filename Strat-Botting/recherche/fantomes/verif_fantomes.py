@@ -14,6 +14,7 @@ import pandas as pd
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 racine = args[0] if args else "."
 sortie = sys.argv[sys.argv.index("--csv") + 1] if "--csv" in sys.argv else None
+verrou = sys.argv[sys.argv.index("--verrou") + 1] if "--verrou" in sys.argv else None
 
 
 def fichiers(motif):
@@ -44,7 +45,7 @@ trades, ouverts = [], {}
 for _, a in logs.iterrows():
     d, cle = str(a["Description"]), (a["ID de l'alerte"], a["sym"])
     if "au marché maintenant" in d and re.search("GODLIKE|56 seul", d):
-        ouverts[cle] = dict(strat=strat_id.get(a["ID de l'alerte"], "Strat5669"), entree=a.t, sym=a.sym, tf=a.tf, sens="L" if "ACHAT" in d else "S",
+        ouverts[cle] = dict(id=a["ID de l'alerte"], strat=strat_id.get(a["ID de l'alerte"], "Strat5669"), entree=a.t, sym=a.sym, tf=a.tf, sens="L" if "ACHAT" in d else "S",
                             etiq="GODLIKE" if "GODLIKE" in d else "56 seul",
                             px=nombre(d, r"Entrée ≈ ([\d.,]+)"), stop=nombre(d, r"Stop ([\d.,]+)"),
                             obj=nombre(d, r"Objectif ([\d.,]+)"), sortie=None, raison=None, px_sortie=None, pnl=None)
@@ -120,6 +121,18 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
         stats(s2, f"{st[:14]} {sym} {tf} {etiq}")
 print("\nFANTÔMES (trades en direct comparés à l'historique)")
 print(df.groupby(["strat", "etiq", "historique"]).size().to_string())
+if verrou:
+    # Listes à coller dans Strat5669verrou.pine (réglage « Trades vécus en direct »), une par stratégie / symbole.
+    os.makedirs(verrou, exist_ok=True)
+    for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
+        ids = set(s["id"])
+        t_ids = logs[logs["ID de l'alerte"].isin(ids)]["t"]
+        lignes = [f"DEBUT {t_ids.min():%Y-%m-%d %H:%M}"]
+        lignes += [f"{r.entree:%Y-%m-%d %H:%M} {r.sens} {'G' if r.etiq == 'GODLIKE' else '5'}" for r in s.sort_values("entree").itertuples()]
+        lignes.append(f"FIN {t_ids.max():%Y-%m-%d %H:%M}")
+        nom = os.path.join(verrou, f"verrou_{st}_{sym.replace('!', '')}_{tf}.txt")
+        open(nom, "w", encoding="utf-8").write("\n".join(lignes) + "\n")
+        print(f"Liste verrou : {nom} ({len(s)} trades)")
 if sortie:
     df.to_csv(sortie, index=False)
     print(f"\nTable écrite dans {sortie}")
