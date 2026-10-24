@@ -1903,6 +1903,9 @@ c_txt  = #787B86
 c_none = color.new(color.white, 100)
 
 f_px(float v) => str.tostring(v, format.mintick)
+// Prix et P&L estimés d'une sortie au marché (clôture réelle de la bougie), pour que le journal
+// d'alertes garde le résultat de chaque trade tel qu'il a été vécu en direct.
+f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring((r_c - strategy.position_avg_price) * strategy.position_size * syminfo.pointvalue, "#,##0") + " $"
 f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
 
 pos = strategy.position_size
@@ -2065,7 +2068,7 @@ if pos != 0
         strategy.close_all(comment="Fin de séance")
         sortie_marq := true
         if al_on
-            alert(syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading", alert.freq_once_per_bar_close)
+            alert(syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
     else if tr_dir > 0 and oppL
         strategy.close("L", comment="Signal opposé")
         sortie_marq := true
@@ -2076,7 +2079,7 @@ if pos != 0
         strategy.close_all(comment="Temps (" + str.tostring(x_tBar) + " bougies)")
         sortie_marq := true
         if al_on
-            alert(syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)", alert.freq_once_per_bar_close)
+            alert(syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
     // dessin du trade en cours, prolongé jusqu'à la bougie courante
     if tr_dess
         box.set_right(dr_bR, bar_index)
@@ -2289,7 +2292,7 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "Strat5669 · 20/10", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "Strat5669 · 24/10", color.rgb(245, 166, 35))
     f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
 
 // ALERTES : stop ou objectif touché pendant la bougie (information)
