@@ -183,6 +183,16 @@ def lignes_suivi(df, anciens, numbers=False):
     return res
 
 
+def nombre(v):
+    """« 29223.25 », « -187,9 » tapés comme texte dans Numbers → nombre (pour que les totaux marchent)."""
+    if isinstance(v, str):
+        try:
+            return float(v.strip().replace("\u202f", "").replace(" ", "").replace(",", ".").replace("$", ""))
+        except ValueError:
+            return v
+    return v
+
+
 def cle_ancienne(feuille, r):
     dt, hr = r.get("Date"), r.get("Heure")   # le tableur peut avoir converti les textes en date / heure
     dt = dt.strftime("%d/%m/%Y") if hasattr(dt, "strftime") else str(dt)
@@ -201,7 +211,11 @@ def ecrire_suivi_numbers(df, chemin):
             for row in rows[1:]:
                 r = dict(zip(rows[0], row))
                 if r.get("Date"):
-                    anciens[cle_ancienne(sh.name, r)] = {c: (None if r.get(c) == "—" else r.get(c)) for c in PERSO}
+                    a = {c: (None if r.get(c) == "—" else nombre(r.get(c))) for c in PERSO}
+                    f = r.get("Fantôme ?")   # Jeremy y écrit parfois son propre constat : on le garde
+                    if f not in (None, "", "non", "OUI", "à vérifier") and not str(f).startswith("non, devenu"):
+                        a["Fantôme ?"] = f
+                    anciens[cle_ancienne(sh.name, r)] = a
     feuilles = lignes_suivi(df, anciens, numbers=True)
     # numbers-parser donne à tous les tableaux la taille du dernier créé : on les crée donc tous de la même taille
     # (mêmes colonnes partout, Symbole compris ; autant de lignes que la feuille la plus longue).
@@ -232,7 +246,7 @@ def ecrire_suivi_numbers(df, chemin):
             for j, (c, v) in enumerate(zip(cols, ligne)):
                 if v is None or v == "":
                     continue
-                st = "godlike" if (c == "Étiquette" and v == "GODLIKE") else "fantome" if (c == "Fantôme ?" and v == "OUI") else None
+                st = "godlike" if (c == "Étiquette" and v == "GODLIKE") else "fantome" if (c == "Fantôme ?" and str(v).lower().startswith("oui")) else None
                 t.write(i, j, v, style=st) if st else t.write(i, j, v)
             # menu local : une cellule vide ne peut pas en porter un, d'où la valeur « — » (= pas encore rempli)
             for c, vals in (("Pris ?", ["—", "oui", "non"]), ("Si non, pourquoi", ["—"] + RAISONS.split(","))):
