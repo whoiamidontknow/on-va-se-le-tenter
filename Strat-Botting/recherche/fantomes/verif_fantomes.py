@@ -163,6 +163,89 @@ def ecrire_suivi(df, chemin):
     print(f"Fiche de suivi : {chemin}")
 
 
+def lignes_suivi(df, anciens, numbers=False):
+    """Lignes de chaque feuille : colonnes auto depuis les alertes + colonnes perso relues dans l'ancien fichier."""
+    d = df[df["strat"] == "Strat5669"].sort_values("entree")
+    res = {}
+    for nom, syms in FEUILLES.items():
+        cols = (["Symbole"] if nom == "BTC" or numbers else []) + AUTO + PERSO
+        lignes = []
+        for r in d[d["sym"].isin(syms)].itertuples():
+            fant = {"présent": "non", "ABSENT (fantôme)": "OUI"}.get(r.historique, r.historique.replace("présent, devenu", "non, devenu").replace("pas encore exporté", "à vérifier"))
+            ligne = {"Symbole": r.sym, "Date": f"{r.entree:%d/%m/%Y}", "Heure": f"{r.entree:%H:%M}",
+                     "Sens": "long" if r.sens == "L" else "short", "Étiquette": r.etiq,
+                     "Résultat": (r.raison or "en cours").replace(" (P&L de l'historique)", ""),
+                     "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else int(round(r.pnl)), "Fantôme ?": fant}
+            k = (nom, r.sym if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
+            ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "")})
+            lignes.append([ligne.get(c) for c in cols])
+        res[nom] = (cols, lignes)
+    return res
+
+
+def cle_ancienne(feuille, r):
+    dt, hr = r.get("Date"), r.get("Heure")   # le tableur peut avoir converti les textes en date / heure
+    dt = dt.strftime("%d/%m/%Y") if hasattr(dt, "strftime") else str(dt)
+    hr = hr.strftime("%H:%M") if hasattr(hr, "strftime") else str(hr)[:5]
+    return (feuille, r.get("Symbole") or "", dt, hr, r.get("Sens"))
+
+
+def ecrire_suivi_numbers(df, chemin):
+    """Même fiche, au format Numbers (bibliothèque numbers-parser) : menus locaux pour « Pris ? » et « Si non,
+    pourquoi », en-têtes gris (auto) / jaunes (à remplir), colonnes perso conservées d'une fois sur l'autre."""
+    from numbers_parser import Document, RGB
+    anciens = {}
+    if os.path.exists(chemin):
+        for sh in Document(chemin).sheets:
+            rows = sh.tables[0].rows(values_only=True)
+            for row in rows[1:]:
+                r = dict(zip(rows[0], row))
+                if r.get("Date"):
+                    anciens[cle_ancienne(sh.name, r)] = {c: (None if r.get(c) == "—" else r.get(c)) for c in PERSO}
+    feuilles = lignes_suivi(df, anciens, numbers=True)
+    # numbers-parser donne à tous les tableaux la taille du dernier créé : on les crée donc tous de la même taille
+    # (mêmes colonnes partout, Symbole compris ; autant de lignes que la feuille la plus longue).
+    R = max(len(l) for _, l in feuilles.values()) + 1
+    C = max(len(c) for c, _ in feuilles.values())
+    doc = None
+    for nom, (cols, lignes) in feuilles.items():
+        if doc is None:
+            doc = Document(num_header_cols=0, num_rows=R, num_cols=C)
+            sh = doc.sheets[0]
+            sh.name = nom
+        else:
+            doc.add_sheet(nom, "Trades", num_rows=R, num_cols=C)
+            sh = doc.sheets[nom]
+        t = sh.tables[0]
+        t.name = "Trades"
+        t.num_header_cols = 0
+        if "auto" not in doc.styles:
+            doc.add_style(name="auto", bg_color=RGB(217, 217, 217), bold=True, font_size=12.0)
+            doc.add_style(name="perso", bg_color=RGB(255, 230, 153), bold=True, font_size=12.0)
+            doc.add_style(name="godlike", bg_color=RGB(255, 217, 102))
+            doc.add_style(name="fantome", bg_color=RGB(244, 176, 132), bold=True)
+        for j, c in enumerate(cols):
+            t.write(0, j, c, style="perso" if c in PERSO else "auto")
+            t.col_width(j, {"Remarque": 260, "Si non, pourquoi": 150, "Résultat": 105, "Fantôme ?": 140,
+                            "Date": 85}.get(c, 80))
+        for i, ligne in enumerate(lignes, 1):
+            for j, (c, v) in enumerate(zip(cols, ligne)):
+                if v is None or v == "":
+                    continue
+                st = "godlike" if (c == "Étiquette" and v == "GODLIKE") else "fantome" if (c == "Fantôme ?" and v == "OUI") else None
+                t.write(i, j, v, style=st) if st else t.write(i, j, v)
+            # menu local : une cellule vide ne peut pas en porter un, d'où la valeur « — » (= pas encore rempli)
+            for c, vals in (("Pris ?", ["—", "oui", "non"]), ("Si non, pourquoi", ["—"] + RAISONS.split(","))):
+                j = cols.index(c)
+                v = t.cell(i, j).value
+                if v in (None, "") or v in vals:
+                    if v in (None, ""):
+                        t.write(i, j, "—")
+                    t.set_cell_formatting(i, j, "popup", popup_values=vals, allow_none=True)
+    doc.save(chemin)
+    print(f"Fiche de suivi : {chemin}")
+
+
 # --- 3. affichage ------------------------------------------------------------------------------------------------
 df = pd.DataFrame(trades)
 if df.empty:
@@ -203,7 +286,7 @@ if verrou:
         open(nom, "w", encoding="utf-8").write("\n".join(lignes) + "\n")
         print(f"Liste verrou : {nom} ({len(s)} trades)")
 if suivi:
-    ecrire_suivi(df, suivi)
+    (ecrire_suivi_numbers if suivi.endswith(".numbers") else ecrire_suivi)(df, suivi)
 if sortie:
     df.to_csv(sortie, index=False)
     print(f"\nTable écrite dans {sortie}")
