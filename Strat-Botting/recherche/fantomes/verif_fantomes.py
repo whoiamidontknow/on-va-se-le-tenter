@@ -98,7 +98,7 @@ for tr in trades:
 # --- fiche de suivi (xlsx, une feuille par actif) -----------------------------------------------------------------
 FEUILLES = {"MNQ": ("MNQ1!",), "MES": ("MES1!",), "BTC": ("BTC1!", "MBT1!", "BTCUSD")}
 AUTO = ["Date", "Heure", "Sens", "Étiquette", "Résultat", "P&L alerte $", "Fantôme ?"]
-PERSO = ["Pris ?", "Si non, pourquoi", "Mon entrée", "Ma sortie", "Mon P&L $", "Remarque"]
+PERSO = ["Pris ?", "Si non, pourquoi", "Mon entrée", "Ma sortie", "Mon P&L $", "P&L FTMO $", "Remarque"]
 RAISONS = "absent,risque trop gros,entrée trop tardive,56 seul,oublié / pas vu,autre"
 
 
