@@ -115,8 +115,8 @@ Les trades des 3 recettes (entrée, SL, TP, sortie, niveau du stop) sont dans `r
 
 ## Relancer (DATASET)
 ```bash
-cd Strat-Botting/recherche/entree_2m
-export E2M_SOURCE=dataset        # exports dans ~/Ephore/Strat-Botting-data (dataset/charger.py)
+cd KAIROS/recherche/entree_2m
+export E2M_SOURCE=dataset        # exports dans ~/Ephore/KAIROS-data (dataset/charger.py)
 for m in MNQ MES; do ~/venv-quant/bin/python balayage.py --marche $m --us 15 --ux 2 --niveau complet; done
 for m in MNQ MES; do ~/venv-quant/bin/python balayage.py --marche $m --us 15 --ux 5 --niveau complet; done
 ~/venv-quant/bin/python analyse.py --registre      # synthese_auto.md, recettes_retenues.csv, registre

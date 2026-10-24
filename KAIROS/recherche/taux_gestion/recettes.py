@@ -105,7 +105,7 @@ def ecrire_registre(R, trades):
         id_ = ajouter_test(dict(agent='WRS', famille='taux/gestion', recette=rec, marche='MES + MNQ',
                                 ut_signal='%dm' % ut, ut_entree='%dm' % ut, echantillon=W.DW.ECHANTILLON,
                                 n_variantes_testees=n_var, p_tradeify=x['tf_p'], p_ref_hasard=x['tf_p_ref'],
-                                verdict=v, fichier='Strat-Botting/recherche/taux_gestion/RESULTATS.md', trades=T),
+                                verdict=v, fichier='KAIROS/recherche/taux_gestion/RESULTATS.md', trades=T),
                            prefixe='WRS')
         print(id_, rec[:70])
 

@@ -1,4 +1,4 @@
-"""Simulateur propfirm (éval 50k + phase financée jusqu'aux payouts) — Strat-Botting.
+"""Simulateur propfirm (éval 50k + phase financée jusqu'aux payouts) — KAIROS.
 
 Entrée : une liste de trades (DataFrame) avec au minimum
     entree_t, sortie_t   horodatages (tz Europe/Paris ; naïfs = lus comme Paris)

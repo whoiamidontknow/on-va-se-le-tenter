@@ -1,7 +1,7 @@
 """EXH — finalistes : Monte-Carlo Tradeify (Select Flex, + Growth) sur le haut du classement, comparé à la
 référence « entrées au hasard, même gestion », puis lignes du registre pour les 3 meilleures recettes.
 
-    ~/venv-quant/bin/python Strat-Botting/recherche/exhaustif/finalistes.py [--k 10] [--registre]
+    ~/venv-quant/bin/python KAIROS/recherche/exhaustif/finalistes.py [--k 10] [--registre]
 (lancer après balayage.py : lit etat_balayage.pkl)
 """
 from __future__ import annotations

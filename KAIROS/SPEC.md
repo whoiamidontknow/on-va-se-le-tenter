@@ -1,4 +1,4 @@
-# Strat-Botting — spécification (16/10/2026)
+# KAIROS — spécification (16/10/2026)
 
 ## Objectif
 Trouver, parmi toutes les confluences de `CompletV3.pine`, **la recette d'entrée + stop + objectif la plus

@@ -31,7 +31,7 @@ sys.path[:0] = [os.path.join(SB, 'moteur'), os.path.join(SB, 'dataset'), STRAT]
 import moteur as M  # noqa: E402
 
 SOURCE = 'cache'            # 'cache' (séries Python ≈ 2 mois) | 'dataset' (exports DATASET.pine)
-DOSSIER_DATASET = os.path.expanduser('~/Ephore/Strat-Botting-data')
+DOSSIER_DATASET = os.path.expanduser('~/Ephore/KAIROS-data')
 UT_RETENUES = (5, 15, 30, 60)
 CACHE_JEUX = os.path.join(ICI, 'cache_jeux_%s.pkl')
 

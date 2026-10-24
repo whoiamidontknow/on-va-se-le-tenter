@@ -4,7 +4,7 @@
 
 Données : donnees_sor.charger_series() (un seul point d'accès ; SOR_SOURCE=dataset pour le DATASET),
 puis moteur.charger_recherche (développement = 75 % le plus ancien de chaque série, scellé jamais lu).
-Moteur commun (Strat-Botting/moteur) et simulateur propfirm commun (Strat-Botting/propfirm), non modifiés.
+Moteur commun (KAIROS/moteur) et simulateur propfirm commun (KAIROS/propfirm), non modifiés.
 
 Étapes (A2 entre A et B : placebo des meilleurs stops sur niveau, qui décide des stops gardés pour B)
   prep  séries de développement + déclencheurs -> resultats/series_dev_<UT>.pkl

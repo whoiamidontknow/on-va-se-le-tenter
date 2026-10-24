@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import simulateur as S
 from propfirm_45_46 import charge
 
-B = os.path.expanduser('~/Ephore/Strat-Botting-data')
+B = os.path.expanduser('~/Ephore/KAIROS-data')
 FICHIERS = [glob.glob(os.path.join(B, 'slcourtoupas', '*4eb81*.xlsx'))[0]] + \
     sorted(glob.glob(os.path.join(B, 'slcourtoupas', '47-48', '*.xlsx'))) + sorted(glob.glob(os.path.join(B, 'slcourtoupas', '49-50', '*.xlsx')))
 VARIANTES = ['tradeify_50k_select_flex', 'tradeify_50k_growth']

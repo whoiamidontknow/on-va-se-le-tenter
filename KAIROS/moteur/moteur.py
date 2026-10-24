@@ -1,4 +1,4 @@
-"""Moteur de backtest UNIQUE de Strat-Botting (futures MNQ / MES / NQ / ES, propfirm).
+"""Moteur de backtest UNIQUE de KAIROS (futures MNQ / MES / NQ / ES, propfirm).
 
 Repris de tools/strategie/engine.py et tools/strategie/optim/moteur.py (conventions prudentes), réécrit
 pour : vrais prix fournis, multi-unités (signal 15m, exécution 2m/5m), stops sur niveaux, objectifs sur

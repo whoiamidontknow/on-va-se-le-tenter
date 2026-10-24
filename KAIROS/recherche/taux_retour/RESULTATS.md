@@ -120,7 +120,7 @@ balayage).
 
 ## Relancer
 ```
-cd Strat-Botting/recherche/taux_retour
+cd KAIROS/recherche/taux_retour
 WRF_SOURCE=dataset ~/venv-quant/bin/python balayage.py
 WRF_SOURCE=dataset ~/venv-quant/bin/python analyse.py wf
 WRF_SOURCE=dataset ~/venv-quant/bin/python analyse.py white

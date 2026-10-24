@@ -4,7 +4,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'propfirm'))
 import simulateur as S
 
-DOSSIER = os.path.expanduser('~/Ephore/Strat-Botting-data/45*46')
+DOSSIER = os.path.expanduser('~/Ephore/KAIROS-data/45*46')
 VARIANTES = ['tradeify_50k_select_flex', 'tradeify_50k_growth', 'lucid_50k_flex_sans_dll', 'apex_50k_eod']
 TAILLES = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
 KW = dict(max_jours_eval=250, max_jours_funded=250, max_payouts=5, bloc_jours=5, n_sim=1000, ordre='heuristique')

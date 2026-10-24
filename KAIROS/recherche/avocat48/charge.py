@@ -1,5 +1,5 @@
 import pandas as pd,glob,os
-B=os.path.expanduser('~/Ephore/Strat-Botting-data/')
+B=os.path.expanduser('~/Ephore/KAIROS-data/')
 def files():
     return glob.glob(B+'slcourtoupas/*.xlsx')+glob.glob(B+'slcourtoupas/*/*.xlsx')
 def preset(f):

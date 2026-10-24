@@ -5,9 +5,9 @@ def _md(self,index=True):
     h='| '+' | '.join(map(str,d.columns))+' |\n|'+'---|'*len(d.columns)+'\n'
     return h+'\n'.join('| '+' | '.join(str(v) for v in r)+' |' for r in d.values)
 pd.DataFrame.to_markdown=_md
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/propfirm')
+sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/propfirm')
 import simulateur as S
-D=os.path.expanduser('~/Ephore/Strat-Botting-data/slcourtoupas/58-68')
+D=os.path.expanduser('~/Ephore/KAIROS-data/slcourtoupas/58-68')
 KS=[0,0.01,0.02,0.03,0.04,0.05]
 def load(f):
     T=pd.read_excel(f,'Trades')

@@ -18,7 +18,7 @@ def charge(f, godlike=True):
                       'gd': en['Signal'].astype(str).str.contains('GODLIKE')}).dropna().reset_index(drop=True)
     return t[t.gd].drop(columns='gd').reset_index(drop=True) if godlike else t.drop(columns='gd')
 
-F = glob.glob(os.path.expanduser('~/Ephore/Strat-Botting-data/slcourtoupas/5min/*MNQ*.xlsx'))[0]
+F = glob.glob(os.path.expanduser('~/Ephore/KAIROS-data/slcourtoupas/5min/*MNQ*.xlsx'))[0]
 t = charge(F)
 R = S.charge_regles(); KW = dict(max_jours_eval=250, max_jours_funded=250, max_payouts=5, bloc_jours=5, n_sim=2000, ordre='heuristique')
 L = []

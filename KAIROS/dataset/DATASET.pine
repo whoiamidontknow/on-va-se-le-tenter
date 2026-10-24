@@ -47,7 +47,7 @@
 //                   multi-unités, zones Detector les plus proches, pivots sur
 //                   vrais prix, empaquetage par bits.
 // ══════════════════════════════════════════════════════════════
-indicator("Dataset Strat-Botting", overlay=true, max_bars_back=5000)
+indicator("Dataset KAIROS", overlay=true, max_bars_back=5000)
 
 DW = display.data_window
 

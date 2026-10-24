@@ -1,7 +1,7 @@
 # Confirmation au testeur TradingView des préréglages 45 et 46 (17/10/2026)
 
 Exports de Jeremy (backtest profond, 15 min, 24/10/2023 → 16/10/2026, 2 micros ; ES1! en contrat standard),
-dossier `~/Ephore/Strat-Botting-data/45*46/`. A1 = oct. 2023 → oct. 2024, A2 = → oct. 2025, A3 = → oct. 2026
+dossier `~/Ephore/KAIROS-data/45*46/`. A1 = oct. 2023 → oct. 2024, A2 = → oct. 2025, A3 = → oct. 2026
 (trades / % gagnants / PF).
 
 | Symbole | Préréglage | Trades | Gagnants | PF | Net | Baisse max | A1 | A2 | A3 |

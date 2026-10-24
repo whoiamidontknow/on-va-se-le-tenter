@@ -13,9 +13,9 @@ selon la situation** du marché : il n'y a pas d'obligation d'avoir une recette 
   (`moteur.reference_hasard` avec la même gestion, puis le même simulateur).
 
 ## Outils communs (ne pas les modifier ; signaler un bug au coordinateur dans le rapport)
-- Moteur : `Strat-Botting/moteur/` (lire README.md). `backtest`, `metriques`, `reference_hasard`,
+- Moteur : `KAIROS/moteur/` (lire README.md). `backtest`, `metriques`, `reference_hasard`,
   `decoupage`, `walk_forward`, `registre.ajouter_test`.
-- Simulateur propfirm : `Strat-Botting/propfirm/simulateur.py`.
+- Simulateur propfirm : `KAIROS/propfirm/simulateur.py`.
 - Python : `~/venv-quant/bin/python` (numpy, pandas, scipy, statsmodels, scikit-learn). N'installe rien.
 
 ## Données

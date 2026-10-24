@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/journal3ans")
+import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/journal3ans")
 from moteur import *
 from sklearn.tree import DecisionTreeClassifier, export_text
 d=prep(); dv=d[d.dev].reset_index(drop=True)

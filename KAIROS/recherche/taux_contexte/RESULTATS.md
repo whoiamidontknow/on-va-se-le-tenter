@@ -121,7 +121,7 @@ de l'union Python.
 
 ## 6. Relancer (sur le DATASET : ajouter `--source dataset`)
 ```bash
-cd Strat-Botting/recherche/taux_contexte
+cd KAIROS/recherche/taux_contexte
 ~/venv-quant/bin/python test_nuit.py            # test pré-enregistré H-NUIT (≈ 1 min)
 ~/venv-quant/bin/python balayage.py --n 500     # 210 contextes + placebo + walk-forward (≈ 15 min, 9 cœurs)
 ~/venv-quant/bin/python finaliser.py --registre # 3 recettes, 1 000 tirages, Tradeify, registre

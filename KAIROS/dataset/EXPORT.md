@@ -4,8 +4,8 @@ But : 6 fichiers CSV = MNQ1! et MES1!, chacun en 15 min, 5 min et 2 min, avec le
 Compte 5 minutes par fichier.
 
 1. **Ajouter le script.** Dans TradingView, ouvre l'éditeur Pine, crée un nouvel indicateur, colle tout
-   le contenu de `Strat-Botting/dataset/DATASET.pine`, enregistre, puis « Ajouter au graphique ».
-   Il s'appelle **« Dataset Strat-Botting »**. Ne change aucun réglage.
+   le contenu de `KAIROS/dataset/DATASET.pine`, enregistre, puis « Ajouter au graphique ».
+   Il s'appelle **« Dataset KAIROS »**. Ne change aucun réglage.
 
 2. **Préparer le graphique.** Type de bougies : **Heikin Ashi**. Retire **tous les autres indicateurs**
    (Complet V3, Volume, Stratégie…) : sinon leurs colonnes se mélangent à l'export.
@@ -19,7 +19,7 @@ Compte 5 minutes par fichier.
 5. **Exporter.** Menu du graphique (flèche à côté du nom de la disposition, en haut à droite) →
    **« Exporter les données du graphique… »** → Format de l'heure : **ISO** → **Exporter**.
 
-6. **Ranger le fichier.** Dépose-le dans **`~/Ephore/Strat-Botting-data/`** (crée le dossier la
+6. **Ranger le fichier.** Dépose-le dans **`~/Ephore/KAIROS-data/`** (crée le dossier la
    première fois). **Ne le renomme pas** : le nom donné par TradingView (ex. `CME_MINI_MNQ1!, 15_ab12c.csv`)
    contient déjà le symbole et l'unité, le programme le lit tout seul.
 
@@ -31,4 +31,4 @@ Compte 5 minutes par fichier.
 
 ---
 Contrôle côté équipe (pas besoin de le faire) :
-`~/venv-quant/bin/python Strat-Botting/dataset/verifier.py ~/Ephore/Strat-Botting-data/*.csv`
+`~/venv-quant/bin/python KAIROS/dataset/verifier.py ~/Ephore/KAIROS-data/*.csv`

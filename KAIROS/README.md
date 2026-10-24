@@ -1,4 +1,8 @@
-# Strat-Botting
+# K.A.I.R.O.S
+
+**K**ernel (le noyau, le cœur du système) · **A**pprentissage · **I**ntuition · **R**ésilience · **O**rientation ·
+**S**ymbiose. En grec, *kairos* : le moment opportun, l'instant décisif qu'il faut saisir — savoir quand frapper.
+(Ancien nom du projet : Strat-Botting, renommé le 24/10/2026. Données : `~/Ephore/KAIROS-data`.)
 
 Recherche systématique d'une stratégie de trading automatisée sur futures (MNQ / MES), construite à partir
 des confluences de l'indicateur maison `CompletV3.pine`, et calibrée pour les règles des propfirms

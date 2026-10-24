@@ -5,7 +5,7 @@ Le graphique recalcule tout à chaque rechargement : un trade pris en direct peu
 d'alertes, lui, ne bouge plus : c'est la seule trace de ce qui a vraiment été signalé. Les statistiques « en direct »
 ci-dessous sont donc celles qui comptent pour juger la méthode ; celles du backtest sont un repère.
 
-Usage : uv run --with pandas --with openpyxl python verif_fantomes.py <dossier Strat-Botting-data> [--csv sortie.csv]
+Usage : uv run --with pandas --with openpyxl python verif_fantomes.py <dossier KAIROS-data> [--csv sortie.csv]
 Cherche récursivement les TradingView_Alerts_Log*.csv et les exports Strat5669 / Stratégie 56 / Bot5669.
 """
 import glob, os, re, sys

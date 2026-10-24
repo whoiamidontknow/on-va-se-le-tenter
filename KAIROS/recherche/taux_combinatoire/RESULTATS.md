@@ -112,7 +112,7 @@ plus que le R qui les produit.
 ## Relancer sur le DATASET (environ 3 minutes ici)
 
 ```
-cd Strat-Botting/recherche/taux_combinatoire
+cd KAIROS/recherche/taux_combinatoire
 WRX_SOURCE=dataset ~/venv-quant/bin/python tables.py        # tables + vérification contre le moteur
 WRX_SOURCE=dataset ~/venv-quant/bin/python balayage.py
 WRX_SOURCE=dataset ~/venv-quant/bin/python analyse.py

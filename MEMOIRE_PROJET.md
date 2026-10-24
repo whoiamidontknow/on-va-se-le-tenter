@@ -2,7 +2,7 @@
 
 > **À lire en premier à chaque nouvelle session.** Ce fichier résume ce qui a été fait, ce qui est
 > validé, comment on travaille et ce qu'il reste à faire. Dernière mise à jour : 2026-10-17
-> (§16 : Strat-Botting, préréglage 45 confirmé sur 3 ans, trading manuel).
+> (§16 : KAIROS, préréglage 45 confirmé sur 3 ans, trading manuel).
 >
 > **Nouvelle session sur un nouveau compte ?** Lis ce fichier, puis **`PASSATION.md`** : il
 > contient l'état de l'ENVIRONNEMENT (un vérificateur de syntaxe Pine installé mais non branché,
@@ -28,7 +28,7 @@ contiennent des valeurs HA, et les règles retrouvées ne valent que sur graphiq
 | `CompletV3.pine` | Indicateur complet (fichier de travail depuis le 15/10, sans mention « Ephore ») | En cours |
 | `STRATEGIE_V1.pine` | Stratégie testeur (V14, préréglage 45 par défaut) | Référence de la recette |
 | `STRATEGIE_45_46.pine` | Copie fidèle de V14 réduite aux modèles 45/46, avec alertes | **Utilisé en trading manuel** |
-| `Strat-Botting/` | Chantier bot propfirm (spec, moteur, simulateur propfirm, recherche) | Bot en pause (§16) |
+| `KAIROS/` | Chantier bot propfirm (spec, moteur, simulateur propfirm, recherche) | Bot en pause (§16) |
 | `tools/` | Sources publiques d'origine + simulateurs Python | Référence |
 | `EPHORE_METHODE.md` | Logique officielle tirée de la formation | Référence |
 
@@ -815,7 +815,7 @@ n'est robuste.** Confiance élevée dans ce négatif, portée limitée par la du
 
 ## 16. STRAT-BOTTING ET PRÉRÉGLAGE 45 (16/10 → 17/10)
 
-Dossier `Strat-Botting/` (SPEC.md, registre `registre/registre_tests.csv`, journal `recherche/JOURNAL.md`).
+Dossier `KAIROS/` (SPEC.md, registre `registre/registre_tests.csv`, journal `recherche/JOURNAL.md`).
 
 - **Vague 0 (16/10)** : moteur commun, simulateur Monte-Carlo propfirm (`propfirm/`, règles dans REGLES.md),
   voie d'exécution PickMyTrade → Tradovate. **Apex exclue pour un bot** (bots interdits) ; cible Tradeify.
@@ -826,9 +826,9 @@ Dossier `Strat-Botting/` (SPEC.md, registre `registre/registre_tests.csv`, journ
   2 micros : PF 1,35 sur 3 ans MNQ.
 - **Méthode qui a débloqué** : préréglage 99 JOURNAL (V13) = les variables de contexte sont écrites dans le
   commentaire d'entrée ; l'export xlsx du backtest profond (3 ans) devient une vérité terrain exploitable
-  hors ligne (`~/Ephore/Strat-Botting-data/dataset/`). Le graphique ne charge que 3 mois : DATASET.pine inutile.
+  hors ligne (`~/Ephore/KAIROS-data/dataset/`). Le graphique ne charge que 3 mois : DATASET.pine inutile.
 - **Recette JR3 → préréglage 45** (V14, défaut) : Dashator 1h ET 4h dans le sens + repli ≤ 0,6 ATR sur l'EMA50.
-  **Confirmé au testeur 3 ans** (`Strat-Botting/recherche/journal3ans/CONFIRMATION_TV.md`) :
+  **Confirmé au testeur 3 ans** (`KAIROS/recherche/journal3ans/CONFIRMATION_TV.md`) :
   MNQ1! 656 trades, 75,5 %, PF 4,51, baisse max 1 162 $ (2 micros), chaque année ≥ 73 % / PF 3,9 ;
   tient sur MES (70 % / 3,11) et ES (72 % / 3,54), non utilisés pour la recherche.
   **46** (eMax 1,5, plus de volume) : MNQ 66 % / PF 2,34.

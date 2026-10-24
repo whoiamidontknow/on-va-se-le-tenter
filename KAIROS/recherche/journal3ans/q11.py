@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/journal3ans"); sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/propfirm")
+import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/journal3ans"); sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/propfirm")
 from feat import *; from filtres import *; from regles_figees import *
 import simulateur as S, warnings; warnings.filterwarnings('ignore')
 d=prep(); R=S.charge_regles()['tradeify_50k_select_flex']

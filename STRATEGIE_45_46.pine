@@ -159,7 +159,7 @@
 //                   suit break-even et suiveur) et TP (vert) sur chaque
 //                   position, tracées en plot() : toujours visibles, sans
 //                   limite de nombre. Version affichée dans le tableau de bord.
-//   V7  2026-10-17  5 préréglages finalistes Strat-Botting (20-24 : SOR-0001
+//   V7  2026-10-17  5 préréglages finalistes KAIROS (20-24 : SOR-0001
 //                   à 0003, ML-0001 et sa variante de nuit), non probants.
 //                   Nouveaux réglages : à plat avant 15:59 Chicago (pf),
 //                   stop sauté si aucun niveau (slSans), unité de marge et
@@ -222,7 +222,7 @@ e_heiOn_in   = input.bool(false, "Entrée sur changement de couleur Heishinator"
 e_tlOn_in = input.bool(false, "Entrée sur cassure de trendline (Breakator)", group=grp_e,
      tooltip="Cassure de la résistance descendante = long ; cassure du support ascendant = short. Règle de cassure : réglage « Cassure mesurée sur » du groupe TRENDLINES.")
 e_divOn_in   = input.bool(false, "Entrée sur divergence RSI après excès (retour à la moyenne)", group=grp_e, inline="dv",
-     tooltip="Short : plus haut des 20 dernières bougies (vrais prix) avec RSI 14 (HA) plus bas que sur les 17 bougies précédentes, bougie rouge, et écart à l'EMA50 ≥ seuil × ATR sur les 3 dernières bougies. Long : symétrique. Recette WRF-1 de Strat-Botting.")
+     tooltip="Short : plus haut des 20 dernières bougies (vrais prix) avec RSI 14 (HA) plus bas que sur les 17 bougies précédentes, bougie rouge, et écart à l'EMA50 ≥ seuil × ATR sur les 3 dernières bougies. Long : symétrique. Recette WRF-1 de KAIROS.")
 e_divX_in    = input.float(2.5, "excès (× ATR)", group=grp_e, inline="dv", minval=0.0, step=0.5)
 e_lvlOn_in   = input.bool(false, "Entrée sur cassure de niveau (sessions / Monday)", group=grp_e,
      tooltip="Long quand le prix casse le HAUT d'une session terminée (ou le Monday High) ; short quand il casse un BAS. Chaque niveau ne sert qu'une fois. Source des niveaux : réglage « Niveaux mesurés sur » du groupe 3b.")
@@ -267,10 +267,10 @@ f_clxOn_in   = input.bool(false, "Climax : ne jamais trader contre le dernier cl
 f_clxAge_in  = input.int(0, "Climax : âge maximum (barres, 0 = sans limite)", group=grp_f, minval=0)
 
 jr_on_in = input.bool(false, "Mode JOURNAL : écrire toutes les variables dans le commentaire d'entrée", group=grp_e,
-     tooltip="Pour la recherche sur 3 ans (backtest profond) : chaque entrée porte dans son commentaire le type de signal et l'état des tableaux (biais, Feu, TREND, Dashator, STRENGTH, ADX, Detector, EMA50, volatilité, risque). Export xlsx du testeur → les agents rejouent tous les filtres hors ligne. Format : Strat-Botting/recherche/JOURNAL.md")
+     tooltip="Pour la recherche sur 3 ans (backtest profond) : chaque entrée porte dans son commentaire le type de signal et l'état des tableaux (biais, Feu, TREND, Dashator, STRENGTH, ADX, Detector, EMA50, volatilité, risque). Export xlsx du testeur → les agents rejouent tous les filtres hors ligne. Format : KAIROS/recherche/JOURNAL.md")
 grp_bi = "=== 1b. BIAIS GLOBAL (les tableaux donnent la direction) ==="
 bi_on_in = input.bool(false, "Ne trader que dans le sens du biais global", group=grp_bi,
-     tooltip="Fond (9 voix) : TREND, Dashator et STRENGTH sur 1 h, 4 h, 1 jour. Intraday (11 voix) : TREND et Dashator 5 et 15 min + les 7 lignes INDICATOR | SIGNAL. Long permis si fond ≥ seuil ET intraday ≥ seuil ; short : symétrique ; sinon aucun trade. Spécification : Strat-Botting/recherche/BIAIS_GLOBAL.md")
+     tooltip="Fond (9 voix) : TREND, Dashator et STRENGTH sur 1 h, 4 h, 1 jour. Intraday (11 voix) : TREND et Dashator 5 et 15 min + les 7 lignes INDICATOR | SIGNAL. Long permis si fond ≥ seuil ET intraday ≥ seuil ; short : symétrique ; sinon aucun trade. Spécification : KAIROS/recherche/BIAIS_GLOBAL.md")
 bi_F_in  = input.float(0.33, "Seuil fond (−1 à +1)", group=grp_bi, inline="bi", minval=0.0, maxval=1.0, step=0.11)
 bi_I_in  = input.float(0.2, "intraday", group=grp_bi, inline="bi", minval=0.0, maxval=1.0, step=0.09)
 grp_x = "=== 3. SORTIES ==="
@@ -299,7 +299,7 @@ x_trAct_in = input.float(0.0, "Suiveur actif après (R)", group=grp_x, minval=0.
 x_beOn_in = input.bool(true, "Break-even après X R", group=grp_x, inline="be")
 x_beR_in  = input.float(1.0, "", group=grp_x, inline="be", minval=0.1, step=0.1)
 x_beTk_in = input.int(1, "Break-even : ticks au-delà du prix d'entrée", group=grp_x, minval=0,
-     tooltip="Avec 1-2 ticks, les sorties au break-even perdent un peu après frais (étude Strat-Botting WRS) : 4 ticks ou plus conseillés.")
+     tooltip="Avec 1-2 ticks, les sorties au break-even perdent un peu après frais (étude KAIROS WRS) : 4 ticks ou plus conseillés.")
 x_oppArr_in  = input.bool(true, "Sortie sur flèche Signator opposée (Fort ou Moyen)", group=grp_x)
 x_oppHei_in  = input.bool(false, "Sortie sur changement Heishinator opposé", group=grp_x)
 x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", group=grp_x, inline="fin",
@@ -312,11 +312,11 @@ x_fen     = input.session("0020-2215", "", group=grp_x, inline="fen")
 x_tBar_in = input.int(0, "Sortie après N bougies en position (0 = jamais)", group=grp_x, minval=0,
      tooltip="Ferme au marché à l'ouverture qui suit la clôture de la N-ième bougie en position (bougie d'entrée comprise). 8 en 15 min = 2 h.")
 x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
-     tooltip="Ferme la position à la clôture de la dernière bougie qui finit avant 15:59 heure de Chicago, et interdit toute entrée jusqu'à la réouverture de 17:00 Chicago. Même règle que le moteur Strat-Botting ; suit les changements d'heure américains, contrairement à la sortie à heure de Paris.")
+     tooltip="Ferme la position à la clôture de la dernière bougie qui finit avant 15:59 heure de Chicago, et interdit toute entrée jusqu'à la réouverture de 17:00 Chicago. Même règle que le moteur KAIROS ; suit les changements d'heure américains, contrairement à la sortie à heure de Paris.")
 
 grp_ad = "=== 3c. GESTION ADAPTATIVE (stop et/ou objectif « Adaptatif ») ==="
 ad_feu_in  = input.float(60, "Score : Feu dans le sens ≥ (%)", group=grp_ad, minval=0, maxval=100,
-     tooltip="Score de confluence C (0 à 3) à l'entrée : +1 TREND de l'unité supérieure dans le sens, +1 Feu dans le sens ≥ ce seuil, +1 ADX ≥ seuil avec le DI dans le sens. Spécification : Strat-Botting/recherche/GESTION_ADAPTATIVE.md")
+     tooltip="Score de confluence C (0 à 3) à l'entrée : +1 TREND de l'unité supérieure dans le sens, +1 Feu dans le sens ≥ ce seuil, +1 ADX ≥ seuil avec le DI dans le sens. Spécification : KAIROS/recherche/GESTION_ADAPTATIVE.md")
 ad_adx_in  = input.float(25, "Score : ADX ≥", group=grp_ad, minval=0, maxval=100)
 ad_r1_in   = input.float(1.0, "Objectif si C ≤ 1 (R)", group=grp_ad, inline="adr", minval=0.1, step=0.25)
 ad_r2_in   = input.float(1.5, "C = 2", group=grp_ad, inline="adr", minval=0.1, step=0.25)
@@ -435,7 +435,7 @@ f_pr_def(string nom) =>
      nom == "17 A · TP pivots+Detector + Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=1;tpMo=0;tpSe=0;tpRo=0;rrMin=1.5;tpMarge=0.1;tpSans=Pas d'objectif;oppHei=1" :
      nom == "18 A · TP fixe 3R" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=En R;tpR=3;oppHei=0" :
      nom == "19 A · TP pivots ≥2R sinon rien" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=1;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=3;be=0;trail=Aucun;oppArr=0;fin=0;part=0;hr=0;stop=ATR × k;atrK=2;tp=Prochain niveau;tpA=1;tpM=1;tpW=1;tpD=0;tpMo=0;tpSe=0;tpRo=0;rrMin=2;tpMarge=0.1;tpSans=Ne pas prendre le trade;oppHei=0" :
-     // 5 finalistes Strat-Botting du 17/10 (registre SOR-0001..0003, ML-0001) :
+     // 5 finalistes KAIROS du 17/10 (registre SOR-0001..0003, ML-0001) :
      // AUCUN N'EST PROBANT (2 à 4 mois, biais de sélection non écarté). Tous à
      // plat avant 15:59 Chicago, risque fixe en $ comme dans le registre.
      nom == "20 SOR-1 climax BUY · SL 3 ATR · Heishi" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;tr=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=0;trail=Aucun;oppArr=0;fin=0;pf=1;part=0;hr=0;taille=Risque fixe en $;stop=ATR × k;atrK=3;tp=Aucun;oppHei=1;risque=150" :
@@ -453,7 +453,7 @@ f_pr_def(string nom) =>
      nom == "28 WRS-3 A · 3 ATR · BE 0,5R+2tk · 1R" ? "sens=Long seulement;clx=1;sig=0;hei=0;tl=0;lvl=0;div=0;tr=1;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=1;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=1;tBar=0;taille=Contrats fixes;beR=0.5;beTk=2;hr1On=1;hr1=0800-2200;hr2On=0;stop=ATR × k;atrK=3;tp=En R;tpR=1;fixe=3" :
      nom == "29 WRS-2 ML-1 · 3 ATR · BE 0,5R+4tk · 2R" ? "sens=Les deux;clx=1;sig=1;hei=1;tl=1;lvl=1;div=0;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;be=1;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=0;tBar=0;taille=Contrats fixes;sigNiv=Fort + Moyen;beR=0.5;beTk=4;stop=ATR × k;atrK=3;tp=En R;tpR=2;fixe=1" :
      nom == "30 WRF-1 divergence excès · SL extrême · 0,75R · 8 bougies" ? "sens=Les deux;clx=0;sig=0;hei=0;tl=0;lvl=0;div=1;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=1;maxJour=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;hr=0;tBar=8;taille=Contrats fixes;divX=2.5;stop=Extrême 2 bougies + marge;extMarge=0.1;extMin=0.4;extMax=2.5;slSans=Ne pas prendre le trade;tp=En R;tpR=0.75;fixe=5" :
-     // Gestion adaptative (Strat-Botting/recherche/GESTION_ADAPTATIVE.md) : stop
+     // Gestion adaptative (KAIROS/recherche/GESTION_ADAPTATIVE.md) : stop
      // selon la volatilité, objectif 1-2 R selon la confluence, trade sauté si
      // un niveau adverse est à moins de 1 R. Défauts provisoires, en attente du
      // test Python (registre ADA). À passer au testeur sur 3 ans.
@@ -1313,7 +1313,7 @@ t3_nTot   = array.size(t3_votes)
 t3_pLong  = 100.0 * t3_nLong  / t3_nTot
 t3_pShort = 100.0 * t3_nShort / t3_nTot
 
-// BIAIS GLOBAL (Strat-Botting/recherche/BIAIS_GLOBAL.md)
+// BIAIS GLOBAL (KAIROS/recherche/BIAIS_GLOBAL.md)
 f_bi_v(bool b) => b ? 1 : -1
 f_bi_st(int s) => s >= 3 ? 1 : s <= 1 ? -1 : 0
 bi_F = (f_bi_v(t3_tr4) + f_bi_v(t3_tr5) + f_bi_v(t3_tr6) + f_bi_v(t3_d4) + f_bi_v(t3_d5) + f_bi_v(t3_d6) + f_bi_st(t3_st4) + f_bi_st(t3_st5) + f_bi_st(t3_st6)) / 9.0
@@ -1675,7 +1675,7 @@ go_short  = x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and c
 // absolu]. Absolu = posé derrière un niveau de marché : ce PRIX est gardé au
 // remplissage. Sinon (ATR, swing, fixe, zone Detector) la DISTANCE est gardée
 // et le stop est recalé sur le vrai prix d'entrée (comportement V3).
-// GESTION ADAPTATIVE (Strat-Botting/recherche/GESTION_ADAPTATIVE.md)
+// GESTION ADAPTATIVE (KAIROS/recherche/GESTION_ADAPTATIVE.md)
 ad_vr = r_atr / ta.sma(r_atr, 96)
 f_ad_score(int dir) =>
     int c = 0
@@ -1684,7 +1684,7 @@ f_ad_score(int dir) =>
     c += sg_adx >= ad_adx and (dir > 0 ? sg_diP > sg_diM : sg_diM > sg_diP) ? 1 : 0
     c
 
-// JOURNAL (Strat-Botting/recherche/JOURNAL.md) : place jusqu'à la zone Detector
+// JOURNAL (KAIROS/recherche/JOURNAL.md) : place jusqu'à la zone Detector
 // opposée la plus proche (× ATR14 HA, 9.9 si aucune) et commentaire codé.
 f_det_place(bool isLong) =>
     float best = na

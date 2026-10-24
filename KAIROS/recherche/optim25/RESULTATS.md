@@ -3,12 +3,12 @@
 Une commande, 6 minutes sur le cache (10 coeurs) :
 
 ```
-cd Strat-Botting/recherche/optim25
+cd KAIROS/recherche/optim25
 ~/venv-quant/bin/python optimiser.py --source cache      # essai à blanc (fait le 17/10/2026)
 ~/venv-quant/bin/python optimiser.py --source dataset    # dès que le DATASET 15 min est exporté (même code)
 # options : --recalcul (refaire les tables d'issues), --registre (écrit la meilleure au registre, préfixe OPT)
 ```
-Le DATASET est lu comme pour les autres agents : `~/Ephore/Strat-Botting-data/*.csv` via `dataset/charger.py`
+Le DATASET est lu comme pour les autres agents : `~/Ephore/KAIROS-data/*.csv` via `dataset/charger.py`
 (fonction `charger()` du script = seul point d'accès). Il faut des fichiers 15 min MES et/ou NQ. Sur le DATASET,
 la règle exige n >= 80 (30 sur le cache) ; pense à regarder aussi `sorties/resume_dataset.txt`. Le premier
 passage refait les tables (quelques minutes de plus avec 1,7 an). Sorties : `presets_pine.txt` (3 lignes pour

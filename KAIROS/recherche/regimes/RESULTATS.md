@@ -9,9 +9,9 @@ tout ceci reste fragile. Il faut relancer sur le DATASET.
 
 ## Comment relancer
 ```bash
-cd Strat-Botting/recherche/regimes
+cd KAIROS/recherche/regimes
 ~/venv-quant/bin/python aiguillage.py                    # cache (≈ 22 min sur 8 cœurs)
-~/venv-quant/bin/python aiguillage.py --source dataset   # exports DATASET.pine 15 min (~/Ephore/Strat-Botting-data)
+~/venv-quant/bin/python aiguillage.py --source dataset   # exports DATASET.pine 15 min (~/Ephore/KAIROS-data)
 ~/venv-quant/bin/python aiguillage.py --registre         # + lignes REG-xxxx au registre (à ne faire qu'une fois)
 ~/venv-quant/bin/python analyse.py                       # surapprentissage + stabilité des choix
 ```

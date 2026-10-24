@@ -17,7 +17,7 @@ def charge(f):
                       'mfe_usd': ex['Excursion favorable USD'] / q}).dropna().reset_index(drop=True)
     return P.get('Préréglage', '')[:2], t
 
-B = os.path.expanduser('~/Ephore/Strat-Botting-data')
+B = os.path.expanduser('~/Ephore/KAIROS-data')
 F = glob.glob(os.path.join(glob.escape(B + '/45*46'), '*a9c54*.xlsx')) + sorted(glob.glob(os.path.join(B, 'slcourtoupas', '51-54', '*.xlsx')))
 R = S.charge_regles(); KW = dict(max_jours_eval=250, max_jours_funded=250, max_payouts=5, bloc_jours=5, n_sim=2000, ordre='heuristique')
 L = []

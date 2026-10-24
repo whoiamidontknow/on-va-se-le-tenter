@@ -1,4 +1,4 @@
-"""Registre des tests de Strat-Botting : une ligne par test dans registre/registre_tests.csv.
+"""Registre des tests de KAIROS : une ligne par test dans registre/registre_tests.csv.
 
 Plusieurs agents écrivent en même temps -> verrou exclusif (fcntl.flock) sur un fichier de verrou dédié pendant
 la lecture du dernier id, l'écriture de la ligne et celle des trades.

@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/tv3ans"); sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/propfirm")
+import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/tv3ans"); sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/propfirm")
 from base import *
 import simulateur as S, json, time, warnings; warnings.filterwarnings('ignore')
 COMM=1.30

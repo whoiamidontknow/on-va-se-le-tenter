@@ -1,4 +1,4 @@
-/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/meta_ml/candidats.py:171: RuntimeWarning: invalid value encountered in divide
+/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/meta_ml/candidats.py:171: RuntimeWarning: invalid value encountered in divide
   V[_g('vol_rel', 'Volatilité')] = vol / pd.Series(vol).rolling(20, min_periods=10).mean().to_numpy()
 MES_15_0915 : 1468 barres, 405 candidats (7 s)
 MES1_15_0429 : 3337 barres, 365 candidats (7 s)

@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/tv3ans")
+import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/tv3ans")
 from base import *
 a=load(); m=a[(a.sym=='MNQ')&a.pre.isin(['38','39','40','42'])]
 def s(d): 

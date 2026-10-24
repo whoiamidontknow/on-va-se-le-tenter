@@ -1,8 +1,8 @@
-"""Chargement d'un export CSV de DATASET.pine (« Dataset Strat-Botting »).
+"""Chargement d'un export CSV de DATASET.pine (« Dataset KAIROS »).
 
 Usage :
     from charger import charger
-    df = charger("~/Ephore/Strat-Botting-data/CME_MINI_MNQ1!, 15_ab12c.csv")
+    df = charger("~/Ephore/KAIROS-data/CME_MINI_MNQ1!, 15_ab12c.csv")
 
     ~/venv-quant/bin/python charger.py <fichier.csv>     # résumé en ligne de commande
 
@@ -190,7 +190,7 @@ def charger(chemin: str, garder_brut: bool = False, intervalle_rond: float = 100
     manquantes = [c for c in ["time", "open", "high", "low", "close"] + PLOTS if c not in brut.columns]
     if manquantes:
         raise ValueError(f"{os.path.basename(chemin)} : colonnes absentes {manquantes}. "
-                         "L'export vient-il bien de « Dataset Strat-Botting » (V1) ? "
+                         "L'export vient-il bien de « Dataset KAIROS » (V1) ? "
                          "Un en-tête suffixé « .1 » signale un doublon : retirer les autres indicateurs.")
     df = brut[["time", "open", "high", "low", "close"] + PLOTS].copy()
     df.index = _lire_temps(df.pop("time"))

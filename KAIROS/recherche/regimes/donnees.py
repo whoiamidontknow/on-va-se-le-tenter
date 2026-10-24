@@ -8,7 +8,7 @@ modifier : les deux sources rendent des DataFrames aux NOMS DE COLONNES de `data
                      TREND / Dashator 60 et 240 (bougie clôturée de l'unité supérieure, vrais prix agrégés,
                      comme tools/strategie/features.resample_real), Feu = PROXY à 12 voix de strat.ensure_feu
                      (l'original en a 29), pas de STRENGTH, pas de Signator Moyen (0 dans le cache).
-- source 'dataset' : exports DATASET.pine 15 min de ~/Ephore/Strat-Botting-data (dataset/charger.py).
+- source 'dataset' : exports DATASET.pine 15 min de ~/Ephore/KAIROS-data (dataset/charger.py).
 
 Seul le DÉVELOPPEMENT (75 %) est rendu (moteur.charger_recherche, scellé fermé).
 """
@@ -30,7 +30,7 @@ sys.path[:0] = [os.path.join(SB, 'moteur'), os.path.join(SB, 'dataset'), os.path
 import moteur as M  # noqa: E402
 
 SOURCE_DEFAUT = 'cache'
-DOSSIER_DATASET = os.path.expanduser('~/Ephore/Strat-Botting-data')
+DOSSIER_DATASET = os.path.expanduser('~/Ephore/KAIROS-data')
 
 # séries 15 min retenues dans le cache (MES1 21/09-30/09 écartée : recouvre MES 15/09-15/10)
 CACHE_SERIES = [('MES1', '15', '2026-04-29', 'MES', 'MES1_avr-juil'),

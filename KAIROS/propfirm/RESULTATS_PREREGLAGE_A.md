@@ -1,7 +1,7 @@
 # Préréglage A au simulateur propfirm — résultats (16/10/2026)
 
 Règles : `regles.toml` (relevé définitif de l'agent « Règles des propfirms », 17 variantes).
-Relancer : `~/venv-quant/bin/python Strat-Botting/propfirm/valide_prereglage_a.py` (le registre n'est modifié qu'avec `--registre`).
+Relancer : `~/venv-quant/bin/python KAIROS/propfirm/valide_prereglage_a.py` (le registre n'est modifié qu'avec `--registre`).
 
 **Trades** : préréglage A (climax BUY + TREND 1H, long seul, stop 2 ATR, sortie Heishinator), testeur TradingView 15m, NQ1! et ES1! (fichiers `2b13f` et `2f924` ; B et C du 1er jet sont faux), P&L **corrigé** de l'effet du bug de la bougie de remplissage (`cache_trades.pkl`). Converti en micro (points × 2 $ / 5 $, soit ÷10) avec 1.30 $ de commission aller-retour par micro (hypothèse).
 

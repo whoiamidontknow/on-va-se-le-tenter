@@ -27,7 +27,7 @@ NOMS_STOP = {'atr2': 'stop 2 ATR', 'atr3': 'stop 3 ATR', 'atr1.5': 'stop 1,5 ATR
 NOMS_SORTIE = {'hei': 'sortie flip Heishinator', 'BE1+R3': 'break-even à 1R puis objectif 3R',
                'BE1+R2': 'break-even à 1R puis objectif 2R'}
 N_VAR = 257 * 2 + 399          # étape A (257 stops x 2 sorties) + étape B (399 gestions), par déclencheur
-FICHIER = 'Strat-Botting/recherche/sorties/RESULTATS.md'
+FICHIER = 'KAIROS/recherche/sorties/RESULTATS.md'
 
 
 def deja(recette):

@@ -1,11 +1,11 @@
-# Moteur de backtest commun (Strat-Botting)
+# Moteur de backtest commun (KAIROS)
 
 Moteur UNIQUE utilisé par tous les agents de recherche. Vrais prix, signal à la clôture, entrée à
 l'ouverture suivante, multi-UT sans regard vers le futur, coûts par instrument, sortie forcée à
 l'heure propfirm. Conventions détaillées en tête de `moteur.py`.
 
 ```python
-import sys; sys.path[:0] = ['Strat-Botting/moteur', 'Strat-Botting/dataset']
+import sys; sys.path[:0] = ['KAIROS/moteur', 'KAIROS/dataset']
 import moteur as M, registre as RG
 from charger import charger
 df15 = M.charger_recherche(charger('…/CME_MINI_MNQ1!, 15_xxxx.csv'))      # DÉVELOPPEMENT seulement (75 %)
@@ -76,6 +76,6 @@ Compatible avec `propfirm/simulateur.py` (vérifié : `simule_chemin(trades, reg
   ouvert en fin de données clôturé (`fin_donnees`) au lieu d'être abandonné.
 
 ```bash
-~/venv-quant/bin/python Strat-Botting/moteur/test_moteur.py
-~/venv-quant/bin/python Strat-Botting/moteur/verif_concordance.py
+~/venv-quant/bin/python KAIROS/moteur/test_moteur.py
+~/venv-quant/bin/python KAIROS/moteur/verif_concordance.py
 ```

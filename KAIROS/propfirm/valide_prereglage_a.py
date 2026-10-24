@@ -209,7 +209,7 @@ def ecrit_md(synth, stats, risque_rows, source):
     a("")
     a(f"Règles : `{source}`" + (" — **PROVISOIRES**." if "provisoire" in source else
                                  " (relevé définitif de l'agent « Règles des propfirms », 17 variantes)."))
-    a("Relancer : `~/venv-quant/bin/python Strat-Botting/propfirm/valide_prereglage_a.py` (le registre "
+    a("Relancer : `~/venv-quant/bin/python KAIROS/propfirm/valide_prereglage_a.py` (le registre "
       "n'est modifié qu'avec `--registre`).")
     a("")
     a("**Trades** : préréglage A (climax BUY + TREND 1H, long seul, stop 2 ATR, sortie Heishinator), testeur "
@@ -377,7 +377,7 @@ def ecrit_registre(synth, stats):
                         + f" ; P prudent {s['p_ve_prudent']:.3f} ; chrono {s['chrono']:.3f} ; P(1er payout) {s['pay1']:.3f}"
                         + (" ; financé direct : p = P(1er payout)" if s["direct"] else "")
                         + f" ; {100*st['traverse']:.0f} % trades de nuit non conformes ; p_apex = {APEX_COMPARAISON} même taille"),
-            "fichier": "Strat-Botting/propfirm/RESULTATS_PREREGLAGE_A.md",
+            "fichier": "KAIROS/propfirm/RESULTATS_PREREGLAGE_A.md",
         })
         col = {"tradeify": "p_tradeify", "lucid": "p_lucid"}.get(s["propfirm"])
         if col:

@@ -1,6 +1,6 @@
 """Charge les exports TradingView 3 ans -> un DataFrame de trades (1 ligne par trade)."""
 import pandas as pd, glob, re, numpy as np
-D='/Users/jeremk/Ephore/Strat-Botting-data/'
+D='/Users/jeremk/Ephore/KAIROS-data/'
 def charge():
     out=[]
     for f in sorted(glob.glob(D+'*.xlsx')):

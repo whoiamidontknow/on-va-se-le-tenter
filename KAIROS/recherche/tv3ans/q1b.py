@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/Strat-Botting/recherche/tv3ans")
+import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/tv3ans")
 from base import *
 a=load(); m=a[a.sym=='MNQ']
 t=m[(m.pre=='40')&m.raison.str.startswith('Temps')]

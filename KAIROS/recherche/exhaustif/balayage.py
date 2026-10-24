@@ -1,7 +1,7 @@
 """Explorateur exhaustif (EXH) : balayage par étapes des recettes déclencheur x filtres x sorties x sens x UT.
 
-    ~/venv-quant/bin/python Strat-Botting/recherche/exhaustif/balayage.py            # tout (étapes 1-5)
-    ~/venv-quant/bin/python Strat-Botting/recherche/exhaustif/balayage.py --source dataset
+    ~/venv-quant/bin/python KAIROS/recherche/exhaustif/balayage.py            # tout (étapes 1-5)
+    ~/venv-quant/bin/python KAIROS/recherche/exhaustif/balayage.py --source dataset
 
 Étapes : (1) chaque déclencheur seul (modes suivi/inverse, sens long/short/les deux, chaque UT), gestion de
 référence stop 2 ATR / objectif 2R ; (2) + 1 filtre sur les meilleures bases ; (3) + 2 puis 3 filtres ;

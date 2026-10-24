@@ -5,7 +5,7 @@ c'est une machine complète, vérifiée, qui a donné ses premiers classements e
 
 ## Relancer (une commande)
 
-    cd Strat-Botting/recherche/final
+    cd KAIROS/recherche/final
     ~/venv-quant/bin/python final.py --source dataset --registre      # ~1,7 an en 15 min
     # options : --recalcul (ignore le cache disque sorties/brut_*.pkl), --rangs 3 (n'écrit que ce rang au registre), --petit
 

@@ -1,6 +1,6 @@
 """Tests du simulateur propfirm (cas construits à la main).
 
-    ~/venv-quant/bin/python -m unittest test_simulateur -v     (depuis Strat-Botting/propfirm)
+    ~/venv-quant/bin/python -m unittest test_simulateur -v     (depuis KAIROS/propfirm)
 """
 import sys
 import unittest
