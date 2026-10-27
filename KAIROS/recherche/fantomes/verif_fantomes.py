@@ -28,12 +28,14 @@ def nombre(txt, motif):
 
 
 # --- 1. alertes ------------------------------------------------------------------------------------------------
-logs = pd.concat([pd.read_csv(f) for f in fichiers("TradingView_Alerts_Log*.csv")])
+logs = pd.concat([pd.read_csv(f).assign(fichier=f) for f in fichiers("TradingView_Alerts_Log*.csv")])
 logs = logs.drop_duplicates(["ID de l'alerte", "Heure", "Description"])
 logs["t"] = pd.to_datetime(logs["Heure"]).dt.tz_convert("Europe/Paris").dt.tz_localize(None)
 logs["sym"] = logs["Ticker"].str.split(",").str[0].str.split(":").str[-1]
 logs["tf"] = logs["Ticker"].str.split(", ").str[1]
 logs = logs.sort_values("t", kind="stable")
+# heure du dernier message de chaque journal ≈ heure de son export : une alerte encore active a tourné jusque-là
+logs["fin_journal"] = logs.groupby("fichier")["t"].transform("max")
 # nom de la stratégie de chaque alerte (lu dans les messages « ordre … effectué » qui commencent par le nom)
 STRATS = ("correctifstest", "Bot5669", "Strat5669", "Stratégie 56")
 strat_id = {}
@@ -293,7 +295,8 @@ print("\nNÉS APRÈS COUP (dans l'historique, jamais signalés en direct)")
 nes = 0
 for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
     t_ids = logs[logs["ID de l'alerte"].isin(set(s["id"]))]["t"]
-    deb, fin = t_ids.min(), t_ids.max()
+    deb, fin = t_ids.min(), logs[logs["ID de l'alerte"].isin(set(s["id"]))]["fin_journal"].max()
+    dernier = t_ids.max()   # après le dernier message de l'alerte : né après coup… ou alerte arrêtée
     couverts = [t for mx, t in exports.get((st, sym, tf), []) if mx >= deb]
     if not couverts:
         continue
@@ -303,8 +306,9 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
         proche = s[((s["entree"] - r[3]).abs() <= pd.Timedelta(minutes=15)) & (s["sens"] == r.Signal[0])]
         if proche.empty:
             nes += 1
+            doute = f" — après le dernier message de l'alerte ({dernier:%d/%m %H:%M}) : vérifier qu'elle était active" if r[3] > dernier else ""
             print(f"{st[:14]:14} {r[3]:%d/%m %H:%M} {sym:7}{tf:>4} {r.Signal:16} historique : P&L {r[8]:+,.0f} $ "
-                  f"(alerte suivie du {deb:%d/%m %H:%M} au {fin:%d/%m %H:%M})")
+                  f"(journal du {deb:%d/%m %H:%M} au {fin:%d/%m %H:%M}){doute}")
 if not nes:
     print("aucun")
 if verrou:
