@@ -183,7 +183,7 @@ def lignes_suivi(df, anciens, numbers=False):
     return res
 
 
-def nombre(v):
+def en_nombre(v):
     """« 29223.25 », « -187,9 » tapés comme texte dans Numbers → nombre (pour que les totaux marchent)."""
     if isinstance(v, str):
         try:
@@ -211,7 +211,7 @@ def ecrire_suivi_numbers(df, chemin):
             for row in rows[1:]:
                 r = dict(zip(rows[0], row))
                 if r.get("Date"):
-                    a = {c: (None if r.get(c) == "—" else nombre(r.get(c))) for c in PERSO}
+                    a = {c: (None if r.get(c) == "—" else en_nombre(r.get(c))) for c in PERSO}
                     f = r.get("Fantôme ?")   # Jeremy y écrit parfois son propre constat : on le garde
                     if f not in (None, "", "non", "OUI", "à vérifier") and not str(f).startswith("non, devenu"):
                         a["Fantôme ?"] = f
@@ -287,6 +287,26 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
         stats(s2, f"{st[:14]} {sym} {tf} {etiq}")
 print("\nFANTÔMES (trades en direct comparés à l'historique)")
 print(df.groupby(["strat", "etiq", "historique"]).size().to_string())
+
+# Sens inverse : trades de l'historique, pendant que l'alerte tournait, sans aucune alerte d'entrée en direct.
+print("\nNÉS APRÈS COUP (dans l'historique, jamais signalés en direct)")
+nes = 0
+for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
+    t_ids = logs[logs["ID de l'alerte"].isin(set(s["id"]))]["t"]
+    deb, fin = t_ids.min(), t_ids.max()
+    couverts = [t for mx, t in exports.get((st, sym, tf), []) if mx >= deb]
+    if not couverts:
+        continue
+    t = max(couverts, key=len)
+    e = t[t["Type"].str.startswith("Entrer") & (t["Date et heure"] >= deb) & (t["Date et heure"] <= fin)]
+    for r in e.itertuples():
+        proche = s[((s["entree"] - r[3]).abs() <= pd.Timedelta(minutes=15)) & (s["sens"] == r.Signal[0])]
+        if proche.empty:
+            nes += 1
+            print(f"{st[:14]:14} {r[3]:%d/%m %H:%M} {sym:7}{tf:>4} {r.Signal:16} historique : P&L {r[8]:+,.0f} $ "
+                  f"(alerte suivie du {deb:%d/%m %H:%M} au {fin:%d/%m %H:%M})")
+if not nes:
+    print("aucun")
 if verrou:
     # Listes à coller dans Strat5669verrou.pine (réglage « Trades vécus en direct »), une par stratégie / symbole.
     os.makedirs(verrou, exist_ok=True)
