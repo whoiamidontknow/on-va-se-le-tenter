@@ -9,13 +9,13 @@ Test numerique : float(x) != 0  (et NON bool(x), car bool("0") == True).
 import csv, os, sys, glob, math
 
 ROOTS = [
-    "/Users/jeremk/Ephore/Base 10:10/Ajustements",
-    "/Users/jeremk/Ephore/Base 10:10/base",
-    "/Users/jeremk/Ephore/Lun12:10",
-    "/Users/jeremk/Ephore/Singal",
-    "/Users/jeremk/Ephore/Filtres",
-    "/Users/jeremk/Ephore/Trendlinehelper",
-    "/Users/jeremk/Ephore",
+    "/Users/jeremk/ERGON/Base 10:10/Ajustements",
+    "/Users/jeremk/ERGON/Base 10:10/base",
+    "/Users/jeremk/ERGON/Lun12:10",
+    "/Users/jeremk/ERGON/Singal",
+    "/Users/jeremk/ERGON/Filtres",
+    "/Users/jeremk/ERGON/Trendlinehelper",
+    "/Users/jeremk/ERGON",
 ]
 
 def files():

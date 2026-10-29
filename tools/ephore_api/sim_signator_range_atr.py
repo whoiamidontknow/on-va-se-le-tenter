@@ -4,7 +4,7 @@ Imprime les chiffres de tete + la selectivite + la p-valeur hypergeometrique.
 Usage : python3 sim_signator_range_atr.py
 """
 import sys, math
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 import ctx_signator as C
 from sim_signator_g4 import v8
 

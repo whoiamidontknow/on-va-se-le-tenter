@@ -5,7 +5,7 @@ TP perdus, separement MES / NQ et par unite de temps.
 Sortie : classement + nombre de combinaisons testees.
 """
 import sys, itertools
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 import ctx_signator as C
 
 ds=C.build(); ev=C.events(ds)

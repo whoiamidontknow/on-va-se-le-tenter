@@ -1,6 +1,6 @@
 """Simulateur V8 Signator vs groupe 4 des exports 'Base 10:10/Ajustements'. Reutilise ema/rma de sig_api (copie, sig_api charge le JSON a l'import)."""
 import csv,glob,os,math,datetime
-D="/Users/jeremk/Ephore/Base 10:10/Ajustements/"
+D="/Users/jeremk/ERGON/Base 10:10/Ajustements/"
 def ema(x,p):
     a=2/(p+1); out=[x[0]]
     for v in x[1:]: out.append(a*v+(1-a)*out[-1])

@@ -7,7 +7,7 @@ approximation, on signale les marges faibles)."""
 import sys
 from lib import *
 
-L12 = '/Users/jeremk/Ephore/Lun12:10/'
+L12 = '/Users/jeremk/ERGON/Lun12:10/'
 SRC = {
     # capture: (symbole, cutoff, {tf: fichier})
     '15/10 11:53': ('NQ', '2026-10-15T11:53', None),

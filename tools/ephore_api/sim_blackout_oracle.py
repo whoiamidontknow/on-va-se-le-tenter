@@ -3,8 +3,8 @@
 de ~/Ephore/Base 10:10/Ajustements/.  Sortie : CSV d'oracle + effectifs."""
 import csv, glob, os, re, datetime as dt
 
-SRC = "/Users/jeremk/Ephore/Base 10:10/Ajustements"
-OUT = "/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/oracle_blackout.csv"
+SRC = "/Users/jeremk/ERGON/Base 10:10/Ajustements"
+OUT = "/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/oracle_blackout.csv"
 COLS = ["Signal Long Fort", "Signal Short Fort", "Signal Long Moyen", "Signal Short Moyen"]
 
 def groups(header):

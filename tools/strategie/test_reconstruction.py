@@ -1,7 +1,7 @@
 """Teste si les vrais prix (high/low/close/open) se reconstituent depuis les seules bougies HA.
 Vérité = API (o/h/l/c HA + cr/hr/lr réels). open_reel = 4*c_HA - hr - lr - cr."""
 import json,statistics as st
-P='/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/'
+P='/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/'
 for f in ['api_vitrine_instantane.json','api_vitrine_20261012.json']:
     A=json.load(open(P+f))
     for u in ['15m','2m']:

@@ -6,11 +6,11 @@ porteuses de donnee sur tout le corpus.  Test : float(x) != 0, jamais bool(x).
 """
 import csv, os, glob, collections, math
 
-ROOTS = ["/Users/jeremk/Ephore/Base 10:10/Ajustements",
-         "/Users/jeremk/Ephore/Base 10:10/base",
-         "/Users/jeremk/Ephore/Lun12:10", "/Users/jeremk/Ephore/Singal",
-         "/Users/jeremk/Ephore/Filtres", "/Users/jeremk/Ephore/Trendlinehelper",
-         "/Users/jeremk/Ephore"]
+ROOTS = ["/Users/jeremk/ERGON/Base 10:10/Ajustements",
+         "/Users/jeremk/ERGON/Base 10:10/base",
+         "/Users/jeremk/ERGON/Lun12:10", "/Users/jeremk/ERGON/Singal",
+         "/Users/jeremk/ERGON/Filtres", "/Users/jeremk/ERGON/Trendlinehelper",
+         "/Users/jeremk/ERGON"]
 SKIP = ("trades_",)
 
 ne = collections.Counter(); nz = collections.Counter(); fi = collections.Counter()

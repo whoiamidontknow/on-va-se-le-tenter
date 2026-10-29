@@ -1,6 +1,6 @@
 """Réimplémentation Python de la chaîne Signator de COMPLETV2 (V5), calculée depuis les colonnes HA du CSV."""
 import sys,math,datetime
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 from impl_lab_core import ema_first as ema, rma
 from lib import *
 from zoneinfo import ZoneInfo

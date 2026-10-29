@@ -2,7 +2,7 @@
 VRAIS prix (mode='vrai') ou sur prix reconstitués depuis HA (mode='recon') pour valider la reconstitution."""
 import json, datetime
 import features
-P = '/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/'
+P = '/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/'
 FILES = ['api_vitrine_instantane.json', 'api_vitrine_20261012.json']
 UTC = datetime.timezone.utc
 

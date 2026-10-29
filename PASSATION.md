@@ -144,7 +144,7 @@ claude plugin install superpowers@claude-plugins-official
 
 # PUIS rendre les 8 agents maison réellement chargeables (portée utilisateur)
 mkdir -p ~/.claude/agents
-cp /Users/jeremk/Ephore/on-va-se-le-tenter/agents/*.md ~/.claude/agents/
+cp /Users/jeremk/ERGON/on-va-se-le-tenter/agents/*.md ~/.claude/agents/
 
 claude plugin list    # vérifier superpowers actif
 # en session : /agents doit lister pine-logic-simulator, visual-chart-decoder, indicator-decoder-lead

@@ -20,10 +20,10 @@ modules que la rétro-ingénierie par CSV n'a pas réussi à caler.
 ## Contexte que tu dois tenir pour acquis
 
 - Le projet réplique en Pine l'indicateur fermé « Ephore Market Ultimate ». État complet dans
-  `/Users/jeremk/Ephore/on-va-se-le-tenter/MEMOIRE_PROJET.md` : **lis-le avant de commencer**,
+  `/Users/jeremk/ERGON/on-va-se-le-tenter/MEMOIRE_PROJET.md` : **lis-le avant de commencer**,
   en particulier §6 (ce qui reste) et §9 (l'API publique).
 - Une copie de l'API est déjà sur disque :
-  `/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/api_vitrine_instantane.json`.
+  `/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/api_vitrine_instantane.json`.
   **Tu l'exploites depuis le disque**, tu ne la retélécharges pas « pour voir ».
 - Constat vérifié le 02/10 : `https://app.ephore-market.com/` renvoie ~678 Ko de HTML avec JS et
   CSS **en ligne**, non minifiés, avec des commentaires explicatifs en français et datés.

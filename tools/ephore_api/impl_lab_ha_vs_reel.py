@@ -4,7 +4,7 @@ Verite terrain = marqueurs sig_lf / sig_sf de l'API (independante des CSV du gro
 import json, collections
 import impl_lab_core as C
 
-A=json.load(open('/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/api_vitrine_instantane.json'))
+A=json.load(open('/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/api_vitrine_instantane.json'))
 
 def build(tf, src_ind='ha'):
     U=A['unites'][tf]; B=U['bougies']; n=len(B)

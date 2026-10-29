@@ -9,9 +9,9 @@
 import csv, glob, os, datetime, pickle
 from zoneinfo import ZoneInfo
 PARIS = ZoneInfo('Europe/Paris')
-DIRS = ["/Users/jeremk/Jeu 15:10", "/Users/jeremk/Ephore/Lun12:10", "/Users/jeremk/Ephore/Base 10:10",
-        "/Users/jeremk/Ephore/Singal", "/Users/jeremk/Ephore/Filtres", "/Users/jeremk/Ephore",
-        "/Users/jeremk/Ephore/Trendlinehelper"]
+DIRS = ["/Users/jeremk/Jeu 15:10", "/Users/jeremk/ERGON/Lun12:10", "/Users/jeremk/ERGON/Base 10:10",
+        "/Users/jeremk/ERGON/Singal", "/Users/jeremk/ERGON/Filtres", "/Users/jeremk/ERGON",
+        "/Users/jeremk/ERGON/Trendlinehelper"]
 CACHE = os.path.join(os.path.dirname(__file__), 'cache_data.pkl')
 
 
@@ -27,7 +27,7 @@ def parse_t(s):
 def files():
     out = []
     for d in DIRS:
-        rec = d != "/Users/jeremk/Ephore"
+        rec = d != "/Users/jeremk/ERGON"
         pat = os.path.join(d, '**', '*.csv') if rec else os.path.join(d, '*.csv')
         for f in glob.glob(pat, recursive=rec):
             b = os.path.basename(f)

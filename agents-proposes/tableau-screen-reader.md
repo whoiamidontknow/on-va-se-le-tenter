@@ -19,7 +19,7 @@ seule source. Une erreur de chiffre chez toi pollue la calibration pendant des j
 protocole ci-dessous.
 
 ## Lectures obligatoires
-`/Users/jeremk/Ephore/on-va-se-le-tenter/MEMOIRE_PROJET.md` : §4 (méthode, et surtout 4.3/4.4),
+`/Users/jeremk/ERGON/on-va-se-le-tenter/MEMOIRE_PROJET.md` : §4 (méthode, et surtout 4.3/4.4),
 §5 (ce que contiennent les tableaux déjà validés), §6.1 et §6.3 (ce qu'on cherche), §7 (où sont
 les CSV et quelles colonnes servent), §8 (fuseaux horaires).
 

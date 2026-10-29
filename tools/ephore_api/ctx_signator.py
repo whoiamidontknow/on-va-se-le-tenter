@@ -4,7 +4,7 @@ heure/fuseau, liquidité horaire, distance aux extrêmes, multi-barres, régime 
 Usage : import ctx_signator ; ctx_signator.build() -> liste de datasets enrichis.
 """
 import sys, datetime, statistics
-sys.path.insert(0, '/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0, '/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 from sim_signator_g4 import all_data, sma, rma, ema, v8
 
 WARM = 100

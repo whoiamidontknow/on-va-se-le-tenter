@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/moteur")
+import sys; sys.path.insert(0,"/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/moteur")
 import registre as R
 L=[
  dict(agent='TV3',famille='tv_3ans',recette='Préréglage 40 BIA-3 tel quel (testeur TradingView, 4 micros, sortie 8 bougies)',marche='MNQ1!',ut_signal='15',ut_entree='15',periode_debut='2023-10-25',periode_fin='2026-10-16',echantillon='tv_3ans',n_variantes_testees=1,n_trades=1228,pct_gagnants=55.3,r_moyen=0.073,pf=1.26,gain_net_usd=54488,dd_max_usd=15386,p_tradeify=0.832,verdict='avantage réel mais irrégulier : PF 1,15 / 1,20 / 1,38 par année, 10 trim. sur 13 positifs, 60 % du gain en 2025-26 ; shorts meilleurs que longs (PF 1,34 vs 1,20) ; P Tradeify = chrono 2 micros',fichier='recherche/tv3ans/RESULTATS.md'),

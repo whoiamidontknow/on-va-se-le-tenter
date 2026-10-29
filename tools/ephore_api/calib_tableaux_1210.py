@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Calibration des tableaux Ephore - screen MES 15m du 2026-10-12 14:11 Paris
-# Donnees : /Users/jeremk/Ephore/Lun12:10/  (OHLC deja en Heiken Ashi, PAS de volume)
+# Donnees : /Users/jeremk/ERGON/Lun12:10/  (OHLC deja en Heiken Ashi, PAS de volume)
 import csv, glob, os, math, itertools, sys
 
-DIR = '/Users/jeremk/Ephore/Lun12:10'
+DIR = '/Users/jeremk/ERGON/Lun12:10'
 CUT = '2026-10-12T14:15:00+02:00'   # rien apres l'heure du screen (14:11:41 Paris)
 
 FILES = {

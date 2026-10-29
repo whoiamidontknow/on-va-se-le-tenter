@@ -16,9 +16,9 @@ Tu cales un module de l'indicateur Ephore sur la **vérité terrain** fournie pa
 déjà copiée sur disque. Tu ne livres pas de Pine : tu livres une règle validée en chiffres.
 
 ## Lectures obligatoires avant de commencer
-- `/Users/jeremk/Ephore/on-va-se-le-tenter/MEMOIRE_PROJET.md` — §4 (méthode), §5 (déjà validé :
+- `/Users/jeremk/ERGON/on-va-se-le-tenter/MEMOIRE_PROJET.md` — §4 (méthode), §5 (déjà validé :
   ne recale pas ce qui l'est), §6 (ce qui reste), §8 (pièges), §9 (l'API).
-- `/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/sig_api.py` — le simulateur de
+- `/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/sig_api.py` — le simulateur de
   référence. **Tu t'en inspires et tu réutilises ses fonctions `ema` / `rma`** : elles
   reproduisent la sémantique Pine (amorçage inclus), ne réécris pas les tiennes autrement.
 

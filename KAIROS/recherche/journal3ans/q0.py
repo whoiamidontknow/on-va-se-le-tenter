@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/journal3ans")
+import sys; sys.path.insert(0,"/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/recherche/journal3ans")
 from charge import *
 import math
 df=charge(); print(len(df)); print(df.head(3).T); print(df.isna().sum()[lambda x:x>0]); print(df.raison.value_counts()); print(df.qte.unique())

@@ -8,7 +8,7 @@ Reference a battre : 153 exactes / 6 en trop / 2 manquees (warmup 100, groupe 4,
 """
 import csv, glob, os, datetime, math
 
-D = "/Users/jeremk/Ephore/Base 10:10/Ajustements/"
+D = "/Users/jeremk/ERGON/Base 10:10/Ajustements/"
 WARM = 100
 
 # ---------- moyennes ----------

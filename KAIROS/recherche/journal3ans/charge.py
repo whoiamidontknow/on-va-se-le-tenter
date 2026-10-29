@@ -1,7 +1,7 @@
 """Parse le journal 3 ans (preset 99) -> DataFrame, 1 ligne par trade."""
 import pandas as pd, numpy as np, glob
-J='/Users/jeremk/Ephore/KAIROS-data/dataset/Stratégie_V1_CME_MINI_MNQ1!_2026-10-17_ad887.xlsx'
-D='/Users/jeremk/Ephore/KAIROS-data/'
+J='/Users/jeremk/ERGON/KAIROS-data/dataset/Stratégie_V1_CME_MINI_MNQ1!_2026-10-17_ad887.xlsx'
+D='/Users/jeremk/ERGON/KAIROS-data/'
 def _f(x):
     try: return float(x)
     except: return np.nan

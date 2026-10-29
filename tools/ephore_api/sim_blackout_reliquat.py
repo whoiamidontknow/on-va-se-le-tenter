@@ -6,7 +6,7 @@ et sur l'heure, comparees aux 161 fleches conservees.
 """
 import csv, glob, os, re, datetime as dt, statistics
 
-SRC = "/Users/jeremk/Ephore/Base 10:10/Ajustements"
+SRC = "/Users/jeremk/ERGON/Base 10:10/Ajustements"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 def ema(x, p):

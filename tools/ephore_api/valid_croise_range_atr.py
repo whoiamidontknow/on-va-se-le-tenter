@@ -3,7 +3,7 @@ On cale k sur une partie du corpus (un instrument, ou une liste d'unites de temp
 on mesure sur l'autre. Corpus : groupe 4 de 'Base 10:10/Ajustements'.
 """
 import sys
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 import ctx_signator as C
 ds=C.build(); ev=C.events(ds)
 R=lambda d,i:(d['h'][i]-d['l'][i])/d['atr'][i] if d['atr'][i] else 9

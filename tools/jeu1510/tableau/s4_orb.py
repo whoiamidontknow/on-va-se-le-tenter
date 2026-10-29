@@ -5,7 +5,7 @@ plage des 15 premieres minutes selon plusieurs ancres (heure de Paris), calculee
 sur les bougies HA de l'unite du graphique ET en 5m (plus fin)."""
 from lib import *
 
-L12 = '/Users/jeremk/Ephore/Lun12:10/'
+L12 = '/Users/jeremk/ERGON/Lun12:10/'
 CAPS = [
     # jour, symbole, unite graphique, fichier(s), cloture HA a la capture, heure capture
     ('2026-10-12', 'MES', '15', L12 + 'CME_MINI_MESZ2026, 15_7f431.csv', L12 + 'CME_MINI_MESZ2026, 5_2eb65.csv', None, '14:11'),

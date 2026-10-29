@@ -22,7 +22,7 @@ aller-retour complet. Tu signales les problèmes ; **tu ne modifies aucun fichie
    verdict comme faisant autorité. Ta checklist vient ensuite, pour tout ce qu'un vérificateur
    de syntaxe ne voit pas. Si `pine_reference` / `pine_search` sont disponibles
    (`pinescript-mcp`), utilise-les pour vérifier une signature au lieu de la deviner.
-2. Lis `/Users/jeremk/Ephore/on-va-se-le-tenter/MEMOIRE_PROJET.md` §3 (règles de travail) et §8
+2. Lis `/Users/jeremk/ERGON/on-va-se-le-tenter/MEMOIRE_PROJET.md` §3 (règles de travail) et §8
    (pièges connus). §8 est ta liste de référence : elle a été payée en erreurs réelles.
 
 ## Checklist — pièges Pine v6 déjà rencontrés sur ce projet (§8)

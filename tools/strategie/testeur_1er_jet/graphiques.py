@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT = "/Users/jeremk/Ephore/on-va-se-le-tenter/tools/strategie/testeur_1er_jet/"
+OUT = "/Users/jeremk/ERGON/on-va-se-le-tenter/tools/strategie/testeur_1er_jet/"
 COUL = {"NQ": "#2a78d6", "ES": "#eb6834"}
 GRIS = "#8a8984"
 plt.rcParams.update({"figure.facecolor": "#fcfcfb", "axes.facecolor": "#fcfcfb", "axes.edgecolor": "#c9c8c2",

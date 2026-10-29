@@ -5,7 +5,7 @@ Reimplemente la detection V8 a partir des primitives de tools/signator_sim.py
 Usage : python3 valid_range_atr.py
 """
 import sys, os, glob, math
-sys.path.insert(0,'/Users/jeremk/Ephore/on-va-se-le-tenter/tools')
+sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/tools')
 import signator_sim as S
 
 def detect(d, use_filter, k):

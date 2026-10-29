@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/journal3ans"); sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/moteur")
+import sys; sys.path.insert(0,"/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/recherche/journal3ans"); sys.path.insert(0,"/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/moteur")
 from feat import *; from filtres import *; from regles_figees import *
 import registre
 d=prep()

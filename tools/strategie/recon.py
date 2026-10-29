@@ -136,7 +136,7 @@ def reconstruct(bars, tick=0.25, g=None, breaks=None, eps=None, pos=pos_dir):
 
 if __name__ == '__main__':
     import json
-    P = '/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api/'
+    P = '/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api/'
     q = lambda x, p: sorted(x)[int(p * (len(x) - 1))]
     for f in ['api_vitrine_instantane.json', 'api_vitrine_20261012.json']:
         A = json.load(open(P + f))

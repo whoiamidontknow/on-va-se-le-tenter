@@ -14,7 +14,7 @@ import pandas as pd
 import charge
 import risque
 
-OUT = "/Users/jeremk/Ephore/on-va-se-le-tenter/tools/strategie/testeur_1er_jet/"
+OUT = "/Users/jeremk/ERGON/on-va-se-le-tenter/tools/strategie/testeur_1er_jet/"
 # Correctif du bug : nombre de trades « sortis au signal » qui ont en fait plongé
 # sous le stop prévu sur la bougie 0. Le seuil MAE/R > 1 ne marche pas (le bruit
 # de R suffit à expliquer ces dépassements). Estimation : n_sûrs (trades stoppés

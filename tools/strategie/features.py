@@ -8,7 +8,7 @@ Signaux (calculés sur HA, comme l'indicateur) :
 Vrais prix : recon.reconstruct (validé sur l'API).
 """
 import sys, datetime, math
-sys.path.insert(0, '/Users/jeremk/Ephore/on-va-se-le-tenter/tools/ephore_api')
+sys.path.insert(0, '/Users/jeremk/ERGON/on-va-se-le-tenter/tools/ephore_api')
 from impl_lab_core import ema_first as ema, rma
 from zoneinfo import ZoneInfo
 import recon

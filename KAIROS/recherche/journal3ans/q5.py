@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,"/Users/jeremk/Ephore/on-va-se-le-tenter/KAIROS/recherche/journal3ans")
+import sys; sys.path.insert(0,"/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/recherche/journal3ans")
 from feat import *
 d=prep(); dv=d[d.dev].copy(); dv['min']=dv.entree_t.dt.minute
 for c in ['dA60','dA240','dA15','dA5','dA1','dA1D','tA60','tA240']:
