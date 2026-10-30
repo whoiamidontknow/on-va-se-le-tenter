@@ -1,4 +1,4 @@
-# Méthode en test — Strat5669 (20/10/2026)
+# Méthode en test — Strat5669 (20/10/2026, périmètre mis à jour le 30/10)
 
 > **Décision de Jeremy (20/10)** : on trade **tous les trades du 56** avec **`Strat5669.pine`**, qui marque chaque
 > trade **GODLIKE** (règle du 69 respectée : corps HA du Dashator 1 h ET 4 h ≥ 0,025 × ATR de son unité) ou
@@ -10,14 +10,43 @@
 ## La méthode
 - Code : **`Strat5669.pine`** (« Strat5669 (alertes) »). Recette identique dans `STRATEGIE_V1.pine`,
   préréglage 56 ; marque GODLIKE = règle du préréglage 69.
-- Marché : **MNQ1!**, **15 min**, bougies **Heikin Ashi**. Pas MES, pas BTC.
+- Marchés : **MNQ1!**, **MES1!** et **BTC CME**, **15 min**, bougies **Heikin Ashi**.
+  *(La ligne disait « MNQ1! seul, pas MES, pas BTC ». Elle datait du 20/10 et n'avait pas suivi
+  la décision du 24/10 — voir « Périmètre » ci-dessous.)*
 - Entrée : n'importe quel signal (flèche Signator Fort ou Moyen, flip Heishinator, cassure de trendline,
   cassure de session / Monday, climax, divergence) **seulement si** le Dashator 1 h **et** 4 h (dernière
   bougie clôturée) vont dans le sens du trade **et** si la clôture HA est à **0,6 ATR au plus** de l'EMA50
   dans le sens du trade (on achète un repli, pas une envolée).
 - Sortie : **stop 3 ATR**, **objectif 2 ATR**, sinon **sortie au marché après 16 bougies (4 h)**.
 - Horaires : entrées de **00:20 à 22:15 Paris** ; à plat à 22:15 (et 15:59 Chicago).
-- Compte : **Tradeify Select 50k, payouts Flex** (pas de perte journalière max). **2 micros fixes.**
+- Comptes : **MNQ et MES** sur **Tradeify Select 50k, payouts Flex** (pas de perte journalière max)
+  et sur un **challenge FTMO 100k** ; **BTC CME** sur **fonds propres**. **2 micros fixes.**
+
+## Périmètre — ce qui a réellement été décidé, et quand
+
+Reconstitué à partir des transcriptions de session, pas de mémoire.
+
+| Date | Décision, mot pour mot |
+|---|---|
+| **20/10 08:51** | « on reste comme ça et on voit ce que ça donne au bout de 30 trades si le compte passe ou pas » |
+| **24/10 14:35** | « le btc c'est du fond propre, donc je prendrais les trades mes et mnq sur tradeify et un de mes ftmo 100k challenge » |
+| **27/10 09:00** | « okay je retire btc index alors » |
+| **29/10 20:55** | « faire btc avec mes fonds propres en cryptos pour voir ce que ça donne (je risque que dalle sur ça) » |
+| **30/10** | « je pars du principe que maintenant je traite en BTC CME » |
+
+**Le test porte sur 30 trades PAR INDICE**, pas 30 au total.
+
+**Ce que ces 30 trades testent** : la fiabilité en direct et la validation du compte.
+**Pas** GODLIKE contre « 56 seul » — mesuré, 30 trades ne peuvent pas séparer 84,6 % de
+76,2 %, il en faudrait plusieurs centaines par groupe. Le verdict utile est binaire :
+le compte passe ou non.
+
+**BTC : le compteur repart de zéro.** Les 9 trades du 18 au 27 octobre sont tous sur
+`INDEX:BTCUSD`, l'index retiré le 27/10. Ils restent dans l'historique mais ne comptent
+pas pour les 30 — ils mesuraient un instrument qu'on ne trade plus.
+
+**Échéance réelle** : Jeremy ne prend pas tous les signaux (pas d'automatisation avant le
+payout). Au rythme observé, compter **12 à 14 semaines** plutôt que les 8 du calcul brut.
 
 ## Comment on y est arrivé (MNQ1! 15 min, 25/10/2023 → 16/10/2026, 2 micros)
 | | 45 | 48 | **56** |
