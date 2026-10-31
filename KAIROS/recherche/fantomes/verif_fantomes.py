@@ -184,7 +184,10 @@ def lignes_suivi(df, anciens, numbers=False):
                      "Résultat": (r.raison or "en cours").replace(" (P&L de l'historique)", ""),
                      "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else int(round(r.pnl)), "Fantôme ?": fant}
             k = (nom, r.sym if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
-            ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "")})
+            a = dict(anciens.get(k, {}))
+            if fant == "à vérifier" and "verdict" in a:
+                ligne["Fantôme ?"] = a["verdict"]
+            ligne.update({c: v for c, v in a.items() if v not in (None, "") and c != "verdict"})
             lignes.append([ligne.get(c) for c in cols])
         res[nom] = (cols, lignes)
     return res
@@ -211,19 +214,31 @@ def ecrire_suivi_numbers(df, chemin):
     """Même fiche, au format Numbers (bibliothèque numbers-parser) : menus locaux pour « Pris ? » et « Si non,
     pourquoi », en-têtes gris (auto) / jaunes (à remplir), colonnes perso conservées d'une fois sur l'autre."""
     from numbers_parser import Document, RGB
-    anciens = {}
+    anciens, lignes_anciennes = {}, {}
     if os.path.exists(chemin):
         for sh in Document(chemin).sheets:
             rows = sh.tables[0].rows(values_only=True)
             for row in rows[1:]:
-                r = dict(zip(rows[0], row))
+                r = {("P&L FTMO $" if c == "Fees" else c): v for c, v in zip(rows[0], row)}   # BTC : « Fees »
                 if r.get("Date"):
+                    lignes_anciennes[cle_ancienne(sh.name, r)] = r
                     a = {c: (None if r.get(c) == "—" else en_nombre(r.get(c))) for c in PERSO}
                     f = r.get("Fantôme ?")   # Jeremy y écrit parfois son propre constat : on le garde
                     if f not in (None, "", "non", "OUI", "à vérifier") and not str(f).startswith("non, devenu"):
                         a["Fantôme ?"] = f
+                    elif f not in (None, "", "à vérifier"):
+                        a["verdict"] = f   # constat d'un passage précédent, gardé si l'export actuel ne couvre plus le trade
                     anciens[cle_ancienne(sh.name, r)] = a
     feuilles = lignes_suivi(df, anciens, numbers=True)
+    # lignes ajoutées à la main par Jeremy (ex. trade né après coup, sans alerte) : gardées telles quelles
+    for (nom, sym, dt, hr, sens), r in lignes_anciennes.items():
+        cols, lignes = feuilles[nom]
+        if any((l[0], l[1], l[2], l[3]) == (sym, dt, hr, sens) for l in lignes):
+            continue
+        r = dict(r, Date=dt, Heure=hr)
+        lignes.append([None if r.get(c) == "—" else en_nombre(r.get(c)) if c in PERSO else r.get(c) for c in cols])
+    for cols, lignes in feuilles.values():
+        lignes.sort(key=lambda l: pd.to_datetime(f"{l[1]} {l[2]}", dayfirst=True, errors="coerce"))
     # numbers-parser donne à tous les tableaux la taille du dernier créé : on les crée donc tous de la même taille
     # (mêmes colonnes partout, Symbole compris ; autant de lignes que la feuille la plus longue).
     R = max(len(l) for _, l in feuilles.values()) + 1
@@ -246,7 +261,7 @@ def ecrire_suivi_numbers(df, chemin):
             doc.add_style(name="godlike", bg_color=RGB(255, 217, 102))
             doc.add_style(name="fantome", bg_color=RGB(244, 176, 132), bold=True)
         for j, c in enumerate(cols):
-            t.write(0, j, c, style="perso" if c in PERSO else "auto")
+            t.write(0, j, "Fees" if (nom == "BTC" and c == "P&L FTMO $") else c, style="perso" if c in PERSO else "auto")
             t.col_width(j, {"Remarque": 260, "Si non, pourquoi": 150, "Résultat": 105, "Fantôme ?": 140,
                             "Date": 85}.get(c, 80))
         for i, ligne in enumerate(lignes, 1):
