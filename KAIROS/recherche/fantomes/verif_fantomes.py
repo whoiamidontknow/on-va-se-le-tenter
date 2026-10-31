@@ -29,13 +29,15 @@ def nombre(txt, motif):
 
 # --- 1. alertes ------------------------------------------------------------------------------------------------
 logs = pd.concat([pd.read_csv(f).assign(fichier=f) for f in fichiers("TradingView_Alerts_Log*.csv")])
-logs = logs.drop_duplicates(["ID de l'alerte", "Heure", "Description"])
 logs["t"] = pd.to_datetime(logs["Heure"]).dt.tz_convert("Europe/Paris").dt.tz_localize(None)
+# heure du dernier message de chaque journal ≈ heure de son export : une alerte encore active a tourné jusque-là
+# (calculée avant de retirer les doublons, pour garder le journal le plus récent où l'alerte apparaît)
+logs["fin_journal"] = logs.groupby("fichier")["t"].transform("max")
+logs["fin_journal"] = logs.groupby("ID de l'alerte")["fin_journal"].transform("max")
+logs = logs.drop_duplicates(["ID de l'alerte", "Heure", "Description"])
 logs["sym"] = logs["Ticker"].str.split(",").str[0].str.split(":").str[-1]
 logs["tf"] = logs["Ticker"].str.split(", ").str[1]
 logs = logs.sort_values("t", kind="stable")
-# heure du dernier message de chaque journal ≈ heure de son export : une alerte encore active a tourné jusque-là
-logs["fin_journal"] = logs.groupby("fichier")["t"].transform("max")
 # nom de la stratégie de chaque alerte (lu dans les messages « ordre … effectué » qui commencent par le nom)
 STRATS = ("correctifstest", "Bot5669", "Strat5669", "Stratégie 56")
 strat_id = {}
@@ -77,14 +79,17 @@ for f in fichiers("*.xlsx"):
     tf = "5m" if (os.sep + "5min" + os.sep in f or nom.startswith("Bot")) else "15m"
     t = pd.read_excel(f, "Trades")
     t["Date et heure"] = pd.to_datetime(t["Date et heure"])
-    exports.setdefault((st, m.group(1), tf), []).append((t["Date et heure"].max(), t))
+    # export couvert jusqu'à son dernier trade, ou au moins jusqu'au jour de l'export (date dans le nom du fichier)
+    jour = re.search(r"_(\d{4}-\d{2}-\d{2})_", nom)
+    fin = max(t["Date et heure"].max(), pd.Timestamp(jour.group(1)) if jour else t["Date et heure"].max())
+    exports.setdefault((st, m.group(1), tf), []).append((fin, t))
 
 for tr in trades:
-    couverts = [t for mx, t in exports.get((tr["strat"] if tr["strat"] != "Stratégie 56" else "Strat5669", tr["sym"], tr["tf"]), []) if tr["entree"] <= mx]
+    couverts = [(mx, len(t), t) for mx, t in exports.get((tr["strat"] if tr["strat"] != "Stratégie 56" else "Strat5669", tr["sym"], tr["tf"]), []) if tr["entree"] <= mx]
     tr["historique"], tr["pnl_hist"] = "pas encore exporté", None
     if not couverts:
         continue
-    t = max(couverts, key=len)
+    t = max(couverts, key=lambda c: c[:2])[2]   # l'export le plus récent (le dernier recalcul)
     e = t[t["Type"].str.startswith("Entrer") & ((t["Date et heure"] - tr["entree"]).abs() <= pd.Timedelta(minutes=15))]
     e = e[e["Signal"].str.startswith(tr["sens"])]
     if e.empty:
@@ -297,10 +302,10 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
     t_ids = logs[logs["ID de l'alerte"].isin(set(s["id"]))]["t"]
     deb, fin = t_ids.min(), logs[logs["ID de l'alerte"].isin(set(s["id"]))]["fin_journal"].max()
     dernier = t_ids.max()   # après le dernier message de l'alerte : né après coup… ou alerte arrêtée
-    couverts = [t for mx, t in exports.get((st, sym, tf), []) if mx >= deb]
+    couverts = [(mx, len(t), t) for mx, t in exports.get((st, sym, tf), []) if mx >= deb]
     if not couverts:
         continue
-    t = max(couverts, key=len)
+    t = max(couverts, key=lambda c: c[:2])[2]   # l'export le plus récent (le dernier recalcul)
     e = t[t["Type"].str.startswith("Entrer") & (t["Date et heure"] >= deb) & (t["Date et heure"] <= fin)]
     for r in e.itertuples():
         proche = s[((s["entree"] - r[3]).abs() <= pd.Timedelta(minutes=15)) & (s["sens"] == r.Signal[0])]
@@ -319,7 +324,7 @@ if verrou:
         t_ids = logs[logs["ID de l'alerte"].isin(ids)]["t"]
         lignes = [f"DEBUT {t_ids.min():%Y-%m-%d %H:%M}"]
         lignes += [f"{r.entree:%Y-%m-%d %H:%M} {r.sens} {'G' if r.etiq == 'GODLIKE' else '5'}" for r in s.sort_values("entree").itertuples()]
-        lignes.append(f"FIN {t_ids.max():%Y-%m-%d %H:%M}")
+        lignes.append(f"FIN {logs[logs["ID de l'alerte"].isin(ids)]["fin_journal"].max():%Y-%m-%d %H:%M}")   # jusqu'à l'export du journal
         nom = os.path.join(verrou, f"verrou_{st}_{sym.replace('!', '')}_{tf}.txt")
         open(nom, "w", encoding="utf-8").write("\n".join(lignes) + "\n")
         print(f"Liste verrou : {nom} ({len(s)} trades)")
