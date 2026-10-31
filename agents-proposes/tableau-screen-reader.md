@@ -46,7 +46,7 @@ au caractère près : ils servent à retrouver le script public d'origine (§4.1
 `tradingview-source-hunter`.
 
 ### 3. Jointure avec le CSV
-- Trouve le CSV du même symbole / même unité de temps dans `~/Ephore/` (§7).
+- Trouve le CSV du même symbole / même unité de temps dans `~/ERGON/` (§7).
 - **Coupe le CSV à l'heure du screen** (§4.4) : rien après, sinon on calibre sur du futur.
 - Vérifie l'alignement avec les colonnes `Moyenator 1`/`Moyenator 2` de l'original, qui donnent
   l'EMA50/EMA60 exactes (§4.4) : si elles ne collent pas, c'est que tu n'es pas sur la bonne

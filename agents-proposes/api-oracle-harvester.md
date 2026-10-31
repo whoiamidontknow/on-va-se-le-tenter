@@ -25,7 +25,7 @@ déjà copiée sur disque. Tu ne livres pas de Pine : tu livres une règle valid
 ## RÈGLES DURES
 1. **ZÉRO réseau.** Jamais de curl, jamais de WebFetch, jamais d'appel à ephore-market.com.
    Ta seule source est `tools/ephore_api/api_vitrine_instantane.json` (copie du 02/10) et les
-   CSV de `~/Ephore/`. Si la copie te semble trop vieille, tu le signales dans ton rapport et
+   CSV de `~/ERGON/`. Si la copie te semble trop vieille, tu le signales dans ton rapport et
    tu continues avec elle.
 2. **Tu n'écris aucun `.pine`** et tu ne modifies jamais `PORSCHEONARRIVE.pine` ni
    `TABLEAU.pine`. Tes scripts Python vont dans `tools/ephore_api/` (nom explicite :

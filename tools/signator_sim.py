@@ -22,8 +22,8 @@ Attendu (MEMOIRE_PROJET.md §5) :
   Filtres (filtre coche)   :  65/65  exactes, 5 en trop
 
 Usage :
-  python3 tools/signator_sim.py ~/Ephore/Singal            # filtre OFF
-  python3 tools/signator_sim.py --filtre ~/Ephore/Filtres  # filtre ON
+  python3 tools/signator_sim.py ~/ERGON/Singal            # filtre OFF
+  python3 tools/signator_sim.py --filtre ~/ERGON/Filtres  # filtre ON
 """
 import csv, glob, os, sys
 from datetime import datetime
@@ -202,7 +202,7 @@ def simulate(d, use_filter):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     use_filter = "--filtre" in sys.argv
-    root = os.path.expanduser(args[0]) if args else os.path.expanduser("~/Ephore/Singal")
+    root = os.path.expanduser(args[0]) if args else os.path.expanduser("~/ERGON/Singal")
     files = sorted(glob.glob(os.path.join(root, "*.csv")))
     print(f"{root}  —  filtre annonces : {'ON' if use_filter else 'OFF'}  —  {len(files)} fichier(s)\n")
     hdr = f"{'fichier':<26}{'TF':>6}{'vol':>5}{'ema':>6}{'exactes':>9}{'trop':>6}{'manq':>6}{'classe':>8}"

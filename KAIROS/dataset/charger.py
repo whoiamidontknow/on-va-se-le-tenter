@@ -2,7 +2,7 @@
 
 Usage :
     from charger import charger
-    df = charger("~/Ephore/KAIROS-data/CME_MINI_MNQ1!, 15_ab12c.csv")
+    df = charger("~/ERGON/KAIROS-data/CME_MINI_MNQ1!, 15_ab12c.csv")
 
     ~/venv-quant/bin/python charger.py <fichier.csv>     # résumé en ligne de commande
 

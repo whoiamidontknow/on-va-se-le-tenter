@@ -7,7 +7,7 @@ def _md(self,index=True):
 pd.DataFrame.to_markdown=_md
 sys.path.insert(0,'/Users/jeremk/ERGON/on-va-se-le-tenter/KAIROS/propfirm')
 import simulateur as S
-D=os.path.expanduser('~/Ephore/KAIROS-data/slcourtoupas/58-68')
+D=os.path.expanduser('~/ERGON/KAIROS-data/slcourtoupas/58-68')
 KS=[0,0.01,0.02,0.03,0.04,0.05]
 def load(f):
     T=pd.read_excel(f,'Trades')

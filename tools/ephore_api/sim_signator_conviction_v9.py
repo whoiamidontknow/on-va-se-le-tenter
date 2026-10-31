@@ -2,7 +2,7 @@
 
 Verification sur les TROIS jeux de donnees independants :
   A) 14 exports 'Base 10:10/Ajustements' , groupe 4 (verite terrain principale)
-  B) ~/Ephore/Singal (filtre OFF) et ~/Ephore/Filtres (filtre ON)
+  B) ~/ERGON/Singal (filtre OFF) et ~/ERGON/Filtres (filtre ON)
   C) l'API publique du terminal web (copie du 02/10), 15m et 2m
 
 Usage : PYTHONPATH=. python3 sim_signator_conviction_v9.py
@@ -144,7 +144,7 @@ if __name__ == '__main__':
         print('    %s %s %s %s  dB %.2f  rng/ATR %.3f  adx %.1f'%(tag,e['inst'],e['tf'],e['t'],e['dband'],e['rngatr'],e['adx']))
     print()
     print('=== B) jeux externes (derniere paire de colonnes, cf. signator_sim) ===')
-    for folder, uf in (('~/Ephore/Singal', False), ('~/Ephore/Filtres', True)):
+    for folder, uf in (('~/ERGON/Singal', False), ('~/ERGON/Filtres', True)):
         t = B(folder, uf)
         print('  %-18s V8 %d/%d/%d   V9 %d/%d/%d'%(folder, *t[None][:3], *t[RNG_TH][:3]))
         for tag,f,ts in t[RNG_TH][3][:8]: print('      V9 %s %s %s'%(tag,f,ts))

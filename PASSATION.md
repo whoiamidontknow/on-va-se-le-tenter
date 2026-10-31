@@ -171,7 +171,7 @@ Les globaux npm ne sont pas partagés entre versions de Node : il faut réinstal
 ## 4. Changement de compte : ce qui survit, ce qui ne survit pas
 
 **Survit** (sur le disque, hors compte) : la mémoire auto (4 fichiers), `~/.claude/settings.json`
-(`model: opus`, `effortLevel: high`, `tui: fullscreen`), `~/Ephore/.claude/settings.local.json`
+(`model: opus`, `effortLevel: high`, `tui: fullscreen`), `~/ERGON/.claude/settings.local.json`
 (5 règles de permission), le dépôt git, la **clé SSH GitHub** (authentifiée comme `whoiamidontknow`),
 toutes les données CSV, la formation, `whisper-env`.
 
@@ -231,7 +231,7 @@ le commiter dans `tools/`, et **ne plus jamais laisser un script décisif dans l
 2. Réparer les MCP (§1) — ça change la façon de travailler pour tout le reste.
 3. Installer superpowers + copier les 8 agents maison (§2).
 4. Recréer `tools/signator_sim.py` depuis `TABLEAU.pine` V8 (§7), vérifier qu'il retrouve
-   112/113 et 65/65 sur `~/Ephore/Singal` et `~/Ephore/Filtres`, puis commit.
+   112/113 et 65/65 sur `~/ERGON/Singal` et `~/ERGON/Filtres`, puis commit.
 5. Demander à Jeremy ce qu'il veut attaquer : **TBT** (il manque 3-4 screens du tableau de
    l'original au moment où TBT change, + le CSV au même instant) ou les **tableaux manquants**
    (INDICATOR|SIGNAL, TIMEFRAME|TREND|STRENGTH, Dashator).

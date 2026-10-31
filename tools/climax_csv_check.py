@@ -51,7 +51,7 @@ def check(d):
 
 
 def main():
-    root = os.path.expanduser("~/Ephore")
+    root = os.path.expanduser("~/ERGON")
     files = sorted(glob.glob(f"{root}/Singal/*.csv")) + sorted(glob.glob(f"{root}/Filtres/*.csv"))
     hdr = f"{'fichier':<30}{'barres':>7}{'orig B/S':>10}{'exact':>7}{'trop':>6}{'manq':>6}"
     print(hdr); print("-" * len(hdr))

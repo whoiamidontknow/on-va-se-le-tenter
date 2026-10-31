@@ -14,7 +14,7 @@ dataset/charger.py :
 
 Source « cache » : tools/strategie/cache_series.pkl (exports HA ≈ 21/08 -> 15/10/2026, vrais prix
 reconstitués depuis le HA : fiables en 15m, PAS en 1-3m — voir MEMOIRE_PROJET §15).
-Source « dataset » : exports DATASET.pine dans ~/Ephore/KAIROS-data (dataset/charger.py).
+Source « dataset » : exports DATASET.pine dans ~/ERGON/KAIROS-data (dataset/charger.py).
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 SB = os.path.abspath(os.path.join(ICI, '..', '..'))
 RACINE = os.path.abspath(os.path.join(SB, '..'))
 STRAT = os.path.join(RACINE, 'tools', 'strategie')
-DOSSIER_DATASET = os.path.expanduser('~/Ephore/KAIROS-data')
+DOSSIER_DATASET = os.path.expanduser('~/ERGON/KAIROS-data')
 
 SOURCE = os.environ.get('E2M_SOURCE', 'cache')        # 'cache' | 'dataset'
 

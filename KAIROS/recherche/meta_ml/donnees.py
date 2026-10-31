@@ -35,7 +35,7 @@ for p in (os.path.join(SB, 'moteur'), os.path.join(SB, 'dataset')):
         sys.path.insert(0, p)
 import moteur as M  # noqa: E402
 
-DOSSIER_DATASET = os.path.expanduser('~/Ephore/KAIROS-data')
+DOSSIER_DATASET = os.path.expanduser('~/ERGON/KAIROS-data')
 CACHE_DF = os.path.join(ICI, 'cache', 'series_cache.pkl')
 INSTR = {'MES': 'MES', 'MES1': 'MES', 'NQZ': 'MNQ', 'MNQ1!': 'MNQ', 'MES1!': 'MES', 'NQ1!': 'MNQ',
          'MESZ2026': 'MES', 'NQZ2026': 'MNQ'}

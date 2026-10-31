@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Confirmation croisee du Blackout sur un AUTRE corpus : ~/Ephore/Singal
-(case filtre DECOCHEE) contre ~/Ephore/Filtres (case COCHEE), meme version
+"""Confirmation croisee du Blackout sur un AUTRE corpus : ~/ERGON/Singal
+(case filtre DECOCHEE) contre ~/ERGON/Filtres (case COCHEE), meme version
 d'Ephore (30/09), memes symboles / unites de temps.
 
 On compare, barre par barre, les fleches de l'ORIGINAL entre les deux exports :
@@ -43,8 +43,8 @@ def scan(d):
             res[k] = (a, b)
     return res
 
-OFF = scan(os.path.expanduser("~/Ephore/Singal"))
-ON = scan(os.path.expanduser("~/Ephore/Filtres"))
+OFF = scan(os.path.expanduser("~/ERGON/Singal"))
+ON = scan(os.path.expanduser("~/ERGON/Filtres"))
 
 print("unites communes :", sorted(set(OFF) & set(ON)))
 retirees, gardees = [], []

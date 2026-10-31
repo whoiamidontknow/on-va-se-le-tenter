@@ -16,7 +16,7 @@ def charge(f):
                       'mfe_usd': ex['Excursion favorable USD'] / q}).dropna().reset_index(drop=True)
     return None, t
 
-D = os.path.expanduser('~/Ephore/KAIROS-data/slcourtoupas/58-68')
+D = os.path.expanduser('~/ERGON/KAIROS-data/slcourtoupas/58-68')
 R = S.charge_regles(); KW = dict(max_jours_eval=250, max_jours_funded=250, max_payouts=5, bloc_jours=5, n_sim=2000, ordre='heuristique')
 L = []
 for f in sorted(glob.glob(os.path.join(D, '*.xlsx'))):

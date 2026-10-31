@@ -25,8 +25,8 @@ Sortie : oracle_fort_moyen.csv dans le meme dossier.
 import csv, glob, math, os, re, sys
 from datetime import datetime
 
-AJUST = os.path.expanduser("~/Ephore/Base 10:10/Ajustements")
-LUN = os.path.expanduser("~/Ephore/Lun12:10")
+AJUST = os.path.expanduser("~/ERGON/Base 10:10/Ajustements")
+LUN = os.path.expanduser("~/ERGON/Lun12:10")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "oracle_fort_moyen.csv")
 WARMUP = 120
 

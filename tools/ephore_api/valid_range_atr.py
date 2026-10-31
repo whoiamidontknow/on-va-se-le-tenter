@@ -1,5 +1,5 @@
 """Validation INDEPENDANTE du garde-fou 'range >= k*ATR' sur les lots de CSV autres
-que 'Base 10:10/Ajustements' : ~/Ephore/Singal (filtre OFF), ~/Ephore/Filtres (filtre ON).
+que 'Base 10:10/Ajustements' : ~/ERGON/Singal (filtre OFF), ~/ERGON/Filtres (filtre ON).
 Reimplemente la detection V8 a partir des primitives de tools/signator_sim.py
 (ema/rma/load) pour pouvoir inserer le garde-fou avant comptage.
 Usage : python3 valid_range_atr.py
@@ -68,5 +68,5 @@ def lot(root,use_filter):
             for p in perdus[:6]: print('      perdue:',p[0],p[1],'range/ATR=%.2f'%p[2])
 
 if __name__=='__main__':
-    lot('~/Ephore/Singal',False)
-    lot('~/Ephore/Filtres',True)
+    lot('~/ERGON/Singal',False)
+    lot('~/ERGON/Filtres',True)

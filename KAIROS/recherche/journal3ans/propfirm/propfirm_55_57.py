@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import simulateur as S
 from propfirm_46_54 import charge
 
-B = os.path.expanduser('~/Ephore/KAIROS-data/slcourtoupas')
+B = os.path.expanduser('~/ERGON/KAIROS-data/slcourtoupas')
 F = sorted(glob.glob(os.path.join(B, '55-57', '*.xlsx')))
 R = S.charge_regles(); KW = dict(max_jours_eval=250, max_jours_funded=250, max_payouts=5, bloc_jours=5, n_sim=2000, ordre='heuristique')
 L = []

@@ -19,7 +19,7 @@ Compte 5 minutes par fichier.
 5. **Exporter.** Menu du graphique (flèche à côté du nom de la disposition, en haut à droite) →
    **« Exporter les données du graphique… »** → Format de l'heure : **ISO** → **Exporter**.
 
-6. **Ranger le fichier.** Dépose-le dans **`~/Ephore/KAIROS-data/`** (crée le dossier la
+6. **Ranger le fichier.** Dépose-le dans **`~/ERGON/KAIROS-data/`** (crée le dossier la
    première fois). **Ne le renomme pas** : le nom donné par TradingView (ex. `CME_MINI_MNQ1!, 15_ab12c.csv`)
    contient déjà le symbole et l'unité, le programme le lit tout seul.
 
@@ -31,4 +31,4 @@ Compte 5 minutes par fichier.
 
 ---
 Contrôle côté équipe (pas besoin de le faire) :
-`~/venv-quant/bin/python KAIROS/dataset/verifier.py ~/Ephore/KAIROS-data/*.csv`
+`~/venv-quant/bin/python KAIROS/dataset/verifier.py ~/ERGON/KAIROS-data/*.csv`

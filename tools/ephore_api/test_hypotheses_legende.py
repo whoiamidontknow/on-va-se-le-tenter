@@ -2,7 +2,7 @@
 """Teste les hypotheses issues du decodage de la legende TradingView (10/10).
 Cible : groupe 4 des exports Base 10:10/Ajustements. Warmup 100."""
 import csv, glob, collections, itertools, os
-D=os.path.expanduser('~/Ephore/Base 10:10/Ajustements')
+D=os.path.expanduser('~/ERGON/Base 10:10/Ajustements')
 def ema(x,p):
     a=2/(p+1); o=[x[0]]
     for v in x[1:]: o.append(a*v+(1-a)*o[-1])

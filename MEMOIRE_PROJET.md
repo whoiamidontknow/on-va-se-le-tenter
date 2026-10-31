@@ -159,8 +159,8 @@ franchi ». Ce n'est donc pas un seuil ajusté aux données.
 | corpus | V8 | V9 |
 |---|---|---|
 | Ajustements groupe 4 (155 flèches, MES+NQ, 7 TF, ~9000 barres) | 153/6/2 — précision 96.2 % | **153/0/2 — précision 100 %** |
-| `~/Ephore/Singal` | 118/5/1 | 118/**3**/1 |
-| `~/Ephore/Filtres` | 70/5/0 | 70/**3**/0 |
+| `~/ERGON/Singal` | 118/5/1 | 118/**3**/1 |
+| `~/ERGON/Filtres` | 70/5/0 | 70/**3**/0 |
 | API terminal 15m | 23/6/0 | 23/**5**/0 |
 
 Aucune perte de rappel nulle part. Les 3 « en trop » restants sur Singal et Filtres sont les
@@ -282,8 +282,8 @@ Les scripts d'origine (`signator_final/*.py`, `signator_v9/NOTES.md`) vivaient d
 scratchpad `/tmp` et sont **perdus**. Le simulateur a été réécrit depuis `TABLEAU.pine` V8 et
 committé — **ne plus jamais laisser ce code hors du dépôt**.
 ```bash
-python3 tools/signator_sim.py          ~/Ephore/Singal    # filtre OFF
-python3 tools/signator_sim.py --filtre ~/Ephore/Filtres   # filtre ON
+python3 tools/signator_sim.py          ~/ERGON/Singal    # filtre OFF
+python3 tools/signator_sim.py --filtre ~/ERGON/Filtres   # filtre ON
 ```
 Résultats du 10/10, qui reproduisent la V8 :
 - Singal (filtre OFF) : **118/119 = 99.2 % de rappel**, 5 en trop, 1 manquée, 1 écart de classe.
@@ -333,7 +333,7 @@ Résultats du 10/10, qui reproduisent la V8 :
    donnée. Restent jamais traités : Detector (order blocks), Rangeator, Breakator.
 5. Jeremy utilise la **dernière version d'Ephore** depuis le 30/09 au soir : certaines valeurs ont pu bouger.
 
-## 7. Où sont les données (dossier `~/Ephore/`)
+## 7. Où sont les données (dossier `~/ERGON/`)
 - `Singal/` (sic) : 14 exports HA avec volume, MES + NQ, de 1 à 240 min, filtre Signator **décoché**.
 - `Filtres/` : 7 exports HA avec volume, filtre **coché** (dernière version d'Ephore).
 - `Trendlinehelper/` : 15 exports HA (trendlines), MES + NQ, de 1 à 240 min.
@@ -826,7 +826,7 @@ Dossier `KAIROS/` (SPEC.md, registre `registre/registre_tests.csv`, journal `rec
   2 micros : PF 1,35 sur 3 ans MNQ.
 - **Méthode qui a débloqué** : préréglage 99 JOURNAL (V13) = les variables de contexte sont écrites dans le
   commentaire d'entrée ; l'export xlsx du backtest profond (3 ans) devient une vérité terrain exploitable
-  hors ligne (`~/Ephore/KAIROS-data/dataset/`). Le graphique ne charge que 3 mois : DATASET.pine inutile.
+  hors ligne (`~/ERGON/KAIROS-data/dataset/`). Le graphique ne charge que 3 mois : DATASET.pine inutile.
 - **Recette JR3 → préréglage 45** (V14, défaut) : Dashator 1h ET 4h dans le sens + repli ≤ 0,6 ATR sur l'EMA50.
   **Confirmé au testeur 3 ans** (`KAIROS/recherche/journal3ans/CONFIRMATION_TV.md`) :
   MNQ1! 656 trades, 75,5 %, PF 4,51, baisse max 1 162 $ (2 micros), chaque année ≥ 73 % / PF 3,9 ;

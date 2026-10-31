@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validation croisee de la regle BLACKOUT sur les DEUX corpus :
   corpus A = "Base 10:10/Ajustements"  (groupe 4 -> groupe 2, 176 -> 161)
-  corpus B = ~/Ephore/Singal (filtre OFF) -> ~/Ephore/Filtres (filtre ON)
+  corpus B = ~/ERGON/Singal (filtre OFF) -> ~/ERGON/Filtres (filtre ON)
 Balaye la marge et le jeu de creneaux, mode = test sur l'heure d'OUVERTURE
 de la bougie en heure de Paris.
 """
@@ -79,7 +79,7 @@ def scan(d):
     return res
 
 def corpusB():
-    OFF, ON = scan(os.path.expanduser("~/Ephore/Singal")), scan(os.path.expanduser("~/Ephore/Filtres"))
+    OFF, ON = scan(os.path.expanduser("~/ERGON/Singal")), scan(os.path.expanduser("~/ERGON/Filtres"))
     out = []
     for k in sorted(set(OFF) & set(ON)):
         common = OFF[k][1] & ON[k][1]

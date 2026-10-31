@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Extrait l'oracle Blackout : flèches groupe 2 vs groupe 4 sur les 14 CSV
-de ~/Ephore/Base 10:10/Ajustements/.  Sortie : CSV d'oracle + effectifs."""
+de ~/ERGON/Base 10:10/Ajustements/.  Sortie : CSV d'oracle + effectifs."""
 import csv, glob, os, re, datetime as dt
 
 SRC = "/Users/jeremk/ERGON/Base 10:10/Ajustements"

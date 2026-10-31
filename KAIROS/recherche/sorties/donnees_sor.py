@@ -19,7 +19,7 @@ et les NIVEAUX bruts par famille, colonnes `lv_<FAM>_<j>` (NaN si absent), connu
 Source « cache » : tools/strategie/cache_series.pkl + tools/strategie/preregles/niveaux.py (vrais prix
 reconstitués depuis le HA, fiables en 15m). Séries 15m : MES1! avr.-juil. (sans volume : ni Detector ni
 climax ; flèches Signator de l'original), MESZ sept.-oct., NQZ sept.-oct. (tradé en MNQ).
-Source « dataset » : exports DATASET.pine dans ~/Ephore/KAIROS-data (dataset/charger.py).
+Source « dataset » : exports DATASET.pine dans ~/ERGON/KAIROS-data (dataset/charger.py).
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 SB = os.path.abspath(os.path.join(ICI, '..', '..'))
 RACINE = os.path.abspath(os.path.join(SB, '..'))
 STRAT = os.path.join(RACINE, 'tools', 'strategie')
-DOSSIER_DATASET = os.path.expanduser('~/Ephore/KAIROS-data')
+DOSSIER_DATASET = os.path.expanduser('~/ERGON/KAIROS-data')
 
 SOURCE = os.environ.get('SOR_SOURCE', 'cache')        # 'cache' | 'dataset'
 UT = int(os.environ.get('SOR_UT', '15'))
