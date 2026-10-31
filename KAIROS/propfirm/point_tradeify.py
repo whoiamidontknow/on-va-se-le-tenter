@@ -97,23 +97,34 @@ def main():
         print("     non calculable : relancer avec --jours")
         print("     C'est la règle qui bloque une éval pourtant réussie.")
     else:
+        # FORMULE VÉRIFIÉE sur le tableau de bord Tradeify du 31/10 :
+        # meilleure journée / profit NET, et non / profit des jours gagnants.
+        # 603,80 / 738,75 = 81,73 % — exactement leur affichage.
         gains = [(d, p) for d, p in jours if p > 0]
-        total = sum(p for _, p in gains)
-        if total <= 0:
+        if not gains or profit <= 0:
             print("     aucun jour gagnant")
         else:
             d, meilleur = max(gains, key=lambda x: x[1])
-            part = 100 * meilleur / total
-            print(f"     meilleure journée : {d}  {meilleur:+,.0f} $  "
-                  f"= {part:.0f} % du profit brut")
+            part = 100 * meilleur / profit
+            print(f"     meilleure journée : {d}  {meilleur:+,.0f} $")
+            print(f"     soit {part:.1f} % du profit net ({profit:,.0f} $) — "
+                  f"limite {CONSISTANCE} %")
+            requis = meilleur / (CONSISTANCE / 100)
             if part > CONSISTANCE:
-                besoin = meilleur / (CONSISTANCE / 100) - total
-                print(f"     ✗ DÉPASSE. Il faut {besoin:,.0f} $ de profit ailleurs")
-                print(f"       pour repasser sous {CONSISTANCE} %.")
+                print(f"     ✗ au-dessus. Il faut un profit net de {requis:,.0f} $")
+                print(f"       pour repasser dessous, soit {requis - profit:+,.0f} $ de plus.")
+                if requis <= OBJECTIF:
+                    print(f"     → se résout tout seul avant l'objectif : à {OBJECTIF:,} $,")
+                    print(f"       une journée peut aller jusqu'à "
+                          f"{OBJECTIF * CONSISTANCE / 100:,.0f} $.")
+                else:
+                    print(f"     ⚠ NE se résout PAS avant l'objectif : à {OBJECTIF:,} $")
+                    print(f"       cette journée pèserait encore "
+                          f"{100 * meilleur / OBJECTIF:.0f} %.")
             else:
-                marge_c = meilleur / (CONSISTANCE / 100) - total
-                print(f"     ✓ sous la limite (marge {-marge_c:,.0f} $ "
-                      f"avant de la franchir)")
+                print(f"     ✓ sous la limite")
+            print(f"     À l'arrivée ({OBJECTIF:,} $), aucune journée ne devra "
+                  f"dépasser {OBJECTIF * CONSISTANCE / 100:,.0f} $.")
 
     print(f"\n  Taille     {MICROS} micros fixes (méthode) — max 40")
     print("\n" + "═" * 60)

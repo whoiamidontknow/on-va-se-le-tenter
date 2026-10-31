@@ -20,7 +20,41 @@
 - Sortie : **stop 3 ATR**, **objectif 2 ATR**, sinon **sortie au marché après 16 bougies (4 h)**.
 - Horaires : entrées de **00:20 à 22:15 Paris** ; à plat à 22:15 (et 15:59 Chicago).
 - Comptes : **MNQ et MES** sur **Tradeify Select 50k, payouts Flex** (pas de perte journalière max)
-  et sur un **challenge FTMO 100k** ; **BTC CME** sur **fonds propres**. **2 micros fixes.**
+  et sur un **challenge FTMO 100k** ; **BTC CME** sur **fonds propres**.
+
+## Dimensionnement — décidé le 31/10
+
+**450 $ de risque par DIRECTION, pas par instrument.** Le nombre de contrats flotte avec
+l'ATR, puisque le stop est à 3 ATR : on vise un montant, pas une taille fixe.
+
+| Situation | Quoi faire |
+|---|---|
+| Un seul signal | **450 $** dessus |
+| MNQ et MES, **même sens** | **MNQ seul à 450 $** — ne pas doubler |
+| MNQ et MES, sens opposés | 450 $ chacun (jamais observé à ce jour) |
+
+**Pourquoi pas 450 $ chacun.** MES et MNQ sont corrélés à ~0,9, et la recette exige que le
+Dashator 1 h et 4 h aillent dans le sens du trade — or le Dashator lit la direction du
+marché, pas celle d'un contrat. Les deux partent donc presque toujours ensemble et dans le
+même sens : 3 jours sur 5 depuis le 20/10, dont le 28/10 à 18:45 à la même minute.
+
+Ce doublon a coûté deux fois : **900 $ d'exposition réelle** (45 % de la marge en une
+barre), et la plus grosse journée du compte — celle qui porte la consistance à 81,73 %.
+À MNQ seul, cette journée aurait pesé 42 % au lieu de 81,73 %.
+
+**Le seuil de sécurité est entre 500 et 550 $**, pas entre 400 et 500 : à 550 $ on passe
+de 5 pertes fatales à 4, et le risque de ruine quadruple. Calculé sur le taux de perte
+**réel en direct (25 %)**, pas celui du backtest (17 %).
+
+**Réserve** : ces calculs reposent sur 16 trades. Si le taux de perte réel se dégrade vers
+35 %, 450 $ redevient trop.
+
+## Le plafond qui peut bloquer l'éval
+
+**Aucune journée ne doit dépasser 1 200 $** — la règle de consistance Tradeify impose
+qu'aucun jour ne pèse plus de 40 % du profit net, et l'objectif est de 3 000 $.
+
+Elle ne se corrige pas après coup. Point hebdomadaire : `propfirm/point_tradeify.py`.
 
 ## Périmètre — ce qui a réellement été décidé, et quand
 
