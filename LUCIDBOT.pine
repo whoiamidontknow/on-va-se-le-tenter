@@ -1,6 +1,7 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
-// BOT5669 — BOT 5 MIN, TRADES GODLIKE SEULEMENT — 23/10/2026
+// LUCIDBOT — BOT 5 MIN, TRADES GODLIKE SEULEMENT
+// Créé le 23/10/2026 sous le nom Bot5669, renommé le 03/11 pour le compte Lucid.
 // Même recette que Strat5669 / STRATEGIE_V1 préréglage 56 (même moteur, mêmes calculs), avec :
 //   - entrée seulement si GODLIKE : Dashator 1 h ET 4 h dans le sens du trade avec un corps
 //     HA ≥ 0,025 × ATR de son unité (règle du préréglage 69) ;
@@ -223,7 +224,7 @@
 //                   une bougie HA quasi neutre changeait de couleur entre le
 //                   direct et l'historique. Préréglages 58 (0,1 ATR), 59 (0,2).
 // ══════════════════════════════════════════════════════════════
-strategy("Bot5669 (5 min GODLIKE)", overlay=true,
+strategy("LucidBot (MNQ 5 min)", overlay=true,
      initial_capital=25000, currency=currency.USD,
      default_qty_type=strategy.fixed, default_qty_value=1, pyramiding=0,
      commission_type=strategy.commission.cash_per_contract, commission_value=1.25,
@@ -246,11 +247,25 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 grp_bot   = "=== BOT ==="
 bot_god   = input.bool(true, "Seulement les trades GODLIKE", group=grp_bot)
-bot_risk  = input.float(250, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
+bot_risk  = input.float(450, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
      tooltip="Micros = arrondi inférieur de risque / (distance du stop en points × valeur du point). MNQ : 2 $ le point par micro.")
-bot_rmax  = input.float(400, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
+bot_rmax  = input.float(600, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
      tooltip="Si le calcul donne 0 micro : 1 micro est pris tant que son risque reste sous ce montant ; au-delà, le trade est sauté.")
-bot_qmax  = input.int(4, "Micros maximum", group=grp_bot, minval=1, maxval=40)
+// CALIBRAGE — réglé à 1 le 03/11/2026, à la demande de Jeremy.
+// Ce plafond s'applique APRÈS le calcul de taille : quel que soit le risque
+// visé, on ne prend jamais plus d'un micro. C'est le seul interrupteur à
+// bouger pour passer du calibrage au régime normal, et il est réversible.
+//
+// Pendant les 7 jours gratuits de PickMyTrade, l'objectif n'est pas de gagner
+// de l'argent : c'est de vérifier que la plomberie tient — que l'ordre part,
+// que le format JSON passe, que la taille est juste, que la mise à plat de
+// 15h40 se déclenche. Un micro suffit pour tout ça et limite la casse si
+// quelque chose est mal câblé.
+//
+// POUR REPASSER EN RÉGIME NORMAL : remettre 4. Le risque visé de 450 $ est
+// déjà correct, il n'y a rien d'autre à changer.
+bot_qmax  = input.int(1, "Micros maximum", group=grp_bot, minval=1, maxval=40,
+     tooltip="1 = calibrage, un micro par trade quel que soit le risque visé. Remettre 4 une fois la chaîne validée.")
 bot_fin   = input.int(1540, "À plat avant (heure de Chicago, HHMM)", group=grp_bot, minval=0, maxval=2359,
      tooltip="Lucid ferme d'office à 15:45 Chicago, Tradeify à 15:45 aussi : 15:40 laisse une marge. Suit les changements d'heure américains.")
 w_on      = input.bool(false, "Envoyer les ordres au courtier (webhook PickMyTrade)", group=grp_bot)
@@ -1721,6 +1736,45 @@ if jour_paris != jour_paris[1]
     nb_jour := 0
 jour_ok = f_maxJour == 0 or nb_jour < f_maxJour
 
+// ══════════════════════════════════════════════════════════════
+//  COUPE-CIRCUITS — ajoutés le 03/11/2026
+// ══════════════════════════════════════════════════════════════
+// Lucid l'écrit noir sur blanc : « vous êtes responsable des erreurs ou bugs
+// du logiciel ». Aucune indulgence en cas de violation causée par le bot.
+// Et le compte choisi a une LIMITE JOURNALIÈRE de 1 200 $ : la franchir ne
+// coûte pas un reset à 80 $, elle coûte le compte.
+//
+// Le bot tourne la nuit sans personne. Ces deux plafonds sont ce qui sépare
+// un incident d'un compte perdu. Ils arrêtent les ENTRÉES pour la journée ;
+// une position déjà ouverte garde son stop et son objectif.
+grp_cc    = "=== COUPE-CIRCUITS ==="
+cc_on     = input.bool(true, "Activer les coupe-circuits", group=grp_cc)
+cc_perte  = input.float(900, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
+     minval=0, step=50,
+     tooltip="0 = désactivé. 900 $ laisse 300 $ de marge sous la limite journalière de 1 200 $ de Lucid — le temps qu'une position ouverte se referme sans faire sauter le compte.")
+cc_suite  = input.int(3, "Arrêt du jour après N pertes d'affilée", group=grp_cc,
+     minval=0, maxval=20,
+     tooltip="0 = désactivé. Trois pertes consécutives sur une stratégie à 81 % de réussite est un événement rare : soit le marché a changé de régime, soit quelque chose ne va pas. Dans les deux cas, mieux vaut s'arrêter et regarder.")
+
+// P&L de la journée : écart du capital depuis la première barre du jour.
+var float cc_eq0 = na
+var int   cc_pertes = 0
+if jour_paris != jour_paris[1]
+    cc_eq0   := strategy.equity
+    cc_pertes := 0
+if na(cc_eq0)
+    cc_eq0 := strategy.equity
+
+// Compte les pertes qui s'enchaînent, remis à zéro par le premier gain.
+if strategy.closedtrades > strategy.closedtrades[1]
+    for i = strategy.closedtrades[1] to strategy.closedtrades - 1
+        cc_pertes := strategy.closedtrades.profit(i) < 0 ? cc_pertes + 1 : 0
+
+cc_jourPL = strategy.equity - cc_eq0
+cc_stopP  = cc_on and cc_perte > 0 and cc_jourPL <= -cc_perte
+cc_stopS  = cc_on and cc_suite > 0 and cc_pertes >= cc_suite
+cc_ok     = not (cc_stopP or cc_stopS)
+
 // Feu
 feu_okL = not f_feuOn or (f_feuMode == "Part dans le sens ≥ seuil" ? t3_pLong  >= f_feuSeuil : t3_pShort < f_feuSeuil)
 feu_okS = not f_feuOn or (f_feuMode == "Part dans le sens ≥ seuil" ? t3_pShort >= f_feuSeuil : t3_pLong  < f_feuSeuil)
@@ -1742,7 +1796,7 @@ det_okS = not f_detOn or not det_blS
 clx_okL = not f_clxOn or not (clx_last == -1 and clx_frais)
 clx_okS = not f_clxOn or not (clx_last == 1 and clx_frais)
 
-commun_ok = hr_ok and bo_ok and jour_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
+commun_ok = hr_ok and bo_ok and jour_ok and cc_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
 sens_okL  = e_sens != "Short seulement"
 sens_okS  = e_sens != "Long seulement"
 jr_e     = math.round((close - ema_m1) / sg_atr * 10) / 10
@@ -1928,10 +1982,21 @@ f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + "
 // ── Messages webhook PickMyTrade (KAIROS/execution/ALERTES.md) ──
 f_wHead(string data, int q) =>
     '{"symbol":"' + w_sym + '","date":"' + str.format_time(timenow, "yyyy-MM-dd'T'HH:mm:ss'Z'", "UTC") + '","data":"' + data + '","quantity":' + str.tostring(q) + ',"price":' + f_px(r_c) + ',"order_type":"MKT"'
+// CORRIGÉ le 03/11/2026, d'après le JSON produit par leur propre générateur
+// pour le compte de Jeremy. Nous envoyions « account_id » à plat ; eux
+// produisent un tableau « multiple_accounts ». Un compte non reconnu, c'est un
+// ordre qui part et n'arrive nulle part — sans erreur visible.
+//
+// Vérifié au passage et CONFIRMÉ : « dollar_sl » contient bien une DISTANCE EN
+// POINTS, pas un montant en dollars. Leur documentation publique affirme le
+// contraire, leur générateur tranche — saisir 10 dans « Stop Loss Distance
+// (points) » produit « dollar_sl: 10 ». Le nom du champ est trompeur, son
+// contenu ne l'est pas.
 f_wTail() =>
-    ',"token":"' + w_tok + '","account_id":"' + w_acc + '"}'
+    ',"token":"' + w_tok + '","multiple_accounts":[{"token":"' + w_tok +
+     '","account_id":"' + w_acc + '","risk_percentage":0,"quantity_multiplier":1}]}'
 f_wEntree(int d, int q, float distSL, float distTP) =>
-    f_wHead(d > 0 ? "buy" : "sell", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"update_sl":false,"update_tp":false,"pyramid":false,"same_direction_ignore":true,"reverse_order_close":false' + f_wTail()
+    f_wHead(d > 0 ? "buy" : "sell", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"update_sl":false,"update_tp":false,"pyramid":false,"same_direction_ignore":false,"reverse_order_close":false' + f_wTail()
 f_wFlat() =>
     f_wHead("close", 0) + f_wTail()
 f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
@@ -2327,7 +2392,7 @@ if a_tbl and barstate.islast
     f_tb(8, "Non pris (pas de niveau)", str.tostring(nb_saute), color.white)
     f_tb(9, "Feu (L / S) · biais F / I", str.tostring(t3_pLong, "0") + " % / " + str.tostring(t3_pShort, "0") + " % · " + f_sgn(bi_F, "0.00") + " / " + f_sgn(bi_I, "0.00"), bi_F >= bi_bF and bi_I >= bi_bI ? color.rgb(56, 149, 255) : bi_F <= -bi_bF and bi_I <= -bi_bI ? color.rgb(255, 82, 99) : color.white)
     // Pour vérifier d'un coup d'œil que le dernier code est bien chargé.
-    f_tb(10, "Version du code", "Bot5669 · 24/10 · 5 min GODLIKE", color.rgb(245, 166, 35))
+    f_tb(10, "Version du code", "LucidBot · 03/11 · 5 min GODLIKE · calibrage 1 micro", color.rgb(245, 166, 35))
     f_tb(11, "Stops puis objectif (8 / 16 bougies)", ws_nStop == 0 ? "—" : str.tostring(ws_hit8) + " / " + str.tostring(ws_hit16) + " sur " + str.tostring(ws_nStop) + " stops (" + str.tostring(100.0 * ws_hit8 / ws_nStop, "0") + " % / " + str.tostring(100.0 * ws_hit16 / ws_nStop, "0") + " %)", color.white)
 
 // ALERTES : stop ou objectif touché pendant la bougie (information)
