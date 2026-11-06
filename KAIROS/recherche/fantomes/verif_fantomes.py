@@ -78,7 +78,16 @@ for f in fichiers("*.xlsx"):
     st = {"Stratégie_56": "Strat5669"}.get(st.group(1), st.group(1))
     tf = "5m" if (os.sep + "5min" + os.sep in f or nom.startswith("Bot")) else "15m"
     t = pd.read_excel(f, "Trades")
-    t["Date et heure"] = pd.to_datetime(t["Date et heure"])
+    # Un trade ENCORE OUVERT porte « Ouverture » au lieu d'une date, et faisait
+    # planter tout le script. On le met de côté : il n'a pas de sortie, donc
+    # rien à comparer, mais il ne doit pas empêcher de traiter les autres.
+    t["Date et heure"] = pd.to_datetime(t["Date et heure"], errors="coerce")
+    n_ouverts = int(t["Date et heure"].isna().sum())
+    if n_ouverts:
+        print(f"  ({nom[:28]}… : {n_ouverts} ligne(s) de trade encore ouvert, ignorée(s))")
+        t = t.dropna(subset=["Date et heure"])
+    if t.empty:
+        continue
     # export couvert jusqu'à son dernier trade, ou au moins jusqu'au jour de l'export (date dans le nom du fichier)
     jour = re.search(r"_(\d{4}-\d{2}-\d{2})_", nom)
     fin = max(t["Date et heure"].max(), pd.Timestamp(jour.group(1)) if jour else t["Date et heure"].max())

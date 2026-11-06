@@ -1980,8 +1980,20 @@ f_px(float v) => str.tostring(v, format.mintick)
 // d'alertes garde le résultat de chaque trade tel qu'il a été vécu en direct.
 f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring((r_c - strategy.position_avg_price) * strategy.position_size * syminfo.pointvalue, "#,##0") + " $"
 // ── Messages webhook PickMyTrade (KAIROS/execution/ALERTES.md) ──
+// ALIGNÉ le 06/11/2026 sur le JSON que LEUR générateur produit pour le compte
+// de Jeremy. Six champs manquaient et un était en trop ; le message était
+// accepté (HTTP 200, « webhook livré ») puis ignoré — aucun ordre, aucune ligne
+// dans leur journal. On cesse de deviner : on copie leur structure exacte.
+//
+// « data » passe de buy/sell à long/short. Leur générateur utilise
+// {{strategy.market_position}}, qui ne peut rendre que long, short ou flat :
+// leur API décrit donc une POSITION VOULUE, pas une action. Leur documentation
+// montre les deux vocabulaires sans dire lequel fait foi — le générateur, lui,
+// a été produit pour CE compte, c'est la meilleure preuve disponible.
+// « close » est conservé pour les sorties : leur FAQ le documente explicitement
+// comme commande de fermeture stricte.
 f_wHead(string data, int q) =>
-    '{"symbol":"' + w_sym + '","date":"' + str.format_time(timenow, "yyyy-MM-dd'T'HH:mm:ss'Z'", "UTC") + '","data":"' + data + '","quantity":' + str.tostring(q) + ',"price":' + f_px(r_c) + ',"order_type":"MKT"'
+    '{"symbol":"' + w_sym + '","strategy_name":"LucidBot","date":"' + str.format_time(timenow, "yyyy-MM-dd'T'HH:mm:ss'Z'", "UTC") + '","data":"' + data + '","quantity":' + str.tostring(q) + ',"price":' + f_px(r_c)
 // CORRIGÉ le 03/11/2026, d'après le JSON produit par leur propre générateur
 // pour le compte de Jeremy. Nous envoyions « account_id » à plat ; eux
 // produisent un tableau « multiple_accounts ». Un compte non reconnu, c'est un
@@ -1996,7 +2008,7 @@ f_wTail() =>
     ',"token":"' + w_tok + '","multiple_accounts":[{"token":"' + w_tok +
      '","account_id":"' + w_acc + '","risk_percentage":0,"quantity_multiplier":1}]}'
 f_wEntree(int d, int q, float distSL, float distTP) =>
-    f_wHead(d > 0 ? "buy" : "sell", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"update_sl":false,"update_tp":false,"pyramid":false,"same_direction_ignore":false,"reverse_order_close":false' + f_wTail()
+    f_wHead(d > 0 ? "long" : "short", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"trail_stop":0,"trail_trigger":0,"trail_freq":0,"update_sl":false,"update_tp":false,"breakeven":0,"breakeven_offset":0,"pyramid":false,"same_direction_ignore":false,"reverse_order_close":false' + f_wTail()
 f_wFlat() =>
     f_wHead("close", 0) + f_wTail()
 f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
