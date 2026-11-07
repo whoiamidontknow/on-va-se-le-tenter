@@ -68,6 +68,24 @@ for _, a in logs.iterrows():
             tr["pnl"] = nombre(d, r"P&L ≈ (-?[\d.,  ]+) \$")
 
 # --- 2. historique recalculé -------------------------------------------------------------------------------------
+MOIS = {"janv": 1, "févr": 2, "mars": 3, "avr": 4, "mai": 5, "juin": 6, "juil": 7, "août": 8, "sept": 9, "oct": 10,
+        "nov": 11, "déc": 12}
+
+
+def plage_fin(f):
+    """Fin de la « Plage de backtesting » lue dans la feuille Propriétés (« … — 6 nov. 2026, 01:00 »), sinon None."""
+    try:
+        p = pd.read_excel(f, "Propriétés", header=None)
+    except Exception:
+        return None
+    for _, r in p.iterrows():
+        if str(r.iloc[0]).startswith("Plage de backtesting"):
+            m = re.search(r"—\s*(\d{1,2}) (\w+)\.? (\d{4}), (\d{2}):(\d{2})", str(r.iloc[1]))
+            if m and m.group(2) in MOIS:
+                return pd.Timestamp(int(m.group(3)), MOIS[m.group(2)], int(m.group(1)), int(m.group(4)), int(m.group(5)))
+    return None
+
+
 exports = {}
 for f in fichiers("*.xlsx"):
     nom = os.path.basename(f)
@@ -76,7 +94,6 @@ for f in fichiers("*.xlsx"):
     if not m or not st:
         continue
     st = {"Stratégie_56": "Strat5669"}.get(st.group(1), st.group(1))
-    tf = "5m" if (os.sep + "5min" + os.sep in f or nom.startswith("Bot")) else "15m"
     t = pd.read_excel(f, "Trades")
     # Un trade ENCORE OUVERT porte « Ouverture » au lieu d'une date, et faisait
     # planter tout le script. On le met de côté : il n'a pas de sortie, donc
@@ -88,9 +105,16 @@ for f in fichiers("*.xlsx"):
         t = t.dropna(subset=["Date et heure"])
     if t.empty:
         continue
-    # export couvert jusqu'à son dernier trade, ou au moins jusqu'au jour de l'export (date dans le nom du fichier)
-    jour = re.search(r"_(\d{4}-\d{2}-\d{2})_", nom)
-    fin = max(t["Date et heure"].max(), pd.Timestamp(jour.group(1)) if jour else t["Date et heure"].max())
+    # unité lue dans les minutes d'entrée : depuis LUCIDBOT, un export 5 min porte aussi le nom Strat5669
+    tf = "15m" if (t["Date et heure"].dt.minute % 15 == 0).all() and nom.startswith(("Strat", "Stratégie", "correctif")) \
+        and os.sep + "5min" + os.sep not in f else "5m"
+    # export couvert jusqu'à la fin de sa « Plage de backtesting » (feuille Propriétés). Le 07/11, des exports faits
+    # le samedi s'arrêtaient au vendredi 01:00 (graphique pas rechargé) : la date du fichier aurait déclaré
+    # fantômes tous les trades du vendredi. À défaut de plage, dernier trade ou jour de l'export.
+    fin = plage_fin(f)
+    if fin is None:
+        jour = re.search(r"_(\d{4}-\d{2}-\d{2})_", nom)
+        fin = max(t["Date et heure"].max(), pd.Timestamp(jour.group(1)) if jour else t["Date et heure"].max())
     exports.setdefault((st, m.group(1), tf), []).append((fin, t))
 
 for tr in trades:
@@ -139,7 +163,7 @@ def ecrire_suivi(df, chemin):
                     hr = hr.strftime("%H:%M") if hasattr(hr, "strftime") else str(hr)[:5]
                     k = (ws.title, r.get("Symbole") or "", dt, hr, r["Sens"])
                     anciens[k] = {c: r.get(c) for c in PERSO}
-    d = df[df["strat"] == "Strat5669"].sort_values("entree")
+    d = df[(df["strat"] == "Strat5669") & (df["tf"] == "15m")].sort_values("entree")
     wb = Workbook()
     wb.remove(wb.active)
     gris, jaune = PatternFill("solid", fgColor="D9D9D9"), PatternFill("solid", fgColor="FFE699")
@@ -158,7 +182,7 @@ def ecrire_suivi(df, chemin):
             fant = {"présent": "non", "ABSENT (fantôme)": "OUI"}.get(r.historique, r.historique.replace("présent, devenu", "non, devenu").replace("pas encore exporté", "à vérifier"))
             ligne = {"Symbole": r.sym, "Date": f"{r.entree:%d/%m/%Y}", "Heure": f"{r.entree:%H:%M}",
                      "Sens": "long" if r.sens == "L" else "short", "Étiquette": r.etiq,
-                     "Résultat": (r.raison or "en cours").replace(" (P&L de l'historique)", ""),
+                     "Résultat": (r.raison if isinstance(r.raison, str) and r.raison else "en cours").replace(" (P&L de l'historique)", ""),
                      "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else round(r.pnl), "Fantôme ?": fant}
             k = (nom, r.sym if nom == "BTC" else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
             ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "")})
@@ -181,7 +205,7 @@ def ecrire_suivi(df, chemin):
 
 def lignes_suivi(df, anciens, numbers=False):
     """Lignes de chaque feuille : colonnes auto depuis les alertes + colonnes perso relues dans l'ancien fichier."""
-    d = df[df["strat"] == "Strat5669"].sort_values("entree")
+    d = df[(df["strat"] == "Strat5669") & (df["tf"] == "15m")].sort_values("entree")
     res = {}
     for nom, syms in FEUILLES.items():
         cols = (["Symbole"] if nom == "BTC" or numbers else []) + AUTO + PERSO
@@ -190,13 +214,27 @@ def lignes_suivi(df, anciens, numbers=False):
             fant = {"présent": "non", "ABSENT (fantôme)": "OUI"}.get(r.historique, r.historique.replace("présent, devenu", "non, devenu").replace("pas encore exporté", "à vérifier"))
             ligne = {"Symbole": r.sym, "Date": f"{r.entree:%d/%m/%Y}", "Heure": f"{r.entree:%H:%M}",
                      "Sens": "long" if r.sens == "L" else "short", "Étiquette": r.etiq,
-                     "Résultat": (r.raison or "en cours").replace(" (P&L de l'historique)", ""),
+                     "Résultat": (r.raison if isinstance(r.raison, str) and r.raison else "en cours").replace(" (P&L de l'historique)", ""),
                      "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else int(round(r.pnl)), "Fantôme ?": fant}
             k = (nom, r.sym if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
             a = dict(anciens.get(k, {}))
             if fant == "à vérifier" and "verdict" in a:
                 ligne["Fantôme ?"] = a["verdict"]
             ligne.update({c: v for c, v in a.items() if v not in (None, "") and c != "verdict"})
+            lignes.append([ligne.get(c) for c in cols])
+        for n in NES:   # trades nés après coup : ligne à part, sans P&L d'alerte puisqu'il n'y en a pas eu
+            if n["strat"] != "Strat5669" or n["tf"] != "15m" or n["sym"] not in syms:
+                continue
+            o = n["sortie"].lower()
+            ligne = {"Symbole": n["sym"], "Date": f"{n['entree']:%d/%m/%Y}", "Heure": f"{n['entree']:%H:%M}",
+                     "Sens": "long" if n["sens"] == "L" else "short",
+                     "Étiquette": "GODLIKE" if "GODLIKE" in n["signal"] else "56 seul",
+                     "Résultat": "objectif" if "obj" in o else "stop" if "stop" in o else "temps" if "temps" in o
+                                 else "fin de fenêtre" if o else "en cours",
+                     "P&L alerte $": "aucune alerte",
+                     "Fantôme ?": f"né après coup ({n['pnl']:+,.0f} $ dans l'historique)"}
+            k = (nom, n["sym"] if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
+            ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "") and c != "verdict"})
             lignes.append([ligne.get(c) for c in cols])
         res[nom] = (cols, lignes)
     return res
@@ -216,17 +254,20 @@ def cle_ancienne(feuille, r):
     dt, hr = r.get("Date"), r.get("Heure")   # le tableur peut avoir converti les textes en date / heure
     dt = dt.strftime("%d/%m/%Y") if hasattr(dt, "strftime") else str(dt)
     hr = hr.strftime("%H:%M") if hasattr(hr, "strftime") else str(hr)[:5]
-    return (feuille, r.get("Symbole") or "", dt, hr, r.get("Sens"))
+    return (feuille, r.get("Symbole") or "", dt, hr, str(r.get("Sens") or "").lower())
 
 
 def ecrire_suivi_numbers(df, chemin):
     """Même fiche, au format Numbers (bibliothèque numbers-parser) : menus locaux pour « Pris ? » et « Si non,
     pourquoi », en-têtes gris (auto) / jaunes (à remplir), colonnes perso conservées d'une fois sur l'autre."""
     from numbers_parser import Document, RGB
-    anciens, lignes_anciennes = {}, {}
+    anciens, lignes_anciennes, autres = {}, {}, {}
     if os.path.exists(chemin):
         for sh in Document(chemin).sheets:
             rows = sh.tables[0].rows(values_only=True)
+            if sh.name not in FEUILLES:
+                autres[sh.name] = (list(rows[0]), [list(r) for r in rows[1:] if any(v not in (None, "") for v in r)])
+                continue
             for row in rows[1:]:
                 r = {("P&L FTMO $" if c == "Fees" else c): v for c, v in zip(rows[0], row)}   # BTC : « Fees »
                 if r.get("Date"):
@@ -250,6 +291,7 @@ def ecrire_suivi_numbers(df, chemin):
         lignes.sort(key=lambda l: pd.to_datetime(f"{l[1]} {l[2]}", dayfirst=True, errors="coerce"))
     # numbers-parser donne à tous les tableaux la taille du dernier créé : on les crée donc tous de la même taille
     # (mêmes colonnes partout, Symbole compris ; autant de lignes que la feuille la plus longue).
+    feuilles.update(autres)
     R = max(len(l) for _, l in feuilles.values()) + 1
     C = max(len(c) for c, _ in feuilles.values())
     doc = None
@@ -321,7 +363,7 @@ print(df.groupby(["strat", "etiq", "historique"]).size().to_string())
 
 # Sens inverse : trades de l'historique, pendant que l'alerte tournait, sans aucune alerte d'entrée en direct.
 print("\nNÉS APRÈS COUP (dans l'historique, jamais signalés en direct)")
-nes = 0
+nes, NES = 0, []   # NES : reportés aussi dans la fiche de suivi (Jeremy les y ajoutait à la main)
 for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
     t_ids = logs[logs["ID de l'alerte"].isin(set(s["id"]))]["t"]
     deb, fin = t_ids.min(), logs[logs["ID de l'alerte"].isin(set(s["id"]))]["fin_journal"].max()
@@ -335,6 +377,9 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
         proche = s[((s["entree"] - r[3]).abs() <= pd.Timedelta(minutes=15)) & (s["sens"] == r.Signal[0])]
         if proche.empty:
             nes += 1
+            sig_sortie = t[(t["Numéro de trade"] == r[1]) & t["Type"].str.startswith("Sortir")]["Signal"].astype(str)
+            NES.append(dict(strat=st, sym=sym, tf=tf, entree=r[3], sens=r.Signal[0], signal=r.Signal, pnl=r[8],
+                            sortie=sig_sortie.iloc[0] if len(sig_sortie) else ""))
             doute = f" — après le dernier message de l'alerte ({dernier:%d/%m %H:%M}) : vérifier qu'elle était active" if r[3] > dernier else ""
             print(f"{st[:14]:14} {r[3]:%d/%m %H:%M} {sym:7}{tf:>4} {r.Signal:16} historique : P&L {r[8]:+,.0f} $ "
                   f"(journal du {deb:%d/%m %H:%M} au {fin:%d/%m %H:%M}){doute}")
