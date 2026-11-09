@@ -1,0 +1,1710 @@
+//@version=6
+
+strategy("Firewall Test", shorttitle="Firewall Test", overlay=true,
+     initial_capital=50000, currency=currency.USD,
+     default_qty_type=strategy.fixed, default_qty_value=1, pyramiding=0,
+     commission_type=strategy.commission.cash_per_contract, commission_value=1.25,
+     slippage=1,
+     margin_long=5, margin_short=5,
+     process_orders_on_close=false, calc_on_every_tick=false, calc_on_order_fills=false,
+     fill_orders_on_standard_ohlc=true,
+     max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+grp_e = "=== 1. ENTRÉES ==="
+
+al_on     = input.bool(true, "Alertes")
+aff_fl    = input.bool(true, "Flèches")
+gd_k      = 0.025
+preset    = "A"
+e_clxOn_in = false
+e_sens_in = "Les deux"
+e_sigOn_in   = true
+e_sigNiv_in  = "Fort seulement"
+e_heiOn_in   = false
+e_tlOn_in = false
+e_divOn_in   = false
+e_divX_in    = 2.5
+e_lvlOn_in   = false
+e_lvlAs   = true
+e_lvlLd   = true
+e_lvlUs   = true
+e_lvlMon  = true
+
+grp_f = "=== 2. FILTRES ==="
+f_feuOn_in   = false
+f_feuMode_in = "Part dans le sens ≥ seuil"
+f_feuSeuil_in = 50
+f_trOn_in = false
+f_dsh60_in  = false
+f_dsh240_in = false
+f_eOn_in  = false
+f_eMax_in = 0.6
+f_dshMin_in = 0.0
+f_tr4h_in = false
+f_trTf    = "60"
+f_emaOn_in   = true
+f_hrOn_in = true
+f_hr1On_in   = true
+f_hr1_in  = "0900-1200"
+f_hr2On_in   = true
+f_hr2_in  = "1530-1800"
+f_boOn_in = true
+f_adxOn_in   = false
+f_adxMin_in  = 20.0
+f_maxJour_in = 3
+f_detOn_in   = false
+f_detK_in    = 1.0
+f_clxOn_in   = false
+f_clxAge_in  = 0
+
+jr_on_in = false
+grp_bi = "=== 1b. BIAIS GLOBAL (les tableaux donnent la direction) ==="
+bi_on_in = false
+bi_F_in  = 0.33
+bi_I_in  = 0.2
+grp_x = "=== 3. SORTIES ==="
+x_stopMode_in= "V × k"
+x_detMarge = 2
+x_detMin   = 0.3
+x_detMax   = 4.0
+x_extMarge_in = 0.1
+x_extMin_in = 0.4
+x_extMax_in = 2.5
+x_atrLen  = 14
+x_atrK_in = 1.5
+x_swL     = 5
+x_swR     = 2
+x_swMarge = 2
+x_fixPts_in = 10.0
+x_tpMode_in = "En R"
+x_tpR_in  = 2.0
+x_trMode_in  = "Aucun"
+x_trK_in  = 2.0
+x_trAct_in = 0.0
+x_beOn_in = true
+x_beR_in  = 1.0
+x_beTk_in = 1
+x_oppArr_in  = true
+x_oppHei_in  = false
+x_finOn_in   = true
+x_finH    = 21
+x_finM    = 45
+x_fenOn   = true
+x_fen     = "0020-2215"
+x_tBar_in = 0
+x_pfOn_in = false
+
+grp_ad = "=== 3c. GESTION ADAPTATIVE (stop et/ou objectif « Adaptatif ») ==="
+ad_feu_in  = 60
+ad_adx_in  = 25
+ad_r1_in   = 1.0
+ad_r2_in   = 1.5
+ad_r3_in   = 2.0
+ad_saute_in = true
+ad_k_in    = 2.0
+ad_kbas_in = 2.5
+ad_khaut_in = 1.5
+ad_niv_in  = false
+grp_nv = "=== 3b. NIVEAUX : STOP DE PROTECTION ET OBJECTIF ==="
+nv_src    = "Heiken Ashi (comme l'indicateur)"
+x_prio_in = "annuel > mensuel > detector > weekly > monday > session > rond"
+x_slA_in  = true
+x_slM_in  = true
+x_slW_in  = true
+x_slD_in  = true
+x_slMo_in = true
+x_slSe_in = true
+x_slRo_in = true
+x_slMin_in = 0.5
+x_slMax_in = 3.5
+nv_margeU = "Ticks"
+x_slSans_in = "Repli V × k"
+x_slMarge_in = 4.0
+x_tpA_in  = true
+x_tpM_in  = true
+x_tpW_in  = true
+x_tpD_in  = true
+x_tpMo_in = false
+x_tpSe_in = false
+x_tpRo_in = false
+x_rrMin_in = 1.5
+x_tpMarge_in = 4.0
+x_tpSans_in = "Objectif en R"
+x_part_in = false
+x_partPct_in = 50
+x_partRest_in = "2e niveau"
+x_partBE_in = true
+rnd_step  = 100
+
+f_pr_def(string nom) =>
+     "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=V × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6"
+
+pP     = preset == "Personnalisé"
+pr_def = str.replace_all(f_pr_def(preset), "; ", ";")
+if barstate.isfirst and not pP and pr_def == ""
+    runtime.error("Préréglage « " + preset + " » : aucune ligne dans f_pr_def().")
+
+f_pv(string k) =>
+    string res = na
+    if pr_def != ""
+        t = ";" + pr_def + ";"
+        i = str.pos(t, ";" + k + "=")
+        if not na(i)
+            rest = str.substring(t, i + str.length(k) + 2)
+            res := str.substring(rest, 0, str.pos(rest, ";"))
+    res
+
+f_gs(string k, string vin, string vbase, string permis) =>
+    v = f_pv(k)
+    string r = pP ? vin : na(v) ? vbase : v
+    if not pP and not na(v) and not str.contains("|" + permis + "|", "|" + v + "|")
+        runtime.error("Préréglage « " + preset + " » : valeur « " + v + " » invalide pour la clé « " + k + " ». Permis : " + permis)
+    r
+f_gb(string k, bool vin, bool vbase) =>
+    v = f_pv(k)
+    pP ? vin : na(v) ? vbase : (v == "1" or v == "oui" or v == "true")
+f_gf(string k, float vin) =>
+    v = f_pv(k)
+    float r = pP or na(v) ? vin : str.tonumber(v)
+    if na(r)
+        runtime.error("Préréglage « " + preset + " » : nombre invalide pour la clé « " + k + " ».")
+    r
+
+var string e_sens   = f_gs("sens",   e_sens_in,   "Les deux", "Les deux|Long seulement|Short seulement")
+var bool   e_sigOn  = f_gb("sig",    e_sigOn_in,  false)
+var string e_sigNiv = f_gs("sigNiv", e_sigNiv_in, "Fort seulement", "Fort seulement|Fort + Moyen")
+var bool   e_heiOn  = f_gb("hei",    e_heiOn_in,  false)
+var bool   e_tlOn   = f_gb("tl",     e_tlOn_in,   false)
+var bool   e_lvlOn  = f_gb("lvl",    e_lvlOn_in,  false)
+var bool   e_clxOn  = f_gb("clx",    e_clxOn_in,  false)
+var bool   e_divOn  = f_gb("div",    e_divOn_in,  false)
+var float  e_divX   = f_gf("divX",   e_divX_in)
+var bool   f_tr4h   = f_gb("tr4h",   f_tr4h_in,   false)
+var bool   f_dsh60  = f_gb("dsh60",  f_dsh60_in,  false)
+var bool   f_dsh240 = f_gb("dsh240", f_dsh240_in, false)
+var bool   f_eOn    = f_gb("eOn",    f_eOn_in,    false)
+var float  f_eMax   = f_gf("eMax",   f_eMax_in)
+var float  f_dshMin = f_gf("dshMin", f_dshMin_in)
+var bool   bi_on    = f_gb("bias",   bi_on_in,    false)
+var bool   jr_on    = f_gb("jr",     jr_on_in,    false)
+var float  bi_bF    = f_gf("bF",     bi_F_in)
+var float  bi_bI    = f_gf("bI",     bi_I_in)
+var bool   f_feuOn  = f_gb("feu",    f_feuOn_in,  false)
+var string f_feuMode = f_gs("feuMode", f_feuMode_in, f_feuMode_in, "Part dans le sens ≥ seuil|Pas de Feu opposé")
+var float  f_feuSeuil = f_gf("feuSeuil", f_feuSeuil_in)
+var bool   f_trOn   = f_gb("tr",     f_trOn_in,   false)
+var bool   f_emaOn  = f_gb("ema",    f_emaOn_in,  false)
+var bool   f_hrOn   = f_gb("hr",     f_hrOn_in,   false)
+var bool   f_hr1On  = f_gb("hr1On",  f_hr1On_in,  f_hr1On_in)
+var string f_hr1    = f_gs("hr1",    f_hr1_in,    f_hr1_in, f_pv("hr1"))
+var bool   f_hr2On  = f_gb("hr2On",  f_hr2On_in,  f_hr2On_in)
+var string f_hr2    = f_gs("hr2",    f_hr2_in,    f_hr2_in, f_pv("hr2"))
+var bool   f_boOn   = f_gb("bo",     f_boOn_in,   f_boOn_in)
+var bool   f_adxOn  = f_gb("adx",    f_adxOn_in,  false)
+var float  f_adxMin = f_gf("adxMin", f_adxMin_in)
+var int    f_maxJour = int(f_gf("maxJour", f_maxJour_in))
+var bool   f_detOn  = f_gb("det",    f_detOn_in,  false)
+var float  f_detK   = f_gf("detK",   f_detK_in)
+var bool   f_clxOn  = f_gb("clxF",   f_clxOn_in,  false)
+var int    f_clxAge = int(f_gf("clxAge", f_clxAge_in))
+var string x_stopMode = f_gs("stop", x_stopMode_in, "V × k", "V × k|Niveau de protection|Dernier swing + marge|Fixe (points)|Zone Z la plus proche|Extrême 2 bougies + marge|Adaptatif")
+var float  x_atrK   = f_gf("atrK",   x_atrK_in)
+var float  x_fixPts = f_gf("fixPts", x_fixPts_in)
+var string x_tpMode = f_gs("tp",     x_tpMode_in, "Aucun", "Aucun|En R|Prochain niveau|Adaptatif")
+var float  x_tpR    = f_gf("tpR",    x_tpR_in)
+var string x_trMode = f_gs("trail",  x_trMode_in, "Aucun", "Aucun|V|Sous chaque nouveau swing")
+var float  x_trK    = f_gf("trK",    x_trK_in)
+var float  x_trAct  = f_gf("trAct",  x_trAct_in)
+var bool   x_beOn   = f_gb("be",     x_beOn_in,   false)
+var float  x_beR    = f_gf("beR",    x_beR_in)
+var bool   x_oppArr = f_gb("oppArr", x_oppArr_in, false)
+var bool   x_oppHei = f_gb("oppHei", x_oppHei_in, false)
+var bool   x_finOn  = f_gb("fin",    x_finOn_in,  false)
+var bool   x_pfOn   = f_gb("pf",     x_pfOn_in,   false)
+var int    x_tBar   = int(f_gf("tBar", x_tBar_in))
+var int    x_beTk   = int(f_gf("beTk", x_beTk_in))
+var float  x_extMarge = f_gf("extMarge", x_extMarge_in)
+var float  x_extMin = f_gf("extMin", x_extMin_in)
+var float  x_extMax = f_gf("extMax", x_extMax_in)
+var float  ad_feu   = f_gf("adFeu",  ad_feu_in)
+var float  ad_adx   = f_gf("adAdx",  ad_adx_in)
+var float  ad_r1    = f_gf("adR1",   ad_r1_in)
+var float  ad_r2    = f_gf("adR2",   ad_r2_in)
+var float  ad_r3    = f_gf("adR3",   ad_r3_in)
+var bool   ad_saute = f_gb("adSaute", ad_saute_in, ad_saute_in)
+var float  ad_k     = f_gf("adK",    ad_k_in)
+var float  ad_kbas  = f_gf("adKbas", ad_kbas_in)
+var float  ad_khaut = f_gf("adKhaut", ad_khaut_in)
+var bool   ad_niv   = f_gb("adNiv",  ad_niv_in,   false)
+var string x_slSans = f_gs("slSans", x_slSans_in, "Repli V × k", "Repli V × k|Ne pas prendre le trade")
+var string nv_marge = f_gs("margeU", nv_margeU,   nv_margeU, "Ticks|× V")
+var string x_prio   = str.lower(f_gs("prio", x_prio_in, x_prio_in, f_pv("prio")))
+var bool   x_slA    = f_gb("slA",  x_slA_in,  x_slA_in)
+var bool   x_slM    = f_gb("slM",  x_slM_in,  x_slM_in)
+var bool   x_slW    = f_gb("slW",  x_slW_in,  x_slW_in)
+var bool   x_slD    = f_gb("slD",  x_slD_in,  x_slD_in)
+var bool   x_slMo   = f_gb("slMo", x_slMo_in, x_slMo_in)
+var bool   x_slSe   = f_gb("slSe", x_slSe_in, x_slSe_in)
+var bool   x_slRo   = f_gb("slRo", x_slRo_in, x_slRo_in)
+var float  x_slMin  = f_gf("slMin",   x_slMin_in)
+var float  x_slMax  = f_gf("slMax",   x_slMax_in)
+var float  x_slMarge = f_gf("slMarge", x_slMarge_in)
+var bool   x_tpA    = f_gb("tpA",  x_tpA_in,  x_tpA_in)
+var bool   x_tpM    = f_gb("tpM",  x_tpM_in,  x_tpM_in)
+var bool   x_tpW    = f_gb("tpW",  x_tpW_in,  x_tpW_in)
+var bool   x_tpD    = f_gb("tpD",  x_tpD_in,  x_tpD_in)
+var bool   x_tpMo   = f_gb("tpMo", x_tpMo_in, x_tpMo_in)
+var bool   x_tpSe   = f_gb("tpSe", x_tpSe_in, x_tpSe_in)
+var bool   x_tpRo   = f_gb("tpRo", x_tpRo_in, x_tpRo_in)
+var float  x_rrMin  = f_gf("rrMin",   x_rrMin_in)
+var float  x_tpMarge = f_gf("tpMarge", x_tpMarge_in)
+var string x_tpSans = f_gs("tpSans", x_tpSans_in, x_tpSans_in, "Objectif en R|Pas d'objectif|Ne pas prendre le trade")
+var bool   x_part   = f_gb("part",   x_part_in,   false)
+var float  x_partPct = f_gf("partPct", x_partPct_in)
+var string x_partRest = f_gs("partRest", x_partRest_in, x_partRest_in, "2e niveau|Stop seulement (suiveur, be, signaux)")
+var bool   x_partBE = f_gb("partBE", x_partBE_in, x_partBE_in)
+
+grp_q = "=== 4. TAILLE ==="
+q_mode_in = "Contrats fixes"
+q_fixe_in = 1
+q_risque_in = 200.0
+q_max     = 10
+var string q_mode   = f_gs("taille", q_mode_in, q_mode_in, "Contrats fixes|Risque fixe en $")
+var float  q_risque = f_gf("risque", q_risque_in)
+var int    q_fixe   = int(f_gf("fixe", q_fixe_in))
+
+grp_a = "=== 5. AFFICHAGE ==="
+a_bar     = true
+a_trades  = true
+a_trN     = 50
+a_lbl     = false
+a_stopLn  = true
+a_sig     = false
+a_tbl     = true
+a_pos     = "Bottom Right"
+
+grp_mu = "=== DONNÉES MULTI-UNITÉS ==="
+mu_mode   = "Bougie clôturée (sans repaint)"
+mu_nr     = mu_mode == "Bougie clôturée (sans repaint)"
+
+f_mu_off(tf) => mu_nr and timeframe.in_seconds(tf) > timeframe.in_seconds(timeframe.period) ? 1 : 0
+f_mu_la(tf)  => mu_nr and timeframe.in_seconds(tf) > timeframe.in_seconds(timeframe.period) ? barmerge.lookahead_on : barmerge.lookahead_off
+
+r_tick = ticker.new(syminfo.prefix, syminfo.ticker, syminfo.session, adjustment.none, backadjustment.inherit, settlement_as_close.inherit)
+[r_o, r_h, r_l, r_c] = request.security(r_tick, timeframe.period, [open, high, low, close])
+r_tr  = na(r_c[1]) ? r_h - r_l : math.max(r_h - r_l, math.abs(r_h - r_c[1]), math.abs(r_l - r_c[1]))
+r_atr = ta.rma(r_tr, x_atrLen)
+r_pl  = ta.pivotlow(r_l, x_swL, x_swR)
+r_ph  = ta.pivothigh(r_h, x_swL, x_swR)
+var float r_swLow  = na
+var float r_swHigh = na
+if not na(r_pl)
+    r_swLow := r_pl
+if not na(r_ph)
+    r_swHigh := r_ph
+tick = syminfo.mintick
+
+lv_vrai = nv_src == "Vrais prix"
+
+pv_tick = lv_vrai ? r_tick : syminfo.tickerid
+f_piv_trad(h, l, c) =>
+    p  = (h + l + c) / 3
+    r1 = 2 * p - l
+    s1 = 2 * p - h
+    r2 = p + (h - l)
+    s2 = p - (h - l)
+    r3 = h + 2 * (p - l)
+    s3 = l - 2 * (h - p)
+    r4 = r3 + (p - l)
+    s4 = s3 - (h - p)
+    r5 = r4 + (p - l)
+    s5 = s4 - (h - p)
+    [p, r1, s1, r2, s2, r3, s3, r4, s4, r5, s5]
+[pvA_h, pvA_l, pvA_c] = request.security(pv_tick, "12M", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvM_h, pvM_l, pvM_c] = request.security(pv_tick, "M",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pvW_h, pvW_l, pvW_c] = request.security(pv_tick, "W",   [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[pA_p, pA_r1, pA_s1, pA_r2, pA_s2, pA_r3, pA_s3, pA_r4, pA_s4, pA_r5, pA_s5] = f_piv_trad(pvA_h, pvA_l, pvA_c)
+[pM_p, pM_r1, pM_s1, pM_r2, pM_s2, pM_r3, pM_s3, pM_r4, pM_s4, pM_r5, pM_s5] = f_piv_trad(pvM_h, pvM_l, pvM_c)
+[pW_p, pW_r1, pW_s1, pW_r2, pW_s2, pW_r3, pW_s3, pW_r4, pW_s4, pW_r5, pW_s5] = f_piv_trad(pvW_h, pvW_l, pvW_c)
+
+hei_ohlc4_src = (open + high + low + close) / 4
+hei_exact    = ta.ema(hei_ohlc4_src, 4) > ta.ema(hei_ohlc4_src, 32)
+col_bull     = hei_exact
+hei_bull_flip = bar_index > 0 and col_bull     and not col_bull[1]
+hei_bear_flip = bar_index > 0 and not col_bull and     col_bull[1]
+
+ema_m1 = ta.ema(close, 50)
+ema_m2 = ta.ema(close, 60)
+
+grp_bo    = "=== F NO-TRADE ==="
+bo_marge  = 3
+bo_us830  = true
+bo_us1000 = true
+bo_openUS = false
+bo_openEU = false
+bo_fomc   = false
+
+f_bo_pres(tz, hh, mm) =>
+    math.abs((hour(time, tz) * 60 + minute(time, tz)) - (hh * 60 + mm)) <= bo_marge
+
+f_sg_news() =>
+    ny = "America/New_York"
+    bool hit = false
+    if timeframe.isintraday
+        if bo_us830 and f_bo_pres(ny, 8, 30)
+            hit := true
+        if bo_us1000 and f_bo_pres(ny, 10, 0)
+            hit := true
+        if bo_openUS and f_bo_pres(ny, 9, 30)
+            hit := true
+        if bo_openEU and f_bo_pres("Europe/Paris", 9, 0)
+            hit := true
+        if bo_fomc and dayofweek(time, ny) == dayofweek.wednesday and f_bo_pres(ny, 14, 0)
+            hit := true
+    hit
+
+grp_sg   = "=== SIGNATOR ==="
+sg_force = 18
+sg_filter = true
+sg_v9     = true
+
+sg_sha = ta.ema(ohlc4, 4)
+sg_heiBull = sg_sha > ta.ema(ohlc4, 32)
+sg_ema50 = ta.ema(close, 50)
+[sg_diP, sg_diM, sg_adx] = ta.dmi(14, 14)
+
+sg_scoreMin = 50
+sg_atr   = ta.atr(14)
+sg_rng   = high - low
+sg_rngS  = math.max(sg_rng, syminfo.mintick)
+sg_br    = math.min(math.abs(close - open) / sg_rngS / 0.5, 1.0)
+sg_cpos  = sg_heiBull ? (close - low) / sg_rngS : (high - close) / sg_rngS
+sg_awick = sg_heiBull ? (high - close) / sg_rngS : (close - low) / sg_rngS
+sg_sStr  = (sg_br + (1.0 - math.min(sg_awick / 0.35, 1.0)) + math.min(sg_cpos / 0.67, 1.0)) / 3.0
+sg_sMom  = math.min(sg_rng / math.max(0.5 * sg_atr, syminfo.mintick), 1.0)
+sg_volMa = ta.sma(volume, 20)
+sg_sVol  = sg_volMa > 0 ? math.min(volume / sg_volMa, 1.0) : 0.0
+sg_sGap  = math.min(math.abs(open - close[1]) / math.max(0.3 * sg_atr, syminfo.mintick), 1.0)
+
+sg_score = (sg_sStr + sg_sMom + sg_sVol + sg_sGap) / 4.0 * 100.0
+
+sg_newsBar = sg_filter and f_sg_news()
+
+var int sg_run = 0
+sg_run := bar_index == 0 ? 1 : sg_heiBull == sg_heiBull[1] ? sg_run + 1 : 1
+sg_ema60  = ta.ema(close, 60)
+sg_dBand  = sg_heiBull ? (close - math.max(sg_ema50, sg_ema60)) / sg_atr : (math.min(sg_ema50, sg_ema60) - close) / sg_atr
+sg_conv   = sg_dBand >= 0.3 or volume >= sg_volMa
+sg_satur  = sg_rng >= 0.5 * sg_atr or sg_cpos >= 0.67
+
+sg_base   = sg_run == 2 and sg_adx >= sg_force and (sg_heiBull ? close > sg_ema50 : close < sg_ema50) and sg_conv and (not sg_v9 or sg_satur) and not sg_newsBar
+sg_isFort = sg_score >= sg_scoreMin
+sg_long   = sg_base and sg_heiBull and sg_isFort
+sg_short  = sg_base and not sg_heiBull and sg_isFort
+sg_longM  = sg_base and sg_heiBull and not sg_isFort and sg_score >= sg_force
+sg_shortM = sg_base and not sg_heiBull and not sg_isFort and sg_score >= sg_force
+
+max_bars_back(high, 5000)
+max_bars_back(low, 5000)
+
+tl_grp = "=== TRENDLINES V2 ==="
+tl_bars   = 10
+tl_bufPct = 0.1
+tl_nT     = 3
+tl_newH   = 100
+tl_brkSrc = "Mèche + tampon"
+
+tl_buf    = tl_bufPct / 100.0
+tl_usePiv = true
+tl_everyB = true
+
+tl_f_val(x1, y1, x2, y2, x) =>
+    y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+
+tl_ph = ta.pivothigh(high, tl_bars, tl_bars)
+
+var float tl_rAncH = na
+var int   tl_rAncB = na
+var float tl_rX1 = na
+var float tl_rY1 = na
+var float tl_rX2 = na
+var float tl_rY2 = na
+var int   tl_rTouch = 0
+var int   tl_rValidAt = na
+var bool  tl_rActive = false
+var float tl_rLastH = na
+var int   tl_rLastB = na
+bool tl_rNewPiv = false
+
+if not na(tl_ph) and (na(tl_rAncH) or tl_ph > tl_rAncH or bar_index - tl_rAncB > tl_newH)
+    tl_rAncH := tl_ph
+    tl_rAncB := bar_index - tl_bars
+    tl_rLastH := na
+    tl_rLastB := na
+else if not na(tl_ph) and bar_index - tl_bars > tl_rAncB and tl_ph < tl_rAncH
+    tl_rLastH := tl_ph
+    tl_rLastB := bar_index - tl_bars
+    tl_rNewPiv := true
+
+float tl_rCH = na
+int   tl_rCB = na
+if not na(tl_rAncH)
+    if tl_usePiv
+        if not na(tl_rLastB) and (tl_everyB ? high < tl_rAncH : tl_rNewPiv)
+            tl_rCH := tl_rLastH
+            tl_rCB := tl_rLastB
+    else
+        if high < tl_rAncH and bar_index > tl_rAncB
+            tl_rCH := high
+            tl_rCB := bar_index
+
+if not na(tl_rCB) and bar_index - tl_rAncB < 4900
+    int  tl_tc = 0
+    bool tl_ok = true
+    for i = 0 to bar_index - tl_rAncB
+        tl_p = tl_f_val(float(tl_rAncB), tl_rAncH, float(tl_rCB), tl_rCH, float(bar_index - i))
+        if high[i] > tl_p * (1 + tl_buf)
+            tl_ok := false
+            break
+        if high[i] >= tl_p * (1 - tl_buf)
+            tl_tc += 1
+    if tl_ok and tl_tc >= tl_nT and (na(tl_rX1) or tl_rX1 != float(tl_rAncB) or tl_rX2 != float(tl_rCB))
+        tl_rX1 := float(tl_rAncB)
+        tl_rY1 := tl_rAncH
+        tl_rX2 := float(tl_rCB)
+        tl_rY2 := tl_rCH
+        tl_rTouch := tl_tc
+        tl_rValidAt := bar_index
+        tl_rActive := true
+
+tl_pl = ta.pivotlow(low, tl_bars, tl_bars)
+
+var float tl_sAncL = na
+var int   tl_sAncB = na
+var float tl_sX1 = na
+var float tl_sY1 = na
+var float tl_sX2 = na
+var float tl_sY2 = na
+var int   tl_sTouch = 0
+var int   tl_sValidAt = na
+var bool  tl_sActive = false
+var float tl_sLastL = na
+var int   tl_sLastB = na
+bool tl_sNewPiv = false
+
+if not na(tl_pl) and (na(tl_sAncL) or tl_pl < tl_sAncL or bar_index - tl_sAncB > tl_newH)
+    tl_sAncL := tl_pl
+    tl_sAncB := bar_index - tl_bars
+    tl_sLastL := na
+    tl_sLastB := na
+else if not na(tl_pl) and bar_index - tl_bars > tl_sAncB and tl_pl > tl_sAncL
+    tl_sLastL := tl_pl
+    tl_sLastB := bar_index - tl_bars
+    tl_sNewPiv := true
+
+float tl_sCL = na
+int   tl_sCB = na
+if not na(tl_sAncL)
+    if tl_usePiv
+        if not na(tl_sLastB) and (tl_everyB ? low > tl_sAncL : tl_sNewPiv)
+            tl_sCL := tl_sLastL
+            tl_sCB := tl_sLastB
+    else
+        if low > tl_sAncL and bar_index > tl_sAncB
+            tl_sCL := low
+            tl_sCB := bar_index
+
+if not na(tl_sCB) and bar_index - tl_sAncB < 4900
+    int  tl_tc2 = 0
+    bool tl_ok2 = true
+    for i = 0 to bar_index - tl_sAncB
+        tl_p = tl_f_val(float(tl_sAncB), tl_sAncL, float(tl_sCB), tl_sCL, float(bar_index - i))
+        if low[i] < tl_p * (1 - tl_buf)
+            tl_ok2 := false
+            break
+        if low[i] <= tl_p * (1 + tl_buf)
+            tl_tc2 += 1
+    if tl_ok2 and tl_tc2 >= tl_nT and (na(tl_sX1) or tl_sX1 != float(tl_sAncB) or tl_sX2 != float(tl_sCB))
+        tl_sX1 := float(tl_sAncB)
+        tl_sY1 := tl_sAncL
+        tl_sX2 := float(tl_sCB)
+        tl_sY2 := tl_sCL
+        tl_sTouch := tl_tc2
+        tl_sValidAt := bar_index
+        tl_sActive := true
+
+bool tl_rBreak = false
+bool tl_sBreak = false
+if tl_rActive and not na(tl_rX1) and bar_index > tl_rValidAt
+    tl_rv = tl_f_val(tl_rX1, tl_rY1, tl_rX2, tl_rY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? high > tl_rv * (1 + tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.min(open, close) > tl_rv : close > tl_rv)
+        tl_rBreak := true
+        tl_rActive := false
+if tl_sActive and not na(tl_sX1) and bar_index > tl_sValidAt
+    tl_sv = tl_f_val(tl_sX1, tl_sY1, tl_sX2, tl_sY2, bar_index)
+    if (tl_brkSrc == "Mèche + tampon" ? low < tl_sv * (1 - tl_buf) : tl_brkSrc == "Corps entier au-delà" ? math.max(open, close) < tl_sv : close < tl_sv)
+        tl_sBreak := true
+        tl_sActive := false
+
+grp_dt     = "=== DETECTOR ==="
+det_len    = 5
+det_nZones = 3
+mitigation = 'Wick'
+
+get_coordinates(condition, top, btm, ob_val)=>
+    var ob_top  = array.new_float(0)
+    var ob_btm  = array.new_float(0)
+    var ob_avg  = array.new_float(0)
+    var ob_left = array.new_int(0)
+    float ob = na
+    if condition
+        avg = math.avg(top, btm)
+        array.unshift(ob_top, top)
+        array.unshift(ob_btm, btm)
+        array.unshift(ob_avg, avg)
+        array.unshift(ob_left, time[det_len])
+        ob := ob_val
+    [ob_top, ob_btm, ob_avg, ob_left, ob]
+
+remove_mitigated(ob_top, ob_btm, ob_left, ob_avg, target, bull)=>
+    mitigated = false
+    target_array = bull ? ob_btm : ob_top
+    for element in target_array
+        idx = array.indexof(target_array, element)
+        if (bull ? target < element : target > element)
+            mitigated := true
+            array.remove(ob_top, idx)
+            array.remove(ob_btm, idx)
+            array.remove(ob_avg, idx)
+            array.remove(ob_left, idx)
+    mitigated
+
+var os = 0
+var target_bull = 0.
+var target_bear = 0.
+upper = ta.highest(det_len)
+lower = ta.lowest(det_len)
+
+det_lowC  = ta.lowest(close, det_len)
+det_highC = ta.highest(close, det_len)
+if mitigation == 'Close'
+    target_bull := det_lowC
+    target_bear := det_highC
+else
+    target_bull := lower
+    target_bear := upper
+
+os := high[det_len] > upper ? 0 : low[det_len] < lower ? 1 : os[1]
+phv = not na(ta.pivothigh(volume, det_len, det_len))
+
+[bull_top, bull_btm, bull_avg, bull_left, bull_ob] = get_coordinates(phv and os == 1, hl2[det_len], low[det_len], low[det_len])
+[bear_top, bear_btm, bear_avg, bear_left, bear_ob] = get_coordinates(phv and os == 0, high[det_len], hl2[det_len], high[det_len])
+mitigated_bull = remove_mitigated(bull_top, bull_btm, bull_left, bull_avg, target_bull, true)
+mitigated_bear = remove_mitigated(bear_top, bear_btm, bear_left, bear_avg, target_bear, false)
+
+f_det_bloque(bool isLong) =>
+    bool bloque = false
+    tops = isLong ? bear_top : bull_top
+    btms = isLong ? bear_btm : bull_btm
+    nz_  = math.min(det_nZones, array.size(tops))
+    if nz_ > 0
+        for i = 0 to nz_ - 1
+            t = array.get(tops, i)
+            b = array.get(btms, i)
+            if isLong and t >= close and math.max(b - close, 0.0) < f_detK * sg_atr
+                bloque := true
+            if not isLong and b <= close and math.max(close - t, 0.0) < f_detK * sg_atr
+                bloque := true
+    bloque
+
+grp_cx      = "=== CLIMAX ==="
+clx_buyBody = 0.55
+clx_buyVol  = 1.5
+clx_selBody = 0.65
+clx_selVol  = 2.0
+clx_volLen  = 20
+
+clx_rg   = high - low
+clx_eps  = syminfo.mintick / 100.0
+clx_body = clx_rg > 0 ? (close - open) / clx_rg : 0.0
+clx_vma  = ta.sma(volume, clx_volLen)
+clx_vr   = clx_vma > 0 ? volume / clx_vma : 0.0
+clx_ok   = chart.is_heikinashi and barstate.isconfirmed
+clx_buy  = clx_ok and clx_rg > 0 and clx_vma > 0 and (open - low) <= clx_eps
+             and clx_body >= clx_buyBody and clx_vr >= clx_buyVol
+clx_sell = clx_ok and clx_rg > 0 and clx_vma > 0 and (high - open) <= clx_eps
+             and -clx_body >= clx_selBody and clx_vr >= clx_selVol
+var int clx_last  = 0
+var int clx_lastB = na
+if clx_buy
+    clx_last  := 1
+    clx_lastB := bar_index
+else if clx_sell
+    clx_last  := -1
+    clx_lastB := bar_index
+clx_frais = f_clxAge == 0 or (not na(clx_lastB) and bar_index - clx_lastB <= f_clxAge)
+
+st_rsiLen = 14
+st_vidPer = 10
+st_vidMom = 20
+st_band   = 2.0
+st_mFast  = 20
+st_mSlow  = 40
+st_mSig   = 5
+st_bbLen  = 20
+st_bbMult = 2.0
+
+st_macd(src) =>
+    m = ta.ema(src, st_mFast) - ta.ema(src, st_mSlow)
+    s = ta.ema(m, st_mSig)
+    [m, s]
+
+st_macd_o(src, o) =>
+    m = ta.ema(src, st_mFast) - ta.ema(src, st_mSlow)
+    s = ta.ema(m, st_mSig)
+    [m[o], s[o]]
+
+st_oD  = f_mu_off("D")
+st_laD = f_mu_la("D")
+[st_dSma50, st_dSma200] = request.security(syminfo.tickerid, "D", [ta.sma(close, 50)[st_oD], ta.sma(close, 200)[st_oD]], lookahead=st_laD)
+[st_dH, st_dL, st_dO, st_dC] = request.security(syminfo.tickerid, "D", [high[st_oD], low[st_oD], open[st_oD], close[st_oD]], lookahead=st_laD)
+
+st_golden = ta.crossover(st_dSma50, st_dSma200)
+st_death  = ta.crossunder(st_dSma50, st_dSma200)
+st_week   = int(math.floor(time / 604800000))
+var int    st_lastWeek  = na
+var string st_crossTxt  = "—"
+if na(st_lastWeek)
+    st_lastWeek := st_week
+if st_week != st_lastWeek
+    st_crossTxt := "—"
+    st_lastWeek := st_week
+if st_golden
+    st_crossTxt := "Golden"
+if st_death
+    st_crossTxt := "Death"
+
+[st_m10, st_s10] = request.security(syminfo.tickerid, "10", st_macd_o(close, f_mu_off("10")), lookahead=f_mu_la("10"))
+st_mBull   = st_m10 > st_s10
+st_mStrong = st_mBull and st_m10 > -0.25 and st_s10 > -0.25
+st_mBase   = not st_mBull and st_m10 > -0.025 and st_s10 > -0.025
+st_macdTxt = st_mStrong ? "SUPERBULL" : st_mBase ? "Basing" : st_mBull ? "Bullish" : "Bearish"
+
+st_rsi = ta.rsi(close, st_rsiLen)
+st_inRange(cond) =>
+    bb = ta.barssince(cond)
+    5 <= bb and bb <= 60
+st_rsiLBR = st_rsi[5]
+st_plFound = not na(ta.pivotlow(st_rsi, 5, 5))
+st_phFound = not na(ta.pivothigh(st_rsi, 5, 5))
+st_inRpl   = st_inRange(st_plFound[1])
+st_inRph   = st_inRange(st_phFound[1])
+st_rsiHL   = st_rsiLBR > ta.valuewhen(st_plFound, st_rsiLBR, 1) and st_inRpl
+st_priceLL = low[5] < ta.valuewhen(st_plFound, low[5], 1)
+st_bullDiv = st_priceLL and st_rsiHL and st_plFound
+st_rsiLH   = st_rsiLBR < ta.valuewhen(st_phFound, st_rsiLBR, 1) and st_inRph
+st_priceHH = high[5] > ta.valuewhen(st_phFound, high[5], 1)
+st_bearDiv = st_priceHH and st_rsiLH and st_phFound
+var string st_divSem = "neut"
+var int    st_divTimer = 0
+if st_bullDiv
+    st_divSem := "bull"
+    st_divTimer := 10
+else if st_bearDiv
+    st_divSem := "bear"
+    st_divTimer := 10
+else
+    st_divTimer := math.max(st_divTimer - 1, 0)
+st_divShowSem = st_divTimer > 0 ? st_divSem : "neut"
+
+st_cci    = ta.cci(close, 30)
+st_basis  = ta.sma(close, st_bbLen)
+st_upBB   = st_basis + st_bbMult * ta.stdev(close, st_bbLen)
+st_loBB   = st_basis - st_bbMult * ta.stdev(close, st_bbLen)
+st_emaF   = ta.ema(close, 50)
+st_emaS   = ta.ema(close, 200)
+st_bullCount = (st_emaF > st_emaS ? 1 : 0) + (ta.crossover(st_rsi, 30) ? 1 : 0) + (ta.crossover(close, st_loBB) ? 1 : 0)
+st_buySignal = st_bullCount >= 2
+
+st_vidya_calc(src, len, mom) =>
+    mo = ta.change(src)
+    sp = math.sum(mo >= 0 ? mo : 0.0, mom)
+    sn = math.sum(mo < 0 ? -mo : 0.0, mom)
+    cmo = math.abs(100 * (sp - sn) / math.max(sp + sn, 1))
+    alpha = 2.0 / (len + 1.0)
+    var float v = na
+    v := alpha * cmo / 100 * src + (1 - alpha * cmo / 100) * nz(v[1])
+    v
+st_vidya  = ta.sma(st_vidya_calc(close, st_vidPer, st_vidMom), 15)
+st_atr200 = ta.atr(200)
+st_upBand = st_vidya + st_atr200 * st_band
+st_loBand = st_vidya - st_atr200 * st_band
+st_xUp    = ta.crossover(close, st_upBand)
+st_xDn    = ta.crossunder(close, st_loBand)
+var bool st_trendUp = false
+st_trendUp := st_xUp ? true : st_xDn ? false : st_trendUp[1]
+
+st_smaVol   = ta.sma(volume, 20)
+st_rangePos = st_dH != st_dL ? (st_dC - st_dL) / (st_dH - st_dL) : 0.5
+st_chg      = st_dO != 0 ? (st_dC - st_dO) / st_dO * 100 * 0.5 : 0.0
+st_macdS    = ta.ema(close, 12) - ta.ema(close, 26)
+st_sigS     = ta.ema(st_macdS, 9)
+st_squeeze  = ta.stdev(close, st_bbLen) < ta.lowest(ta.stdev(close, st_bbLen), 20) ? 7 : 0
+st_bullF = st_rangePos * 20 + st_chg + (volume > st_smaVol ? 10 : 0) + (ta.crossover(st_macdS, st_sigS) ? 10 : 0) + (close > ta.ema(close, 20) ? 5 : 0) + (st_buySignal ? 10 : 0) + st_squeeze
+st_bearF = (1 - st_rangePos) * 20 - st_chg + (volume < st_smaVol ? 10 : 0) + (ta.crossunder(st_macdS, st_sigS) ? 10 : 0) + (close < ta.ema(close, 20) ? 5 : 0)
+st_bullT = math.max(0, math.min(100, st_bullF))
+st_bearT = math.max(0, math.min(100, st_bearF))
+st_bullPct = st_bullT / (st_bullT + st_bearT) * 100
+st_bearPct = st_bearT / (st_bullT + st_bearT) * 100
+
+st_status(tf) =>
+    o  = f_mu_off(tf)
+    la = f_mu_la(tf)
+    [sH, sL] = request.security(syminfo.tickerid, tf, [ta.sma(high, 20)[o], ta.sma(low, 20)[o]], lookahead=la)
+    [mT, sT] = request.security(syminfo.tickerid, tf, st_macd_o(close, o), lookahead=la)
+    pT = request.security(syminfo.tickerid, tf, close[o], lookahead=la)
+    mb = mT > sT
+    above = pT > sH and pT > sL
+    sem = "neut"
+    if above and mb and mT > -0.025
+        sem := "super"
+    else if mT > -0.025 and not mb
+        sem := "warn"
+    else if above and mb
+        sem := "bull"
+    else if not above and not mb
+        sem := "bear"
+    sem
+st_pa1s = st_status("1")
+st_pa2s = st_status("5")
+st_pa3s = st_status("15")
+
+grp_t3 = "=== FEU DE CONFLUENCE (29 voix) ==="
+t3_tf1 = "3"
+t3_trClos = true
+t3_tf2 = "5"
+t3_tf3 = "15"
+t3_tf4 = "60"
+t3_tf5 = "240"
+t3_tf6 = "1D"
+t3_dd1 = "1"
+t3_dd2 = "5"
+t3_dd3 = "15"
+t3_dd4 = "60"
+t3_dd5 = "240"
+t3_dd6 = "1D"
+t3_lrLen  = 100
+t3_lrMode = "Prix au-dessus de la droite"
+t3_orbSess = "0930-1600"
+t3_orbMin  = 15
+t3_orbAnc  = "Séance US (réglage ci-dessus)"
+
+f_t3_pack(o) =>
+    e50 = ta.ema(close, 50)
+    [m, sg, _h] = ta.macd(close, 12, 26, 9)
+    r  = ta.rsi(close, 14)
+
+    tr = t3_trClos and o == 0 ? close[1] > e50[1] : close > e50
+    st = (close > open ? 1 : 0) + (m > sg ? 1 : 0) + (close > e50 ? 1 : 0) + (r > 50 ? 1 : 0)
+    b  = close > open
+    [tr[o], st[o], b[o]]
+
+[t3_tr1, t3_st1, t3_b1] = request.security(syminfo.tickerid, t3_tf1, f_t3_pack(f_mu_off(t3_tf1)), lookahead=f_mu_la(t3_tf1))
+[t3_tr2, t3_st2, t3_b2] = request.security(syminfo.tickerid, t3_tf2, f_t3_pack(f_mu_off(t3_tf2)), lookahead=f_mu_la(t3_tf2))
+[t3_tr3, t3_st3, t3_b3] = request.security(syminfo.tickerid, t3_tf3, f_t3_pack(f_mu_off(t3_tf3)), lookahead=f_mu_la(t3_tf3))
+[t3_tr4, t3_st4, t3_b4] = request.security(syminfo.tickerid, t3_tf4, f_t3_pack(f_mu_off(t3_tf4)), lookahead=f_mu_la(t3_tf4))
+[t3_tr5, t3_st5, t3_b5] = request.security(syminfo.tickerid, t3_tf5, f_t3_pack(f_mu_off(t3_tf5)), lookahead=f_mu_la(t3_tf5))
+[t3_tr6, t3_st6, t3_b6] = request.security(syminfo.tickerid, t3_tf6, f_t3_pack(f_mu_off(t3_tf6)), lookahead=f_mu_la(t3_tf6))
+
+[f_trUp, f_trSt, f_trB] = request.security(syminfo.tickerid, f_trTf, f_t3_pack(f_mu_off(f_trTf)), lookahead=f_mu_la(f_trTf))
+[f_trUp4, f_trSt4, f_trB4] = request.security(syminfo.tickerid, "240", f_t3_pack(f_mu_off("240")), lookahead=f_mu_la("240"))
+
+f_t3_ha(o) =>
+    b = close > open
+    b[o]
+t3_d1 = request.security(syminfo.tickerid, t3_dd1, f_t3_ha(f_mu_off(t3_dd1)), lookahead=f_mu_la(t3_dd1))
+t3_d2 = request.security(syminfo.tickerid, t3_dd2, f_t3_ha(f_mu_off(t3_dd2)), lookahead=f_mu_la(t3_dd2))
+t3_d3 = request.security(syminfo.tickerid, t3_dd3, f_t3_ha(f_mu_off(t3_dd3)), lookahead=f_mu_la(t3_dd3))
+t3_d4 = request.security(syminfo.tickerid, t3_dd4, f_t3_ha(f_mu_off(t3_dd4)), lookahead=f_mu_la(t3_dd4))
+t3_d5 = request.security(syminfo.tickerid, t3_dd5, f_t3_ha(f_mu_off(t3_dd5)), lookahead=f_mu_la(t3_dd5))
+
+[dz4_b, dz4_a] = request.security(syminfo.tickerid, t3_dd4, [(close - open)[f_mu_off(t3_dd4)], ta.atr(14)[f_mu_off(t3_dd4)]], lookahead=f_mu_la(t3_dd4))
+[dz5_b, dz5_a] = request.security(syminfo.tickerid, t3_dd5, [(close - open)[f_mu_off(t3_dd5)], ta.atr(14)[f_mu_off(t3_dd5)]], lookahead=f_mu_la(t3_dd5))
+
+gd_L = dz4_b >= gd_k * dz4_a and dz5_b >= gd_k * dz5_a
+gd_S = dz4_b <= -gd_k * dz4_a and dz5_b <= -gd_k * dz5_a
+f_gdTag(int d) => (d > 0 ? gd_L : gd_S) ? " · A" : " · B"
+t3_d6 = request.security(syminfo.tickerid, t3_dd6, f_t3_ha(f_mu_off(t3_dd6)), lookahead=f_mu_la(t3_dd6))
+
+[t3_stv, t3_std] = ta.supertrend(3, 10)
+t3_sigST  = t3_std < 0
+t3_sigMA  = close > ta.ema(close, 50)
+t3_sigVW  = close > ta.vwap(hlc3)
+t3_lrNow  = ta.linreg(close, t3_lrLen, 0)
+t3_lrPrev = ta.linreg(close, t3_lrLen, 1)
+t3_sigLR  = t3_lrMode == "Prix au-dessus de la droite" ? close > t3_lrNow : t3_lrNow > t3_lrPrev
+[t3_pdh, t3_pdl, t3_pdc] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+t3_cprP  = (t3_pdh + t3_pdl + t3_pdc) / 3
+t3_cprBC = (t3_pdh + t3_pdl) / 2
+t3_cprTC = 2 * t3_cprP - t3_cprBC
+t3_cprHi = math.max(t3_cprTC, t3_cprBC)
+t3_cprLo = math.min(t3_cprTC, t3_cprBC)
+t3_cpr   = close > t3_cprHi ? 1 : close < t3_cprLo ? -1 : 0
+
+t3_inSess  = not na(time(timeframe.period, t3_orbSess, "America/New_York"))
+t3_inEu    = not na(time(timeframe.period, "0900-1730", "Europe/Paris"))
+t3_newDay  = ta.change(time("D")) != 0
+t3_sessOpn = t3_orbAnc == "Début de journée TradingView" ? t3_newDay : t3_orbAnc == "Europe 09:00 Paris" ? t3_inEu and not t3_inEu[1] : t3_inSess and not t3_inSess[1]
+var float t3_orbH = na
+var float t3_orbL = na
+var int   t3_orbT = na
+if t3_newDay and t3_orbAnc != "Début de journée TradingView"
+    t3_orbH := na
+    t3_orbL := na
+    t3_orbT := na
+if t3_sessOpn
+    t3_orbT := time
+    t3_orbH := high
+    t3_orbL := low
+else if not na(t3_orbT) and time - t3_orbT < t3_orbMin * 60 * 1000
+    t3_orbH := math.max(t3_orbH, high)
+    t3_orbL := math.min(t3_orbL, low)
+t3_orb   = not timeframe.isintraday or na(t3_orbH) ? 0 : close > t3_orbH ? 1 : close < t3_orbL ? -1 : 0
+t3_pd    = close > t3_pdh ? 1 : close < t3_pdl ? -1 : 0
+
+f_t3_dirSem(sem) => sem == "bull" or sem == "super" ? 1 : sem == "bear" ? -1 : 0
+t3_vMacd  = st_macdTxt == "SUPERBULL" or st_macdTxt == "Bullish" ? 1 : st_macdTxt == "Bearish" ? -1 : 0
+t3_vCross = st_crossTxt == "Golden" ? 1 : st_crossTxt == "Death" ? -1 : 0
+t3_votes  = array.from(t3_d1 ? 1 : -1, t3_d2 ? 1 : -1, t3_d3 ? 1 : -1, t3_d4 ? 1 : -1, t3_d5 ? 1 : -1, t3_d6 ? 1 : -1,
+     st_trendUp ? 1 : -1, t3_vCross, st_cci >= 0 ? 1 : -1, st_rsi >= 50 ? 1 : -1, t3_vMacd,
+     st_bullPct >= st_bearPct ? 1 : -1, f_t3_dirSem(st_pa1s), f_t3_dirSem(st_pa2s), f_t3_dirSem(st_pa3s), f_t3_dirSem(st_divShowSem),
+     t3_sigST ? 1 : -1, t3_sigMA ? 1 : -1, t3_sigVW ? 1 : -1, t3_sigLR ? 1 : -1, t3_cpr, t3_orb, t3_pd,
+     t3_tr1 ? 1 : -1, t3_tr2 ? 1 : -1, t3_tr3 ? 1 : -1, t3_tr4 ? 1 : -1, t3_tr5 ? 1 : -1, t3_tr6 ? 1 : -1)
+int t3_nLong  = 0
+int t3_nShort = 0
+for v in t3_votes
+    if v == 1
+        t3_nLong += 1
+    else if v == -1
+        t3_nShort += 1
+t3_nTot   = array.size(t3_votes)
+t3_pLong  = 100.0 * t3_nLong  / t3_nTot
+t3_pShort = 100.0 * t3_nShort / t3_nTot
+
+f_bi_v(bool b) => b ? 1 : -1
+f_bi_st(int s) => s >= 3 ? 1 : s <= 1 ? -1 : 0
+bi_F = (f_bi_v(t3_tr4) + f_bi_v(t3_tr5) + f_bi_v(t3_tr6) + f_bi_v(t3_d4) + f_bi_v(t3_d5) + f_bi_v(t3_d6) + f_bi_st(t3_st4) + f_bi_st(t3_st5) + f_bi_st(t3_st6)) / 9.0
+bi_I = (f_bi_v(t3_tr2) + f_bi_v(t3_tr3) + f_bi_v(t3_d2) + f_bi_v(t3_d3) + f_bi_v(t3_sigST) + f_bi_v(t3_sigMA) + f_bi_v(t3_sigVW) + f_bi_v(t3_sigLR) + t3_cpr + t3_orb + t3_pd) / 11.0
+
+lv_hi   = lv_vrai ? r_h : high
+lv_lo   = lv_vrai ? r_l : low
+lv_cl   = lv_vrai ? r_c : close
+
+grp_mhl  = "=== MONDAY HIGH LOW ==="
+mhl_def  = "Lundi 00:00 → mardi 07:30 (Paris)"
+mhl_finH = 7
+mhl_finM = 30
+lv_brk   = "Clôture"
+
+mhl_fen   = mhl_def == "Lundi 00:00 → mardi 07:30 (Paris)"
+mhl_dowP  = dayofweek(time, "Europe/Paris")
+mhl_minP  = hour(time, "Europe/Paris") * 60 + minute(time, "Europe/Paris")
+mhl_inFen = mhl_dowP == dayofweek.monday or (mhl_dowP == dayofweek.tuesday and mhl_minP < mhl_finH * 60 + mhl_finM)
+mhl_isMon = mhl_fen ? mhl_inFen : mhl_def == "Lundi calendaire (UTC)" ? dayofweek(time, "UTC") == dayofweek.monday : mhl_def == "Lundi calendaire (Paris)" ? dayofweek(time, "Europe/Paris") == dayofweek.monday : dayofweek(time_tradingday, "UTC") == dayofweek.monday
+mhl_new   = mhl_isMon and not mhl_isMon[1]
+mhl_fin   = not mhl_isMon and mhl_isMon[1]
+var float mhl_h = na
+var float mhl_l = na
+var bool  mhl_pret = false
+var bool  mhl_hautFait = false
+var bool  mhl_basFait  = false
+bool mhl_brkUp = false
+bool mhl_brkDn = false
+if timeframe.isintraday
+    if mhl_new
+        mhl_h := lv_hi
+        mhl_l := lv_lo
+        mhl_pret := false
+    else if mhl_isMon and not na(mhl_h)
+        mhl_h := math.max(mhl_h, lv_hi)
+        mhl_l := math.min(mhl_l, lv_lo)
+
+    if mhl_fin and not na(mhl_h)
+        mhl_pret := true
+        mhl_hautFait := false
+        mhl_basFait  := false
+    if mhl_pret and not mhl_isMon
+        if not mhl_hautFait and (lv_brk == "Clôture" ? lv_cl > mhl_h : lv_hi > mhl_h)
+            mhl_brkUp := true
+            mhl_hautFait := true
+        if not mhl_basFait and (lv_brk == "Clôture" ? lv_cl < mhl_l : lv_lo < mhl_l)
+            mhl_brkDn := true
+            mhl_basFait := true
+
+grp_ses   = "=== SESSIONS : HIGH / LOW ==="
+ses_days  = 2
+ses_asSes = "0900-1530"
+ses_ldSes = "0800-1630"
+ses_usSes = "0930-1600"
+
+var int ses_dayN = 0
+if ta.change(time("D")) != 0
+    ses_dayN += 1
+
+f_ses(_on, _sess, _tz, _sig) =>
+    inS = not na(time(timeframe.period, _sess, _tz))
+    var float h  = na
+    var float l  = na
+    var bool  run = false
+    var int   jour = na
+    var array<float> prx = array.new_float()
+    var array<bool>  hiF = array.new_bool()
+    var array<int>   age = array.new_int()
+    bool up = false
+    bool dn = false
+    actif = _on and timeframe.isintraday
+    if actif
+
+        if not inS and inS[1] and run
+            array.push(prx, h), array.push(hiF, true),  array.push(age, jour)
+            array.push(prx, l), array.push(hiF, false), array.push(age, jour)
+            run := false
+
+        if inS and not inS[1]
+            jour := ses_dayN
+            h := lv_hi
+            l := lv_lo
+            run := true
+        else if inS and run
+            h := math.max(h, lv_hi)
+            l := math.min(l, lv_lo)
+
+        if array.size(prx) > 0
+            for i = array.size(prx) - 1 to 0
+                p  = array.get(prx, i)
+                hi = array.get(hiF, i)
+                vieux = array.get(age, i) <= ses_dayN - ses_days
+                traverse = lv_brk == "Clôture" ? (hi ? lv_cl > p : lv_cl < p) : (hi ? lv_hi > p : lv_lo < p)
+                if vieux or traverse
+                    if traverse and not vieux and _sig
+                        if hi
+                            up := true
+                        else
+                            dn := true
+                    array.remove(prx, i), array.remove(hiF, i), array.remove(age, i)
+    [up, dn, prx, hiF]
+
+nv_stopNv = x_stopMode == "Niveau de protection"
+nv_tpNv   = x_tpMode == "Prochain niveau"
+nv_sesOn  = (nv_stopNv and x_slSe) or (nv_tpNv and x_tpSe)
+[ses_asUp, ses_asDn, ses_asP, ses_asH] = f_ses((e_lvlOn and e_lvlAs) or nv_sesOn, ses_asSes, "Asia/Tokyo",       e_lvlOn and e_lvlAs)
+[ses_ldUp, ses_ldDn, ses_ldP, ses_ldH] = f_ses((e_lvlOn and e_lvlLd) or nv_sesOn, ses_ldSes, "Europe/London",    e_lvlOn and e_lvlLd)
+[ses_usUp, ses_usDn, ses_usP, ses_usH] = f_ses((e_lvlOn and e_lvlUs) or nv_sesOn, ses_usSes, "America/New_York", e_lvlOn and e_lvlUs)
+lvl_up = ses_asUp or ses_ldUp or ses_usUp or (e_lvlMon and mhl_brkUp)
+lvl_dn = ses_asDn or ses_ldDn or ses_usDn or (e_lvlMon and mhl_brkDn)
+
+var array<float>  nv_px  = array.new_float()
+var array<int>    nv_typ = array.new_int()
+var array<int>    nv_rol = array.new_int()
+var array<string> nv_nom = array.new_string()
+
+f_nv_add(float px, int typ, int rol, string nom) =>
+    if not na(px)
+        array.push(nv_px, px)
+        array.push(nv_typ, typ)
+        array.push(nv_rol, rol)
+        array.push(nv_nom, nom)
+    true
+
+f_nv_piv(int typ, string per, float p, float r1, float s1, float r2, float s2, float r3, float s3, float r4, float s4, float r5, float s5) =>
+    n = "pivot " + per + " "
+    f_nv_add(p,  typ, 15, n + "P")
+    f_nv_add(r1, typ, 15, n + "R1"), f_nv_add(s1, typ, 15, n + "S1")
+    f_nv_add(r2, typ, 15, n + "R2"), f_nv_add(s2, typ, 15, n + "S2")
+    f_nv_add(r3, typ, 15, n + "R3"), f_nv_add(s3, typ, 15, n + "S3")
+    f_nv_add(r4, typ, 15, n + "R4"), f_nv_add(s4, typ, 15, n + "S4")
+    f_nv_add(r5, typ, 15, n + "R5"), f_nv_add(s5, typ, 15, n + "S5")
+    true
+
+f_nv_ses(array<float> p, array<bool> h, string nom) =>
+    if array.size(p) > 0
+        for i = 0 to array.size(p) - 1
+            f_nv_add(array.get(p, i), 6, 15, (array.get(h, i) ? "haut" : "bas") + " session " + nom)
+    true
+
+f_nv_build() =>
+    array.clear(nv_px), array.clear(nv_typ), array.clear(nv_rol), array.clear(nv_nom)
+    f_nv_piv(1, "annuel",  pA_p, pA_r1, pA_s1, pA_r2, pA_s2, pA_r3, pA_s3, pA_r4, pA_s4, pA_r5, pA_s5)
+    f_nv_piv(2, "mensuel", pM_p, pM_r1, pM_s1, pM_r2, pM_s2, pM_r3, pM_s3, pM_r4, pM_s4, pM_r5, pM_s5)
+    f_nv_piv(4, "weekly",  pW_p, pW_r1, pW_s1, pW_r2, pW_s2, pW_r3, pW_s3, pW_r4, pW_s4, pW_r5, pW_s5)
+    if array.size(bull_btm) > 0
+        for i = 0 to array.size(bull_btm) - 1
+            f_nv_add(array.get(bull_btm, i), 3, 1, "zone Z haussière (bas)")
+            f_nv_add(array.get(bull_top, i), 3, 8, "zone Z haussière (haut)")
+            f_nv_add(array.get(bull_avg, i), 3, 0, "zone Z haussière (milieu)")
+    if array.size(bear_top) > 0
+        for i = 0 to array.size(bear_top) - 1
+            f_nv_add(array.get(bear_top, i), 3, 2, "zone Z baissière (haut)")
+            f_nv_add(array.get(bear_btm, i), 3, 4, "zone Z baissière (bas)")
+            f_nv_add(array.get(bear_avg, i), 3, 0, "zone Z baissière (milieu)")
+    if mhl_pret and not mhl_isMon
+        f_nv_add(mhl_h, 5, 15, "Monday High")
+        f_nv_add(mhl_l, 5, 15, "Monday Low")
+    f_nv_ses(ses_asP, ses_asH, "Asie")
+    f_nv_ses(ses_ldP, ses_ldH, "Londres")
+    f_nv_ses(ses_usP, ses_usH, "US")
+    if not na(r_c) and rnd_step > 0
+        base = math.floor(r_c / rnd_step) * rnd_step
+        for k = -4 to 5
+            v = base + k * rnd_step
+            f_nv_add(v, 7, 15, "niveau rond " + str.tostring(v, format.mintick))
+    array.size(nv_px)
+
+f_bit(int r, int b) => int(r / b) % 2 == 1
+f_nv_mot(int typ) => typ == 1 ? "annuel" : typ == 2 ? "mensuel" : typ == 3 ? "detector" : typ == 4 ? "weekly" : typ == 5 ? "monday" : typ == 6 ? "session" : "rond"
+f_nv_slOn(int typ) => typ == 1 ? x_slA : typ == 2 ? x_slM : typ == 3 ? x_slD : typ == 4 ? x_slW : typ == 5 ? x_slMo : typ == 6 ? x_slSe : x_slRo
+f_nv_tpOn(int typ) => typ == 1 ? x_tpA : typ == 2 ? x_tpM : typ == 3 ? x_tpD : typ == 4 ? x_tpW : typ == 5 ? x_tpMo : typ == 6 ? x_tpSe : x_tpRo
+
+f_nv_rang(int typ) =>
+    i = str.pos(x_prio, f_nv_mot(typ))
+    f_nv_slOn(typ) and not na(i) ? i : -1
+f_marge(float v) => nv_marge == "Ticks" ? v * tick : v * r_atr
+
+f_sl_niveau(int dir, float e) =>
+    float bS = na
+    string bN = ""
+    int bR = 1000000
+    float bD = na
+    mg = f_marge(x_slMarge)
+    n = array.size(nv_px)
+    if n > 0 and not na(r_atr)
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            rk = f_nv_rang(array.get(nv_typ, i))
+            if rk >= 0 and f_bit(array.get(nv_rol, i), dir > 0 ? 1 : 2) and (dir > 0 ? px < e : px > e)
+                s = px - dir * mg
+                d = (e - s) * dir
+                if d >= x_slMin * r_atr and d <= x_slMax * r_atr and (rk < bR or (rk == bR and d < bD))
+                    bS := s
+                    bN := array.get(nv_nom, i)
+                    bR := rk
+                    bD := d
+    [bS, bN]
+
+f_tp_niveau(int dir, float e, float risk) =>
+    mg = f_marge(x_tpMarge)
+    n = array.size(nv_px)
+    float t1 = na
+    string n1 = ""
+    float l1 = na
+    float d1 = na
+    if n > 0
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            if f_nv_tpOn(array.get(nv_typ, i)) and f_bit(array.get(nv_rol, i), dir > 0 ? 4 : 8) and (px - e) * dir > 0
+                t = px - dir * mg
+                d = (t - e) * dir
+                if d > 0 and d >= x_rrMin * risk and (na(d1) or d < d1)
+                    t1 := t
+                    n1 := array.get(nv_nom, i)
+                    l1 := px
+                    d1 := d
+    float t2 = na
+    string n2 = ""
+    float d2 = na
+    if n > 0 and not na(t1)
+        for i = 0 to n - 1
+            px = array.get(nv_px, i)
+            if f_nv_tpOn(array.get(nv_typ, i)) and f_bit(array.get(nv_rol, i), dir > 0 ? 4 : 8) and (px - l1) * dir > tick / 2
+                t = px - dir * mg
+                d = (t - e) * dir
+                if d > d1 and (na(d2) or d < d2)
+                    t2 := t
+                    n2 := array.get(nv_nom, i)
+                    d2 := d
+    [t1, n1, t2, n2]
+
+e_moyen  = e_sigNiv == "Fort + Moyen"
+
+dv_ec  = (r_c - sg_ema50) / r_atr
+dv_rsi = ta.rsi(close, 14)
+
+dv_hh  = ta.highest(r_h, 20)
+dv_ll  = ta.lowest(r_l, 20)
+dv_rH3 = ta.highest(dv_rsi, 3)
+dv_rHp = ta.highest(dv_rsi[3], 17)
+dv_rL3 = ta.lowest(dv_rsi, 3)
+dv_rLp = ta.lowest(dv_rsi[3], 17)
+dv_eH  = ta.highest(dv_ec, 3)
+dv_eL  = ta.lowest(dv_ec, 3)
+dv_sh  = math.max(r_h, r_h[1]) >= dv_hh and dv_rH3 < dv_rHp and r_c < r_o and dv_eH >= e_divX
+dv_lo  = math.min(r_l, r_l[1]) <= dv_ll and dv_rL3 > dv_rLp and r_c > r_o and dv_eL <= -e_divX
+sig_long  = (e_sigOn and (sg_long  or (e_moyen and sg_longM)))  or (e_heiOn and hei_bull_flip) or (e_tlOn and tl_rBreak) or (e_lvlOn and lvl_up) or (e_clxOn and clx_buy) or (e_divOn and dv_lo)
+sig_short = (e_sigOn and (sg_short or (e_moyen and sg_shortM))) or (e_heiOn and hei_bear_flip) or (e_tlOn and tl_sBreak) or (e_lvlOn and lvl_dn) or (e_clxOn and clx_sell) or (e_divOn and dv_sh)
+
+f_minParis(t) => hour(t, "Europe/Paris") * 60 + minute(t, "Europe/Paris")
+
+fin_min   = x_finH * 60 + x_finM
+
+f_minChi(t) => hour(t, "America/Chicago") * 60 + minute(t, "America/Chicago")
+pf_min    = f_minChi(time_close)
+pf_apres  = x_pfOn and timeframe.isintraday and pf_min + timeframe.in_seconds() / 60 > 15 * 60 + 59 and pf_min <= 17 * 60
+
+fen_fin   = str.tonumber(str.substring(x_fen, 5, 7)) * 60 + str.tonumber(str.substring(x_fen, 7, 9))
+fen_in    = not na(time(timeframe.period, x_fen, "Europe/Paris"))
+fen_apres = x_fenOn and timeframe.isintraday and (not fen_in or f_minParis(time_close) >= fen_fin)
+fin_apres = (x_finOn and timeframe.isintraday and f_minParis(time_close) >= fin_min) or pf_apres or fen_apres
+
+in_h1  = not na(time(timeframe.period, f_hr1, "Europe/Paris"))
+in_h2  = not na(time(timeframe.period, f_hr2, "Europe/Paris"))
+hr_ok  = not f_hrOn or not timeframe.isintraday or (not f_hr1On and not f_hr2On) or (f_hr1On and in_h1) or (f_hr2On and in_h2)
+
+bo_ok  = not f_boOn or not f_sg_news()
+
+jour_paris = dayofmonth(time, "Europe/Paris")
+var int nb_jour = 0
+if jour_paris != jour_paris[1]
+    nb_jour := 0
+jour_ok = f_maxJour == 0 or nb_jour < f_maxJour
+
+feu_okL = not f_feuOn or (f_feuMode == "Part dans le sens ≥ seuil" ? t3_pLong  >= f_feuSeuil : t3_pShort < f_feuSeuil)
+feu_okS = not f_feuOn or (f_feuMode == "Part dans le sens ≥ seuil" ? t3_pShort >= f_feuSeuil : t3_pLong  < f_feuSeuil)
+
+f_trUpE = f_tr4h ? f_trUp4 : f_trUp
+tr_okL  = not f_trOn or f_trUpE
+tr_okS  = not f_trOn or not f_trUpE
+
+ema_okL = not f_emaOn or close > ema_m1
+ema_okS = not f_emaOn or close < ema_m1
+
+adx_ok  = not f_adxOn or sg_adx >= f_adxMin
+
+det_blL = f_det_bloque(true)
+det_blS = f_det_bloque(false)
+det_okL = not f_detOn or not det_blL
+det_okS = not f_detOn or not det_blS
+
+clx_okL = not f_clxOn or not (clx_last == -1 and clx_frais)
+clx_okS = not f_clxOn or not (clx_last == 1 and clx_frais)
+
+commun_ok = hr_ok and bo_ok and jour_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
+sens_okL  = e_sens != "Short seulement"
+sens_okS  = e_sens != "Long seulement"
+jr_e     = math.round((close - ema_m1) / sg_atr * 10) / 10
+dz_up4   = f_dshMin <= 0 ? t3_d4 : dz4_b >= f_dshMin * dz4_a
+dz_dn4   = f_dshMin <= 0 ? not t3_d4 : dz4_b <= -f_dshMin * dz4_a
+dz_up5   = f_dshMin <= 0 ? t3_d5 : dz5_b >= f_dshMin * dz5_a
+dz_dn5   = f_dshMin <= 0 ? not t3_d5 : dz5_b <= -f_dshMin * dz5_a
+x2_okL   = (not f_dsh60 or dz_up4) and (not f_dsh240 or dz_up5) and (not f_eOn or (not na(jr_e) and jr_e <= f_eMax))
+x2_okS   = (not f_dsh60 or dz_dn4) and (not f_dsh240 or dz_dn5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
+bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
+bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
+go_long   = x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+
+dg_r4 = dz4_a > 0 ? dz4_b / dz4_a : na
+dg_r5 = dz5_a > 0 ? dz5_b / dz5_a : na
+dg_codeL = (e_sigOn and sg_long ? 1 : 0) + (e_sigOn and e_moyen and sg_longM ? 2 : 0) + (e_heiOn and hei_bull_flip ? 4 : 0) + (e_tlOn and tl_rBreak ? 8 : 0) + (e_lvlOn and lvl_up ? 16 : 0) + (e_clxOn and clx_buy ? 32 : 0) + (e_divOn and dv_lo ? 64 : 0)
+dg_codeS = (e_sigOn and sg_short ? 1 : 0) + (e_sigOn and e_moyen and sg_shortM ? 2 : 0) + (e_heiOn and hei_bear_flip ? 4 : 0) + (e_tlOn and tl_sBreak ? 8 : 0) + (e_lvlOn and lvl_dn ? 16 : 0) + (e_clxOn and clx_sell ? 32 : 0) + (e_divOn and dv_sh ? 64 : 0)
+dg_haB = (close - open) / sg_atr
+f_dgt(int c) => (c % 2 >= 1 ? "F" : "") + (c % 4 >= 2 ? "M" : "") + (c % 8 >= 4 ? "H" : "") + (c % 16 >= 8 ? "T" : "") + (c % 32 >= 16 ? "N" : "") + (c % 64 >= 32 ? "C" : "") + (c >= 64 ? "D" : "")
+f_dgS(float v, string fmt) => na(v) ? "na" : (v >= 0 ? "+" : "") + str.tostring(v, fmt)
+f_dgDiag() => "1h " + f_dgS(dg_r4, "0.000") + " 4h " + f_dgS(dg_r5, "0.000") + " (seuil " + str.tostring(f_dshMin, "0.00") + ") · e " + f_dgS((close - ema_m1) / sg_atr, "0.00") + " (max " + str.tostring(f_eMax, "0.0") + ") · HA15 " + f_dgS(dg_haB, "0.00")
+
+ad_vr = r_atr / ta.sma(r_atr, 96)
+f_ad_score(int dir) =>
+    int c = 0
+    c += (dir > 0 ? f_trUpE : not f_trUpE) ? 1 : 0
+    c += (dir > 0 ? t3_pLong : t3_pShort) >= ad_feu ? 1 : 0
+    c += sg_adx >= ad_adx and (dir > 0 ? sg_diP > sg_diM : sg_diM > sg_diP) ? 1 : 0
+    c
+
+f_det_place(bool isLong) =>
+    float best = na
+    tops = isLong ? bear_top : bull_top
+    btms = isLong ? bear_btm : bull_btm
+    nz_  = math.min(det_nZones, array.size(tops))
+    if nz_ > 0
+        for i = 0 to nz_ - 1
+            t = array.get(tops, i)
+            b = array.get(btms, i)
+            dd = isLong ? (t >= close ? math.max(b - close, 0.0) : na) : (b <= close ? math.max(close - t, 0.0) : na)
+            if not na(dd) and (na(best) or dd < best)
+                best := dd
+    na(best) or na(sg_atr) or sg_atr <= 0 ? 9.9 : math.min(best / sg_atr, 9.9)
+f_b01(bool b) => b ? "1" : "0"
+f_jr(int d, float risk) =>
+    dL = d > 0
+    tg = (e_sigOn and (dL ? sg_long : sg_short) ? "F" : "") + (e_sigOn and e_moyen and (dL ? sg_longM : sg_shortM) ? "M" : "") + (e_heiOn and (dL ? hei_bull_flip : hei_bear_flip) ? "H" : "") + (e_tlOn and (dL ? tl_rBreak : tl_sBreak) ? "T" : "") + (e_lvlOn and (dL ? lvl_up : lvl_dn) ? "N" : "") + (e_clxOn and (dL ? clx_buy : clx_sell) ? "C" : "") + (e_divOn and (dL ? dv_lo : dv_sh) ? "D" : "")
+    (dL ? "L" : "S") + "|" + tg + "|F" + str.tostring(math.round(bi_F * 9)) + "|I" + str.tostring(math.round(bi_I * 11)) + "|f" + str.tostring(math.round(t3_pLong)) + "/" + str.tostring(math.round(t3_pShort)) + "|t" + f_b01(t3_tr1) + f_b01(t3_tr2) + f_b01(t3_tr3) + f_b01(t3_tr4) + f_b01(t3_tr5) + f_b01(t3_tr6) + "|d" + f_b01(t3_d1) + f_b01(t3_d2) + f_b01(t3_d3) + f_b01(t3_d4) + f_b01(t3_d5) + f_b01(t3_d6) + "|s" + str.tostring(t3_st3) + str.tostring(t3_st4) + str.tostring(t3_st5) + str.tostring(t3_st6) + "|a" + str.tostring(math.round(sg_adx)) + (sg_diP > sg_diM ? "+" : "-") + "|z" + str.tostring(f_det_place(dL), "0.0") + "|e" + str.tostring((close - ema_m1) / sg_atr, "0.0") + "|v" + str.tostring(ad_vr, "0.00") + "|c" + str.tostring(clx_last) + "|R" + str.tostring(risk, "0.00")
+
+f_stop(int dir, float e) =>
+    float s = na
+    string nm = ""
+    bool ab = false
+    if x_stopMode == "Niveau de protection"
+        [ls, ln] = f_sl_niveau(dir, e)
+        if not na(ls)
+            s := ls
+            nm := ln
+            ab := true
+    else if x_stopMode == "Dernier swing + marge"
+        sw = dir > 0 ? r_swLow : r_swHigh
+        if not na(sw) and (dir > 0 ? sw < e : sw > e)
+            s := dir > 0 ? sw - x_swMarge * tick : sw + x_swMarge * tick
+            nm := "dernier swing"
+    else if x_stopMode == "Fixe (points)" and x_fixPts > 0
+        s := e - dir * x_fixPts
+        nm := "fixe " + str.tostring(x_fixPts) + " pts"
+    else if x_stopMode == "Zone Z la plus proche"
+
+        float best = na
+        if dir > 0 and array.size(bull_btm) > 0
+            for b in bull_btm
+                if b < e and (na(best) or b > best)
+                    best := b
+        if dir < 0 and array.size(bear_top) > 0
+            for t in bear_top
+                if t > e and (na(best) or t < best)
+                    best := t
+        if not na(best)
+            cand = dir > 0 ? best - x_detMarge * tick : best + x_detMarge * tick
+            d0 = math.abs(e - cand)
+            if d0 >= x_detMin * r_atr and d0 <= x_detMax * r_atr
+                s := cand
+                nm := "zone Z"
+    else if x_stopMode == "Adaptatif"
+        if ad_niv
+            [ls, ln] = f_sl_niveau(dir, e)
+            if not na(ls)
+                s := ls
+                nm := "adaptatif · " + ln
+                ab := true
+        if na(s) and not na(ad_vr)
+            k = ad_vr < 0.8 ? ad_kbas : ad_vr > 1.3 ? ad_khaut : ad_k
+            s := e - dir * k * r_atr
+            nm := "adaptatif · " + str.tostring(k) + " V (vol. " + str.tostring(ad_vr, "0.00") + ")"
+    else if x_stopMode == "Extrême 2 bougies + marge"
+        cand = dir > 0 ? math.min(r_l, r_l[1]) - x_extMarge * r_atr : math.max(r_h, r_h[1]) + x_extMarge * r_atr
+        d0 = math.abs(e - cand)
+        if d0 >= x_extMin * r_atr and d0 <= x_extMax * r_atr
+            s := cand
+            nm := "extrême 2 bougies"
+            ab := true
+
+    if na(s)
+        s := e - dir * x_atrK * r_atr
+        nm := "V × " + str.tostring(x_atrK) + (x_stopMode == "V × k" ? "" : " (repli : aucun niveau)")
+    [s, nm, ab]
+
+f_qty(float dist) =>
+    int q = q_fixe
+    if q_mode == "Risque fixe en $"
+        q := dist > 0 ? math.min(int(math.floor(q_risque / (dist * syminfo.pointvalue))), q_max) : 0
+    q
+
+var int    tr_dir    = 0
+var string ws_tag    = ""
+var bool   tr_fixe   = false
+var float  tr_entry  = na
+var float  tr_stop   = na
+var float  tr_stop0  = na
+var float  tr_tp     = na
+var float  tr_tp2    = na
+var float  tr_tpRk   = na
+var float  tr_dist   = na
+var float  tr_risk   = na
+var float  tr_best   = na
+var bool   tr_be     = false
+var bool   tr_slAbs  = false
+var bool   tr_part   = false
+var bool   tr_p1     = false
+var int    tr_q      = 0
+var int    tr_q1     = 0
+var int    tr_ct0    = 0
+var int    tr_bar0   = na
+var bool   tr_dess   = false
+var string tr_slNom  = ""
+var string tr_tpNom  = ""
+var string tr_tp2Nom = ""
+var int    nb_saute  = 0
+
+var array<box>   dr_boxes  = array.new_box()
+var array<line>  dr_lines  = array.new_line()
+var array<label> dr_labels = array.new_label()
+var box   dr_bR  = na
+var box   dr_bT  = na
+var box   dr_bT2 = na
+var line  dr_lE  = na
+var label dr_lbE = na
+var label dr_lbS = na
+var label dr_lbT = na
+var label dr_lbX = na
+c_risk = #F44336
+c_gain = #4CAF50
+c_txt  = #787B86
+c_none = color.new(color.white, 100)
+
+f_px(float v) => str.tostring(v, format.mintick)
+
+f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring((r_c - strategy.position_avg_price) * strategy.position_size * syminfo.pointvalue, "#,##0") + " $"
+f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
+
+pos = strategy.position_size
+nCT = strategy.closedtrades
+bool sortie_marq = false
+bool tr_neuf = false
+
+bool  ex_go   = false
+float ex_stop = na
+float ex_loss = na
+float ex_tp1  = na
+float ex_prof = na
+
+if tr_dir != 0 and not tr_fixe
+    if pos != 0 or nCT > tr_ct0
+        ouvert = pos != 0
+        tr_entry := ouvert ? strategy.position_avg_price : strategy.closedtrades.entry_price(tr_ct0)
+        tr_bar0  := ouvert ? strategy.opentrades.entry_bar_index(0) : strategy.closedtrades.entry_bar_index(tr_ct0)
+
+        if not tr_slAbs
+            tr_stop := tr_entry - tr_dir * tr_dist
+        tr_risk  := (tr_entry - tr_stop) * tr_dir
+        if not na(tr_tpRk)
+            tr_tp := tr_risk > 0 ? tr_entry + tr_dir * tr_tpRk * tr_risk : na
+        tr_stop0 := tr_stop
+        tr_best  := tr_dir > 0 ? r_h : r_l
+        tr_be    := false
+        tr_p1    := false
+        tr_fixe  := true
+        tr_neuf  := true
+        if a_trades
+            tr_dess := true
+            dr_bR := box.new(tr_bar0, math.max(tr_entry, tr_stop0), bar_index, math.min(tr_entry, tr_stop0), border_color=color.new(c_risk, 55), bgcolor=color.new(c_risk, 82))
+            dr_bT  := na
+            dr_bT2 := na
+            dr_lbT := na
+            if not na(tr_tp)
+                dr_bT := box.new(tr_bar0, math.max(tr_entry, tr_tp), bar_index, math.min(tr_entry, tr_tp), border_color=color.new(c_gain, 55), bgcolor=color.new(c_gain, 82))
+                if not na(tr_tp2)
+                    dr_bT2 := box.new(tr_bar0, math.max(tr_tp, tr_tp2), bar_index, math.min(tr_tp, tr_tp2), border_color=color.new(c_gain, 70), bgcolor=color.new(c_gain, 91))
+            dr_lE := line.new(tr_bar0, tr_entry, bar_index, tr_entry, color=c_txt, style=line.style_dotted, width=1)
+            dr_lbE := na
+            dr_lbS := na
+            dr_lbX := na
+            if a_lbl
+                dr_lbE := label.new(tr_bar0, tr_entry, (tr_dir > 0 ? "LONG" : "SHORT") + " ×" + str.tostring(tr_q) + " @ " + f_px(tr_entry), style=label.style_label_right, color=c_none, textcolor=c_txt, size=size.tiny)
+                dr_lbS := label.new(tr_bar0, tr_stop0, "SL : " + tr_slNom + " (" + f_px(tr_stop0) + ")", style=label.style_label_right, color=c_none, textcolor=color.new(c_risk, 15), size=size.tiny)
+                if not na(tr_tp)
+                    rTp = tr_risk > 0 ? (tr_tp - tr_entry) * tr_dir / tr_risk : na
+                    tTp = (tr_part ? "TP1 (" + str.tostring(math.round(100.0 * tr_q1 / tr_q)) + " %) : " : "TP : ") + tr_tpNom + " (" + f_px(tr_tp) + ")" + (na(rTp) ? "" : " · " + str.tostring(rTp, "0.0") + " R")
+                    if tr_part
+                        tTp += na(tr_tp2) ? "\nreste : au stop" : "\nTP2 : " + tr_tp2Nom + " (" + f_px(tr_tp2) + ")"
+                    dr_lbT := label.new(tr_bar0, tr_tp, tTp, style=label.style_label_right, color=c_none, textcolor=color.new(c_gain, 10), size=size.tiny)
+                dr_lbX := label.new(bar_index, tr_entry, "en cours", style=label.style_label_left, color=c_none, textcolor=c_txt, size=size.tiny)
+            array.push(dr_boxes, dr_bR), array.push(dr_boxes, dr_bT), array.push(dr_boxes, dr_bT2)
+            array.push(dr_lines, dr_lE)
+            array.push(dr_labels, dr_lbE), array.push(dr_labels, dr_lbS), array.push(dr_labels, dr_lbT), array.push(dr_labels, dr_lbX)
+
+            while array.size(dr_lines) > a_trN
+                for k = 1 to 3
+                    box.delete(array.shift(dr_boxes))
+                line.delete(array.shift(dr_lines))
+                for k = 1 to 4
+                    label.delete(array.shift(dr_labels))
+    else
+        tr_dir := 0
+
+if tr_dir != 0 and tr_fixe and pos == 0
+    float pnl = 0.0
+    float rq  = 0.0
+    int   xb  = bar_index
+    float xp  = r_c
+    string xc = ""
+    if nCT > tr_ct0
+        for i = tr_ct0 to nCT - 1
+            pnl += strategy.closedtrades.profit(i)
+            rq  += (strategy.closedtrades.exit_price(i) - tr_entry) * tr_dir * math.abs(strategy.closedtrades.size(i))
+            xb  := strategy.closedtrades.exit_bar_index(i)
+            xp  := strategy.closedtrades.exit_price(i)
+            cm   = strategy.closedtrades.exit_comment(i)
+            xc  := na(cm) ? xc : cm
+    rr = tr_risk > 0 and tr_q > 0 ? rq / (tr_risk * tr_q) : na
+    if tr_dess
+        box.set_right(dr_bR, xb)
+        if not na(dr_bT)
+            box.set_right(dr_bT, xb)
+        if not na(dr_bT2)
+            box.set_right(dr_bT2, xb)
+        line.set_x2(dr_lE, xb)
+        if not na(dr_lbX)
+            label.set_xy(dr_lbX, xb, xp)
+            label.set_text(dr_lbX, (na(rr) ? "" : f_sgn(rr, "0.00") + " R · ") + f_sgn(pnl, "#,##0") + " $" + (xc != "" ? " · " + xc : ""))
+            label.set_textcolor(dr_lbX, pnl >= 0 ? c_gain : c_risk)
+        if not na(dr_lbS) and tr_stop != tr_stop0
+            label.set_text(dr_lbS, "SL : " + tr_slNom + " (" + f_px(tr_stop0) + ")\nstop final " + f_px(tr_stop))
+    tr_dir  := 0
+    tr_fixe := false
+    tr_dess := false
+
+if pos != 0
+    if tr_dir == 0
+
+        tr_dir   := pos > 0 ? 1 : -1
+        tr_entry := strategy.position_avg_price
+        tr_dist  := x_atrK * r_atr
+        tr_stop  := tr_entry - tr_dir * tr_dist
+        tr_stop0 := tr_stop
+        tr_risk  := tr_dist
+        tr_tp    := na
+        tr_tp2   := na
+        tr_tpRk  := na
+        tr_best  := tr_dir > 0 ? r_h : r_l
+        tr_be    := false
+        tr_part  := false
+        tr_q     := int(math.abs(pos))
+        tr_ct0   := nCT
+        tr_slNom := "V × " + str.tostring(x_atrK)
+        tr_fixe  := true
+        tr_dess  := false
+        tr_neuf  := true
+    if not tr_neuf
+        tr_best := tr_dir > 0 ? math.max(tr_best, r_h) : math.min(tr_best, r_l)
+
+    if tr_part and not tr_p1 and math.abs(pos) < tr_q
+        tr_p1 := true
+        if x_partBE
+            be1 = tr_entry + tr_dir * x_beTk * tick
+            tr_stop := tr_dir > 0 ? math.max(tr_stop, be1) : math.min(tr_stop, be1)
+    gainR = tr_risk > 0 ? (tr_best - tr_entry) * tr_dir / tr_risk : 0.0
+
+    if x_beOn and not tr_be and tr_risk > 0 and gainR >= x_beR
+        be = tr_entry + tr_dir * x_beTk * tick
+        tr_stop := tr_dir > 0 ? math.max(tr_stop, be) : math.min(tr_stop, be)
+        tr_be := true
+
+    if x_trMode != "Aucun" and gainR >= x_trAct
+        float cand = na
+        if x_trMode == "V"
+            cand := r_c - tr_dir * x_trK * r_atr
+        else if not na(tr_dir > 0 ? r_pl : r_ph)
+            cand := tr_dir > 0 ? r_pl - x_swMarge * tick : r_ph + x_swMarge * tick
+        if not na(cand)
+            tr_stop := tr_dir > 0 ? math.max(tr_stop, cand) : math.min(tr_stop, cand)
+
+    ex_go   := true
+    ex_stop := tr_stop
+    ex_tp1  := tr_tp
+
+    oppL = (x_oppArr and (sg_short or sg_shortM)) or (x_oppHei and hei_bear_flip)
+    oppS = (x_oppArr and (sg_long  or sg_longM))  or (x_oppHei and hei_bull_flip)
+    if tr_risk <= 0
+        strategy.close_all(comment="stop")
+        sortie_marq := true
+    else if fin_apres
+        strategy.close_all(comment="fin")
+        sortie_marq := true
+        if al_on
+            alert(syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
+    else if tr_dir > 0 and oppL
+        strategy.close("L", comment="fin")
+        sortie_marq := true
+    else if tr_dir < 0 and oppS
+        strategy.close("S", comment="fin")
+        sortie_marq := true
+    else if x_tBar > 0 and not na(tr_bar0) and bar_index - tr_bar0 + 1 >= x_tBar
+        strategy.close_all(comment="fin")
+        sortie_marq := true
+        if al_on
+            alert(syminfo.ticker + " · FERMER la position maintenant : heure limite atteinte" + f_finTxt(), alert.freq_once_per_bar_close)
+
+    if tr_dess
+        box.set_right(dr_bR, bar_index)
+        if not na(dr_bT)
+            box.set_right(dr_bT, bar_index)
+        if not na(dr_bT2)
+            box.set_right(dr_bT2, bar_index)
+        line.set_x2(dr_lE, bar_index)
+        if not na(dr_lbX)
+            oR = tr_risk > 0 ? (r_c - tr_entry) * tr_dir / tr_risk : na
+            label.set_xy(dr_lbX, bar_index, r_c)
+            label.set_text(dr_lbX, "en cours " + (na(oR) ? "" : f_sgn(oR, "0.00") + " R · ") + f_sgn(strategy.openprofit, "#,##0") + " $" + (tr_stop != tr_stop0 ? "\nstop " + f_px(tr_stop) : ""))
+            label.set_textcolor(dr_lbX, strategy.openprofit >= 0 ? c_gain : c_risk)
+
+bool entree_L = false
+bool entree_S = false
+if pos == 0 and tr_dir == 0 and (go_long or go_short)
+    d  = go_long ? 1 : -1
+    e0 = r_c
+    if nv_stopNv or nv_tpNv
+        f_nv_build()
+    [s0, sNom, sAbs] = f_stop(d, e0)
+    dist = math.abs(e0 - s0)
+    [t1, n1, t2, n2] = f_tp_niveau(d, e0, dist)
+    float tp0  = na
+    string tpN = "aucun"
+    float tpRk = na
+    bool saute = x_slSans == "Ne pas prendre le trade" and x_stopMode != "V × k" and str.contains(sNom, "(repli")
+    if x_tpMode == "En R"
+        tpRk := x_tpR
+    else if x_tpMode == "Adaptatif"
+        sc = f_ad_score(d)
+        base = sc <= 1 ? ad_r1 : sc == 2 ? ad_r2 : ad_r3
+        [o1, on1, o2, on2] = f_tp_niveau(d, e0, 0.0)
+        od = na(o1) ? na : (o1 - e0) * d
+        if not na(od) and od < dist
+            saute := ad_saute
+            tpRk := ad_saute ? na : base
+        else if not na(od) and od < base * dist
+            tp0 := o1
+            tpN := "C=" + str.tostring(sc) + " · obstacle " + on1 + " (" + str.tostring(od / dist, "0.00") + " R)"
+        else
+            tpRk := base
+    else if x_tpMode == "Prochain niveau"
+        if not na(t1)
+            tp0 := t1
+            tpN := n1
+        else if x_tpSans == "Objectif en R"
+            tpRk := x_tpR
+        else if x_tpSans == "Ne pas prendre le trade"
+            saute := true
+    if not na(tpRk)
+        tp0 := e0 + d * tpRk * dist
+        tpN := (x_tpMode == "Adaptatif" ? "C=" + str.tostring(f_ad_score(d)) + " · " : "") + str.tostring(tpRk) + " R" + (x_tpMode == "Prochain niveau" ? " (repli : aucun niveau à " + str.tostring(x_rrMin) + " R)" : "")
+    q  = f_qty(dist)
+    part = x_part and x_tpMode == "Prochain niveau" and na(tpRk) and not na(tp0) and q >= 2
+    q1 = part ? math.max(1, math.min(q - 1, int(math.round(q * x_partPct / 100.0)))) : q
+    if saute
+        nb_saute += 1
+    else if q >= 1 and dist > 0
+        tr_dir    := d
+        tr_fixe   := false
+        tr_entry  := e0
+        tr_stop   := s0
+        tr_stop0  := s0
+        tr_slAbs  := sAbs
+        tr_slNom  := sNom
+        tr_dist   := dist
+        tr_risk   := dist
+        tr_tp     := tp0
+        tr_tpRk   := tpRk
+        tr_tpNom  := tpN
+        tr_part   := part
+        tr_p1     := false
+        tr_tp2    := part and x_partRest == "2e niveau" ? t2 : na
+        tr_tp2Nom := n2
+        tr_q      := q
+        tr_q1     := q1
+        tr_ct0    := nCT
+        tr_best   := e0
+        tr_be     := false
+        tr_dess   := false
+        nb_jour   += 1
+        if d > 0
+            strategy.entry("L", strategy.long, qty=q, comment="entrée" + f_gdTag(1))
+            entree_L := true
+        else
+            strategy.entry("S", strategy.short, qty=q, comment="entrée" + f_gdTag(-1))
+            entree_S := true
+        if al_on
+            tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
+            alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " · " + ((d > 0 ? gd_L : gd_S) ? "Signal A" : "Signal B") + " · Entrée ≈ " + f_px(e0) + " · Stop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" + " · Objectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") + " · Sortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris)", alert.freq_once_per_bar_close)
+        ws_tag := ""
+
+        ex_go   := true
+        ex_stop := sAbs ? s0 : na
+        ex_loss := sAbs ? na : math.max(1, math.round(dist / tick))
+        ex_tp1  := na(tpRk) ? tp0 : na
+        ex_prof := na(tpRk) ? na : math.max(1, math.round(tpRk * dist / tick))
+
+if ex_go
+    lg = tr_dir > 0
+    fe = lg ? "L" : "S"
+    cl = "stop"
+    cp = "objectif"
+    if tr_part
+        if not tr_p1
+            strategy.exit(lg ? "XL1" : "XS1", fe, qty=tr_q1, stop=ex_stop, loss=ex_loss, limit=ex_tp1, profit=ex_prof, comment_loss=cl, comment_profit=cp + "1")
+        strategy.exit(lg ? "XL2" : "XS2", fe, qty=tr_q - tr_q1, stop=ex_stop, loss=ex_loss, limit=tr_tp2, comment_loss=cl, comment_profit=cp + "2")
+    else
+        strategy.exit(lg ? "XL" : "XS", fe, stop=ex_stop, loss=ex_loss, limit=ex_tp1, profit=ex_prof, comment_loss=cl, comment_profit=cp)
+
+plotshape(aff_fl and entree_L, "p1",  style=shape.triangleup,   location=location.belowbar, color=color.new(#00C853, 0), size=size.small, text="L", textcolor=color.new(#00C853, 0))
+plotshape(aff_fl and entree_S, "p2", style=shape.triangledown, location=location.abovebar, color=color.new(#D50000, 0), size=size.small, text="S", textcolor=color.new(#D50000, 0))
+plotshape(aff_fl and sortie_marq, "p3", style=shape.xcross, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny)
+
+enPosL = a_stopLn and pos != 0 and tr_fixe
+plot(enPosL ? tr_entry : na, "p4",  color=color.new(#2962FF, 0), style=plot.style_linebr, linewidth=2)
+plot(enPosL ? tr_stop  : na, "p5",  color=color.new(#FF1744, 0), style=plot.style_steplinebr, linewidth=3)
+plot(enPosL ? tr_tp    : na, "p6",  color=color.new(#00C853, 0), style=plot.style_linebr, linewidth=3)
+plot(enPosL ? tr_tp2   : na, "p7",  color=color.new(#00C853, 40), style=plot.style_linebr, linewidth=2)
+
+if barstate.islast and not chart.is_heikinashi
+    var label ha_warn = na
+    label.delete(ha_warn)
+    ha_warn := label.new(bar_index, high, "⚠ Utiliser des bougies Heikin Ashi",
+         style=label.style_label_down, color=color.new(color.red, 10),
+         textcolor=color.white, size=size.normal)
+
+f_tb_pos(p) =>
+    p == "Top Left" ? position.top_left : p == "Top Right" ? position.top_right :
+     p == "Bottom Left" ? position.bottom_left : p == "Middle Right" ? position.middle_right : position.bottom_right
+
+var float ws_tpPrev = na
+var float ws_tp  = na
+var int   ws_dir = 0
+var int   ws_age = 0
+var int   ws_nStop = 0
+var int   ws_hit8  = 0
+var int   ws_hit16 = 0
+var bool  ws_vu8 = false
+if ws_dir != 0
+    ws_age += 1
+    if (ws_dir > 0 ? r_h >= ws_tp : r_l <= ws_tp)
+        if ws_age <= 8
+            ws_hit8 += 1
+        ws_hit16 += 1
+        ws_tag += " |SP" + str.tostring(ws_age)
+        ws_dir := 0
+    else if ws_age >= 16
+        ws_tag += " |SP0"
+        ws_dir := 0
+if strategy.closedtrades > strategy.closedtrades[1]
+    kw = strategy.closedtrades - 1
+    if str.startswith(strategy.closedtrades.exit_comment(kw), "stop") and not na(ws_tpPrev)
+        ws_nStop += 1
+        ws_tp  := ws_tpPrev
+        ws_dir := strategy.closedtrades.size(kw) > 0 ? 1 : -1
+        ws_age := 0
+if tr_dir != 0 and not na(tr_tp)
+    ws_tpPrev := tr_tp
+else if tr_dir == 0
+    ws_tpPrev := na
+
+var table tb = table.new(f_tb_pos(a_pos), 2, 8, bgcolor=color.rgb(21, 22, 45), border_width=1, border_color=color.rgb(95, 97, 125))
+f_tb(r, k, v, col) =>
+    table.cell(tb, 0, r, k, text_color=color.rgb(190, 190, 205), text_size=size.small, text_halign=text.align_left)
+    table.cell(tb, 1, r, v, text_color=col, text_size=size.small, text_halign=text.align_right)
+
+if a_tbl and barstate.islast
+    nT   = strategy.closedtrades
+    win  = nT > 0 ? 100.0 * strategy.wintrades / nT : 0.0
+    pf   = strategy.grossloss > 0 ? strategy.grossprofit / strategy.grossloss : na
+    pnl  = strategy.netprofit
+    dd   = strategy.max_drawdown
+    enPos = pos != 0 and tr_fixe
+    f_tb(0, "Trades", str.tostring(nT), color.white)
+    f_tb(1, "% gagnants", str.tostring(win, "0.0") + " %", win >= 50 ? color.rgb(57, 149, 255) : color.rgb(255, 82, 99))
+    f_tb(2, "Profit factor", na(pf) ? "—" : str.tostring(pf, "0.00"), na(pf) ? color.white : pf >= 1 ? color.rgb(57, 149, 255) : color.rgb(255, 82, 99))
+    f_tb(3, "P&L net", str.tostring(pnl, "#,##0") + " " + strategy.account_currency, pnl >= 0 ? color.rgb(57, 149, 255) : color.rgb(255, 82, 99))
+    f_tb(4, "Drawdown max", str.tostring(dd, "#,##0") + " " + strategy.account_currency, color.rgb(245, 166, 35))
+    f_tb(5, "Position", pos > 0 ? "LONG " + str.tostring(pos) : pos < 0 ? "SHORT " + str.tostring(-pos) : "à plat", color.white)
+    f_tb(6, "Stop", enPos ? f_px(tr_stop) : "—", color.rgb(255, 82, 99))
+    f_tb(7, "Objectif", enPos and not na(tr_tp) ? f_px(tr_tp) : "—", color.rgb(76, 175, 80))
+
+
+if al_on and strategy.closedtrades > strategy.closedtrades[1]
+    kx = strategy.closedtrades - 1
+    cx = strategy.closedtrades.exit_comment(kx)
+    if str.startswith(cx, "objectif") or str.startswith(cx, "stop")
+        alert(syminfo.ticker + " · trade terminé : " + (str.startswith(cx, "objectif") ? "OBJECTIF touché" : "STOP touché") + " à " + f_px(strategy.closedtrades.exit_price(kx)) + " · P&L " + str.tostring(strategy.closedtrades.profit(kx), "#,##0") + " $", alert.freq_once_per_bar_close)
