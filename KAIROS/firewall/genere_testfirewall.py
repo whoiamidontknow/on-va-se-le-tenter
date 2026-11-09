@@ -27,7 +27,9 @@ import pandas as pd
 
 SRC, EXPORTS, DST = sys.argv[1], os.path.expanduser(sys.argv[2]), sys.argv[3]
 TITRE = "Firewall Test"
-NOM_A, NOM_B = "Signal A", "Signal B"      # ex-étiquette forte / ex-étiquette fragile
+NOM_A, NOM_B = "GODLIKE", "56 seul"        # étiquettes gardées à la demande de Jeremy (09/11), sans leur explication
+# posées APRÈS le nettoyage des chaînes (qui les effacerait), via ces marques provisoires
+MARQUE_A, MARQUE_B = "\u00a7A\u00a7", "\u00a7B\u00a7"
 PRESET_SOURCE = "56 · 48 avec sortie après 16 bougies (4 h)"
 
 src = open(SRC, encoding="utf-8").read()
@@ -178,7 +180,7 @@ assert "aff_fl" in src
 
 # étiquette des trades
 src = remplace_exact(src, '(d > 0 ? gd_L : gd_S) ? " · GODLIKE" : " · 56 seul"',
-                     f'(d > 0 ? gd_L : gd_S) ? " · {NOM_A[-1]}" : " · {NOM_B[-1]}"')
+                     f'(d > 0 ? gd_L : gd_S) ? " · {MARQUE_A}" : " · {MARQUE_B}"')
 src = remplace_exact(src, 'comment=(jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + f_gdTag(1) + ws_tag',
                      'comment="entrée" + f_gdTag(1)')
 src = remplace_exact(src, 'comment=(jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + f_gdTag(-1) + ws_tag',
@@ -189,7 +191,7 @@ deb = src.index('alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENT
 fin = src.index("alert.freq_once_per_bar_close)", deb) + len("alert.freq_once_per_bar_close)")
 src = src[:deb] + (
     'alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " · " + '
-    f'((d > 0 ? gd_L : gd_S) ? "{NOM_A}" : "{NOM_B}") + '
+    f'((d > 0 ? gd_L : gd_S) ? "{MARQUE_A}" : "{MARQUE_B}") + '
     '" · Entrée ≈ " + f_px(e0) + '
     '" · Stop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" + '
     '" · Objectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") + '
@@ -261,6 +263,8 @@ while j < len(src):
 morceaux.append(src[deb:])
 src = "".join(morceaux)
 
+src = src.replace(MARQUE_A, NOM_A).replace(MARQUE_B, NOM_B)
+
 # hors chaînes, 56 ne survit que dans une couleur du tableau : 57, l'œil ne voit pas la différence
 src = src.replace("color.rgb(56, 149, 255)", "color.rgb(57, 149, 255)")
 
@@ -270,9 +274,11 @@ print(f"{n_inputs} inputs remplacés par leur valeur ({sans_titre} sans titre, d
 print(f"{len(ecarts)} écart(s) avec les Propriétés de Jeremy")
 for e in ecarts:
     print("  ", e)
+controle = src.replace(f'"{NOM_A}"', "").replace(f'" · {NOM_A}"', "").replace(f'"{NOM_B}"', "").replace(f'" · {NOM_B}"', "")
 restes = [w for w in ("GODLIKE", "Dashator", "Blackout", "break-even", "Break-even", "règle du 69")
-          if w.lower() in src.lower()]
-nombres = sorted(set(re.findall(r"(?<![\d.])(?:56|69)(?![\d])", src)))
+          if w.lower() in controle.lower()]
+nombres = sorted(set(re.findall(r"(?<![\d.])(?:56|69)(?![\d])", controle)))
+print(f"étiquettes {NOM_A!r} / {NOM_B!r} : {src.count(NOM_A)} / {src.count(NOM_B)} occurrence(s)")
 print("mots interdits restants :", restes or "aucun", "· nombres 56/69 restants :", nombres or "aucun")
 print("input.* restants :", re.findall(r"input\.\w+\([^\n]*", src))
 print(f"écrit : {DST} ({src.count(chr(10))} lignes)")

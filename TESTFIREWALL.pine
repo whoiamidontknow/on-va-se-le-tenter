@@ -833,7 +833,7 @@ t3_d5 = request.security(syminfo.tickerid, t3_dd5, f_t3_ha(f_mu_off(t3_dd5)), lo
 
 gd_L = dz4_b >= gd_k * dz4_a and dz5_b >= gd_k * dz5_a
 gd_S = dz4_b <= -gd_k * dz4_a and dz5_b <= -gd_k * dz5_a
-f_gdTag(int d) => (d > 0 ? gd_L : gd_S) ? " · A" : " · B"
+f_gdTag(int d) => (d > 0 ? gd_L : gd_S) ? " · GODLIKE" : " · 56 seul"
 t3_d6 = request.security(syminfo.tickerid, t3_dd6, f_t3_ha(f_mu_off(t3_dd6)), lookahead=f_mu_la(t3_dd6))
 
 [t3_stv, t3_std] = ta.supertrend(3, 10)
@@ -1608,7 +1608,7 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
             entree_S := true
         if al_on
             tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
-            alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " · " + ((d > 0 ? gd_L : gd_S) ? "Signal A" : "Signal B") + " · Entrée ≈ " + f_px(e0) + " · Stop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" + " · Objectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") + " · Sortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris)", alert.freq_once_per_bar_close)
+            alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " · " + ((d > 0 ? gd_L : gd_S) ? "GODLIKE" : "56 seul") + " · Entrée ≈ " + f_px(e0) + " · Stop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" + " · Objectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") + " · Sortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris)", alert.freq_once_per_bar_close)
         ws_tag := ""
 
         ex_go   := true
