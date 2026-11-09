@@ -26,8 +26,8 @@ import sys
 import pandas as pd
 
 SRC, EXPORTS, DST = sys.argv[1], os.path.expanduser(sys.argv[2]), sys.argv[3]
-TITRE = "Firewall Test"
-NOM_A, NOM_B = "GODLIKE", "56 seul"        # étiquettes gardées à la demande de Jeremy (09/11), sans leur explication
+TITRE = "STRABOT"                           # nom choisi par Jeremy (09/11)
+NOM_A, NOM_B = "GODLIKE (fort)", "56 (faible/moyen)"   # choix de Jeremy (09/11) : le nom + le sens, sans explication
 # posées APRÈS le nettoyage des chaînes (qui les effacerait), via ces marques provisoires
 MARQUE_A, MARQUE_B = "\u00a7A\u00a7", "\u00a7B\u00a7"
 PRESET_SOURCE = "56 · 48 avec sortie après 16 bougies (4 h)"
