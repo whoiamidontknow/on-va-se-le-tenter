@@ -1759,9 +1759,9 @@ jour_ok = f_maxJour == 0 or nb_jour < f_maxJour
 // une position déjà ouverte garde son stop et son objectif.
 grp_cc    = "=== COUPE-CIRCUITS ==="
 cc_on     = input.bool(true, "Activer les coupe-circuits", group=grp_cc)
-cc_perte  = input.float(900, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
+cc_perte  = input.float(400, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
      minval=0, step=50,
-     tooltip="0 = désactivé. 900 $ laisse 300 $ de marge sous la limite journalière de 1 200 $ de Lucid — le temps qu'une position ouverte se referme sans faire sauter le compte.")
+     tooltip="0 = désactivé. 400 $ (12/11/2026) : un gain remet à zéro le compteur de pertes d'affilée, donc une alternance perte/gain n'est arrêtée que par ce seuil. Pire jour MNQ ≈ 400 + 300 = 700 $, + 300 $ sur MES = 1 000 $ sous la limite Lucid de 1 200 $. Sur 3 ans, ne saute aucun trade de plus que l'arrêt après 2 pertes.")
 cc_suite  = input.int(2, "Arrêt du jour après N pertes d'affilée", group=grp_cc,
      minval=0, maxval=20,
      tooltip="0 = désactivé. Trois pertes consécutives sur une stratégie à 81 % de réussite est un événement rare : soit le marché a changé de régime, soit quelque chose ne va pas. Dans les deux cas, mieux vaut s'arrêter et regarder.")
