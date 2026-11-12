@@ -2008,7 +2008,7 @@ f_wTail() =>
     ',"token":"' + w_tok + '","multiple_accounts":[{"token":"' + w_tok +
      '","account_id":"' + w_acc + '","risk_percentage":0,"quantity_multiplier":1}]}'
 f_wEntree(int d, int q, float distSL, float distTP) =>
-    f_wHead(d > 0 ? "long" : "short", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"trail_stop":0,"trail_trigger":0,"trail_freq":0,"update_sl":false,"update_tp":false,"breakeven":0,"breakeven_offset":0,"pyramid":false,"same_direction_ignore":false,"reverse_order_close":false' + f_wTail()
+    f_wHead(d > 0 ? "long" : "short", q) + ',"risk_percentage":0,"dollar_sl":' + f_px(distSL) + ',"dollar_tp":' + (na(distTP) ? "0" : f_px(distTP)) + ',"percentage_sl":0,"percentage_tp":0,"sl":0,"tp":0,"trail":0,"trail_stop":0,"trail_trigger":0,"trail_freq":0,"update_sl":false,"update_tp":false,"breakeven":0,"breakeven_offset":0,"pyramid":false,"same_direction_ignore":true,"reverse_order_close":false' + f_wTail()
 f_wFlat() =>
     f_wHead("close", 0) + f_wTail()
 f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
