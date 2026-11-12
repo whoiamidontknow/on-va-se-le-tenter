@@ -247,14 +247,20 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 grp_bot   = "=== BOT ==="
 bot_god   = input.bool(true, "Seulement les trades GODLIKE", group=grp_bot)
-bot_risk  = input.float(450, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
+bot_risk  = input.float(300, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
      tooltip="Micros = arrondi inférieur de risque / (distance du stop en points × valeur du point). MNQ : 2 $ le point par micro.")
-bot_rmax  = input.float(600, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
+bot_rmax  = input.float(300, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
      tooltip="Si le calcul donne 0 micro : 1 micro est pris tant que son risque reste sous ce montant ; au-delà, le trade est sauté.")
 // CALIBRAGE — réglé à 1 le 03/11/2026, à la demande de Jeremy.
 // Ce plafond s'applique APRÈS le calcul de taille : quel que soit le risque
 // visé, on ne prend jamais plus d'un micro. C'est le seul interrupteur à
 // bouger pour passer du calibrage au régime normal, et il est réversible.
+//
+// 12/11/2026 : 3 trades conformes le 10/11 (Tradovate vérifié). Passage à
+// 2 micros, risque 300 $ (visé et max), arrêt après 2 pertes sur MNQ 5 min.
+// Flux MES 15 min sur le même compte : mêmes réglages mais 1 perte, et
+// 1 micro pour ses deux premiers trades. Pire jour : 2×300 + 300 = 900 $
+// sous la limite Lucid de 1 200 $. Réglages à saisir DANS CHAQUE ALERTE.
 //
 // Pendant les 7 jours gratuits de PickMyTrade, l'objectif n'est pas de gagner
 // de l'argent : c'est de vérifier que la plomberie tient — que l'ordre part,
@@ -264,7 +270,7 @@ bot_rmax  = input.float(600, "Risque max accepté avec 1 micro ($)", group=grp_b
 //
 // POUR REPASSER EN RÉGIME NORMAL : remettre 4. Le risque visé de 450 $ est
 // déjà correct, il n'y a rien d'autre à changer.
-bot_qmax  = input.int(1, "Micros maximum", group=grp_bot, minval=1, maxval=40,
+bot_qmax  = input.int(2, "Micros maximum", group=grp_bot, minval=1, maxval=40,
      tooltip="1 = calibrage, un micro par trade quel que soit le risque visé. Remettre 4 une fois la chaîne validée.")
 bot_fin   = input.int(1540, "À plat avant (heure de Chicago, HHMM)", group=grp_bot, minval=0, maxval=2359,
      tooltip="Lucid ferme d'office à 15:45 Chicago, Tradeify à 15:45 aussi : 15:40 laisse une marge. Suit les changements d'heure américains.")
@@ -1752,7 +1758,7 @@ cc_on     = input.bool(true, "Activer les coupe-circuits", group=grp_cc)
 cc_perte  = input.float(900, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
      minval=0, step=50,
      tooltip="0 = désactivé. 900 $ laisse 300 $ de marge sous la limite journalière de 1 200 $ de Lucid — le temps qu'une position ouverte se referme sans faire sauter le compte.")
-cc_suite  = input.int(3, "Arrêt du jour après N pertes d'affilée", group=grp_cc,
+cc_suite  = input.int(2, "Arrêt du jour après N pertes d'affilée", group=grp_cc,
      minval=0, maxval=20,
      tooltip="0 = désactivé. Trois pertes consécutives sur une stratégie à 81 % de réussite est un événement rare : soit le marché a changé de régime, soit quelque chose ne va pas. Dans les deux cas, mieux vaut s'arrêter et regarder.")
 
