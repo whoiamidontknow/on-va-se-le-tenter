@@ -72,18 +72,20 @@ MOIS = {"janv": 1, "févr": 2, "mars": 3, "avr": 4, "mai": 5, "juin": 6, "juil":
         "nov": 11, "déc": 12}
 
 
-def plage_fin(f):
-    """Fin de la « Plage de backtesting » lue dans la feuille Propriétés (« … — 6 nov. 2026, 01:00 »), sinon None."""
+def plage(f):
+    """« Plage de backtesting » lue dans la feuille Propriétés (« 2 nov. 2026, 00:00 — 13 nov. 2026, 22:45 »),
+    en (début, fin) ; None pour ce qui n'est pas lisible."""
     try:
         p = pd.read_excel(f, "Propriétés", header=None)
     except Exception:
-        return None
+        return None, None
     for _, r in p.iterrows():
         if str(r.iloc[0]).startswith("Plage de backtesting"):
-            m = re.search(r"—\s*(\d{1,2}) (\w+)\.? (\d{4}), (\d{2}):(\d{2})", str(r.iloc[1]))
-            if m and m.group(2) in MOIS:
-                return pd.Timestamp(int(m.group(3)), MOIS[m.group(2)], int(m.group(1)), int(m.group(4)), int(m.group(5)))
-    return None
+            d = [pd.Timestamp(int(a), MOIS[m], int(j), int(h), int(mi)) for j, m, a, h, mi in
+                 re.findall(r"(\d{1,2}) (\w+)\.? (\d{4}), (\d{2}):(\d{2})", str(r.iloc[1])) if m in MOIS]
+            if len(d) == 2:
+                return d[0], d[1]
+    return None, None
 
 
 exports = {}
@@ -111,18 +113,29 @@ for f in fichiers("*.xlsx"):
     # export couvert jusqu'à la fin de sa « Plage de backtesting » (feuille Propriétés). Le 07/11, des exports faits
     # le samedi s'arrêtaient au vendredi 01:00 (graphique pas rechargé) : la date du fichier aurait déclaré
     # fantômes tous les trades du vendredi. À défaut de plage, dernier trade ou jour de l'export.
-    fin = plage_fin(f)
+    debut, fin = plage(f)
+    if debut is None:
+        debut = t["Date et heure"].min()
     if fin is None:
         jour = re.search(r"_(\d{4}-\d{2}-\d{2})_", nom)
         fin = max(t["Date et heure"].max(), pd.Timestamp(jour.group(1)) if jour else t["Date et heure"].max())
-    exports.setdefault((st, m.group(1), tf), []).append((fin, t))
+    exports.setdefault((st, m.group(1), tf), []).append((debut, fin, t))
+
+
+def export_pour(cle, quand):
+    """Export qui juge un trade : sa plage le couvre (début ET fin : le 15/11, un export partant du 2/11 déclarait
+    fantômes tous les trades d'octobre) ; de préférence avec un jour de recul avant le trade, car en tout début de
+    plage la stratégie n'a pas encore son état ; parmi eux, le plus récent (le dernier recalcul)."""
+    c = [e for e in exports.get(cle, []) if e[0] <= quand <= e[1]]
+    c = [e for e in c if e[0] <= quand - pd.Timedelta(days=1)] or c
+    return max(c, key=lambda e: (e[1], len(e[2])))[2] if c else None
+
 
 for tr in trades:
-    couverts = [(mx, len(t), t) for mx, t in exports.get((tr["strat"] if tr["strat"] != "Stratégie 56" else "Strat5669", tr["sym"], tr["tf"]), []) if tr["entree"] <= mx]
+    t = export_pour((tr["strat"] if tr["strat"] != "Stratégie 56" else "Strat5669", tr["sym"], tr["tf"]), tr["entree"])
     tr["historique"], tr["pnl_hist"] = "pas encore exporté", None
-    if not couverts:
+    if t is None:
         continue
-    t = max(couverts, key=lambda c: c[:2])[2]   # l'export le plus récent (le dernier recalcul)
     e = t[t["Type"].str.startswith("Entrer") & ((t["Date et heure"] - tr["entree"]).abs() <= pd.Timedelta(minutes=15))]
     e = e[e["Signal"].str.startswith(tr["sens"])]
     if e.empty:
@@ -140,6 +153,10 @@ FEUILLES = {"MNQ": ("MNQ1!",), "MES": ("MES1!",), "BTC": ("BTC1!", "MBT1!", "BTC
 AUTO = ["Date", "Heure", "Sens", "Étiquette", "Résultat", "P&L alerte $", "Fantôme ?"]
 PERSO = ["Pris ?", "Si non, pourquoi", "Mon entrée", "Ma sortie", "Mon P&L $", "P&L FTMO $", "Remarque"]
 RAISONS = "absent,risque trop gros,entrée trop tardive,56 seul,oublié / pas vu,autre"
+# 15/11 : Jeremy ne suit plus BTC (il ne prend pas ces trades). Ses lignes déjà dans la fiche restent, aucune
+# nouvelle n'est ajoutée ni mise à jour (ses saisies, comme « SL », restent telles quelles), et BTC sort du bilan.
+FIGEES = ("BTC",)
+SYMS_FIGES = {s for f in FIGEES for s in FEUILLES[f]}
 
 
 def ecrire_suivi(df, chemin):
@@ -217,6 +234,8 @@ def lignes_suivi(df, anciens, numbers=False):
                      "Résultat": (r.raison if isinstance(r.raison, str) and r.raison else "en cours").replace(" (P&L de l'historique)", ""),
                      "P&L alerte $": None if r.pnl is None or pd.isna(r.pnl) else int(round(r.pnl)), "Fantôme ?": fant}
             k = (nom, r.sym if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
+            if nom in FIGEES:
+                continue   # gardée telle quelle plus bas, avec les lignes ajoutées à la main
             a = dict(anciens.get(k, {}))
             if fant == "à vérifier" and "verdict" in a:
                 ligne["Fantôme ?"] = a["verdict"]
@@ -234,6 +253,8 @@ def lignes_suivi(df, anciens, numbers=False):
                      "P&L alerte $": "aucune alerte",
                      "Fantôme ?": f"né après coup ({n['pnl']:+,.0f} $ dans l'historique)"}
             k = (nom, n["sym"] if nom == "BTC" or numbers else "", ligne["Date"], ligne["Heure"], ligne["Sens"])
+            if nom in FIGEES:
+                continue
             ligne.update({c: v for c, v in anciens.get(k, {}).items() if v not in (None, "") and c != "verdict"})
             lignes.append([ligne.get(c) for c in cols])
         res[nom] = (cols, lignes)
@@ -354,7 +375,7 @@ def stats(sous, titre):
 
 
 print("\nBILAN EN DIRECT")
-for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
+for (st, sym, tf), s in df[~df["sym"].isin(SYMS_FIGES)].groupby(["strat", "sym", "tf"]):
     stats(s, f"{st[:14]} {sym} {tf} tous")
     for etiq, s2 in s.groupby("etiq"):
         stats(s2, f"{st[:14]} {sym} {tf} {etiq}")
@@ -368,12 +389,12 @@ for (st, sym, tf), s in df.groupby(["strat", "sym", "tf"]):
     t_ids = logs[logs["ID de l'alerte"].isin(set(s["id"]))]["t"]
     deb, fin = t_ids.min(), logs[logs["ID de l'alerte"].isin(set(s["id"]))]["fin_journal"].max()
     dernier = t_ids.max()   # après le dernier message de l'alerte : né après coup… ou alerte arrêtée
-    couverts = [(mx, len(t), t) for mx, t in exports.get((st, sym, tf), []) if mx >= deb]
-    if not couverts:
-        continue
-    t = max(couverts, key=lambda c: c[:2])[2]   # l'export le plus récent (le dernier recalcul)
-    e = t[t["Type"].str.startswith("Entrer") & (t["Date et heure"] >= deb) & (t["Date et heure"] <= fin)]
-    for r in e.itertuples():
+    # chaque entrée de l'historique est jugée par l'export qui ferait foi pour elle (cf. export_pour)
+    e = [r for _, _, t in exports.get((st, sym, tf), [])
+         for r in t[t["Type"].str.startswith("Entrer") & (t["Date et heure"] >= deb) & (t["Date et heure"] <= fin)].itertuples()
+         if export_pour((st, sym, tf), r[3]) is t]
+    for r in e:
+        t = export_pour((st, sym, tf), r[3])
         proche = s[((s["entree"] - r[3]).abs() <= pd.Timedelta(minutes=15)) & (s["sens"] == r.Signal[0])]
         if proche.empty:
             nes += 1
