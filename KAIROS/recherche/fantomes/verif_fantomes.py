@@ -124,10 +124,11 @@ for f in fichiers("*.xlsx"):
 
 def export_pour(cle, quand):
     """Export qui juge un trade : sa plage le couvre (début ET fin : le 15/11, un export partant du 2/11 déclarait
-    fantômes tous les trades d'octobre) ; de préférence avec un jour de recul avant le trade, car en tout début de
-    plage la stratégie n'a pas encore son état ; parmi eux, le plus récent (le dernier recalcul)."""
+    fantômes tous les trades d'octobre) ; de préférence avec 7 jours de recul avant le trade, car en début de plage
+    la stratégie n'a pas encore son état (le 15/11, l'étiquette du MES du 03/11 changeait dans l'export partant du
+    2/11, et dans aucun des exports longs) ; parmi eux, le plus récent (le dernier recalcul)."""
     c = [e for e in exports.get(cle, []) if e[0] <= quand <= e[1]]
-    c = [e for e in c if e[0] <= quand - pd.Timedelta(days=1)] or c
+    c = [e for e in c if e[0] <= quand - pd.Timedelta(days=7)] or c
     return max(c, key=lambda e: (e[1], len(e[2])))[2] if c else None
 
 
