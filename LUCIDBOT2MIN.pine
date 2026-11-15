@@ -1,9 +1,12 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
 // LUCIDBOT 2 MIN — TRADES GODLIKE SEULEMENT, GRAPHIQUE 2 MINUTES, 2e COMPTE LUCID
-// 15/11/2026 : copie BRUTE de LUCIDBOTV2.pine, en attente de la fiche de réglages
-// 2 min de DAEMON (instrument, risque, micros, coupe-circuits, heures). Rien n'est
-// encore adapté au 2 min : NE PAS DÉPLOYER en l'état. ID de compte = le 2e compte.
+// 15/11/2026 : copie de LUCIDBOTV2.pine avec la fiche 2 min de DAEMON (backtest 3 ans) :
+// MNQ1! seul, préréglage 56, GODLIKE seulement ; entrées 13:00-21:59 Paris (heure
+// d'ouverture de la bougie d'entrée) ; risque 250 $ (visé et max) ; 1 micro pendant
+// les 5 premiers trades réels, puis 5 ; arrêt après 2 pertes et à 500 $ de perte.
+// COMPTE : le 2e Lucid Flex 50k, JAMAIS celui du MNQ 5 min (même symbole).
+// Rien ne se déploie avant l'accord de Jeremy.
 // V2 (12/11/2026) : LUCIDBOT.pine + same_direction_ignore à true, risque 300 $,
 // 2 micros, arrêt après 2 pertes. Un seul script pour les deux flux : on le pose
 // sur MNQ1! 5 min ET sur MES1! 15 min (Heikin Ashi), une alerte par graphique.
@@ -254,9 +257,9 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 grp_bot   = "=== BOT ==="
 bot_god   = input.bool(true, "Seulement les trades GODLIKE", group=grp_bot)
-bot_risk  = input.float(300, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
+bot_risk  = input.float(250, "Risque visé par trade ($)", group=grp_bot, minval=10, step=10,
      tooltip="Micros = arrondi inférieur de risque / (distance du stop en points × valeur du point). MNQ : 2 $ le point par micro.")
-bot_rmax  = input.float(300, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
+bot_rmax  = input.float(250, "Risque max accepté avec 1 micro ($)", group=grp_bot, minval=10, step=10,
      tooltip="Si le calcul donne 0 micro : 1 micro est pris tant que son risque reste sous ce montant ; au-delà, le trade est sauté.")
 // CALIBRAGE — réglé à 1 le 03/11/2026, à la demande de Jeremy.
 // Ce plafond s'applique APRÈS le calcul de taille : quel que soit le risque
@@ -277,10 +280,17 @@ bot_rmax  = input.float(300, "Risque max accepté avec 1 micro ($)", group=grp_b
 //
 // POUR REPASSER EN RÉGIME NORMAL : remettre 4. Le risque visé de 450 $ est
 // déjà correct, il n'y a rien d'autre à changer.
-bot_qmax  = input.int(2, "Micros maximum", group=grp_bot, minval=1, maxval=40,
-     tooltip="1 = calibrage, un micro par trade quel que soit le risque visé. Remettre 4 une fois la chaîne validée.")
+bot_qmax  = input.int(1, "Micros maximum", group=grp_bot, minval=1, maxval=40,
+     tooltip="1 pendant les 5 premiers trades réels (vérification de chaque ordre sur Tradovate), puis 5.")
 bot_fin   = input.int(1540, "À plat avant (heure de Chicago, HHMM)", group=grp_bot, minval=0, maxval=2359,
      tooltip="Lucid ferme d'office à 15:45 Chicago, Tradeify à 15:45 aussi : 15:40 laisse une marge. Suit les changements d'heure américains.")
+// Fenêtre d'entrée du bot 2 min, hors préréglage (le 56 coupe les fenêtres horaires) :
+// testée sur l'heure d'OUVERTURE de la bougie d'entrée, c'est-à-dire la clôture de
+// la bougie signal. Heure de Paris : les changements d'heure sont suivis.
+bot_hOn   = input.bool(true, "Entrées seulement dans la plage (heure de Paris)", group=grp_bot, inline="bh")
+bot_hDeb  = input.int(1300, "de", group=grp_bot, inline="bh", minval=0, maxval=2359)
+bot_hFin  = input.int(2159, "à", group=grp_bot, inline="bh", minval=0, maxval=2359,
+     tooltip="Bornes incluses, en HHMM, sur l'ouverture de la bougie d'entrée. 13:00-21:59 : la nuit, le matin et après 22:00 ne rapportent pas assez en 2 min (backtest 3 ans, DAEMON 15/11).")
 w_on      = input.bool(false, "Envoyer les ordres au courtier (webhook PickMyTrade)", group=grp_bot)
 w_sym     = input.string("MNQ1!", "Symbole PickMyTrade", group=grp_bot)
 w_tok     = input.string("", "Token PickMyTrade", group=grp_bot)
@@ -1762,7 +1772,7 @@ jour_ok = f_maxJour == 0 or nb_jour < f_maxJour
 // une position déjà ouverte garde son stop et son objectif.
 grp_cc    = "=== COUPE-CIRCUITS ==="
 cc_on     = input.bool(true, "Activer les coupe-circuits", group=grp_cc)
-cc_perte  = input.float(400, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
+cc_perte  = input.float(500, "Arrêt du jour si la perte atteint ($)", group=grp_cc,
      minval=0, step=50,
      tooltip="0 = désactivé. 400 $ (12/11/2026) : un gain remet à zéro le compteur de pertes d'affilée, donc une alternance perte/gain n'est arrêtée que par ce seuil. Pire jour MNQ ≈ 400 + 300 = 700 $, + 300 $ sur MES = 1 000 $ sous la limite Lucid de 1 200 $. Sur 3 ans, ne saute aucun trade de plus que l'arrêt après 2 pertes.")
 cc_suite  = input.int(2, "Arrêt du jour après N pertes d'affilée", group=grp_cc,
@@ -1809,7 +1819,9 @@ det_okS = not f_detOn or not det_blS
 clx_okL = not f_clxOn or not (clx_last == -1 and clx_frais)
 clx_okS = not f_clxOn or not (clx_last == 1 and clx_frais)
 
-commun_ok = hr_ok and bo_ok and jour_ok and cc_ok and adx_ok and not fin_apres and not na(r_atr) and not na(r_c)
+bot_hMin  = f_minParis(time_close)
+bot_h_ok  = not bot_hOn or (bot_hMin >= int(bot_hDeb / 100) * 60 + bot_hDeb % 100 and bot_hMin <= int(bot_hFin / 100) * 60 + bot_hFin % 100)
+commun_ok = hr_ok and bo_ok and jour_ok and cc_ok and adx_ok and bot_h_ok and not fin_apres and not na(r_atr) and not na(r_c)
 sens_okL  = e_sens != "Short seulement"
 sens_okS  = e_sens != "Long seulement"
 jr_e     = math.round((close - ema_m1) / sg_atr * 10) / 10
