@@ -250,7 +250,11 @@ grp_e = "=== 1. ENTRÉES ==="
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
-preset    = "56 · 48 avec sortie après 16 bougies (4 h)"
+preset    = input.string("56 · 48 avec sortie après 16 bougies (4 h)", "Préréglage", group=grp_e,
+     options=["56 · 48 avec sortie après 16 bougies (4 h)", "R16 · recherche, 16 bougies", "R48 · recherche, 48 bougies"],
+     tooltip="R16 / R48 : RECHERCHE. Mêmes déclencheurs que le 56, AUCUN filtre, stop 3 ATR, objectif 4 R, 1 contrat ; le commentaire d'entrée porte les valeurs du signal (lectures a et b) pour tester les filtres hors ligne.")
+// R16 / R48 : préréglages de recherche (commentaire d'entrée clé=valeur, f_jr2)
+pR        = str.startswith(preset, "R")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -551,6 +555,9 @@ f_pr_def(string nom) =>
      nom == "68 · 56 avec Dashator corps ≥ 0,09 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;dshMin=0.09" :
      nom == "59 · 56 avec Dashator corps ≥ 0,2 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;dshMin=0.2" :
      nom == "46 JR3 volume · Dashator 1h+4h · repli ≤ 1,5 ATR · 1R · 8 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=1.5" :
+     // 15/11 : recherche sur le backtest sans fuite (DAEMON). Aucun filtre, objectif loin.
+     nom == "R16 · recherche, 16 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;stop=ATR × k;atrK=3;tp=En R;tpR=4;taille=Contrats fixes;fixe=1;dsh60=0;dsh240=0;eOn=0;tBar=16" :
+     nom == "R48 · recherche, 48 bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;stop=ATR × k;atrK=3;tp=En R;tpR=4;taille=Contrats fixes;fixe=1;dsh60=0;dsh240=0;eOn=0;tBar=48" :
      nom == "99 JOURNAL · tous signaux sans filtre · 2 ATR · 1R · 8 bougies" ? "jr=1;bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=8;stop=ATR × k;atrK=2;tp=En R;tpR=1;taille=Contrats fixes;fixe=2" :
      ""
 
@@ -1857,6 +1864,25 @@ f_jr(int d, float risk) =>
     tg = (e_sigOn and (dL ? sg_long : sg_short) ? "F" : "") + (e_sigOn and e_moyen and (dL ? sg_longM : sg_shortM) ? "M" : "") + (e_heiOn and (dL ? hei_bull_flip : hei_bear_flip) ? "H" : "") + (e_tlOn and (dL ? tl_rBreak : tl_sBreak) ? "T" : "") + (e_lvlOn and (dL ? lvl_up : lvl_dn) ? "N" : "") + (e_clxOn and (dL ? clx_buy : clx_sell) ? "C" : "") + (e_divOn and (dL ? dv_lo : dv_sh) ? "D" : "")
     (dL ? "L" : "S") + "|" + tg + "|F" + str.tostring(math.round(bi_F * 9)) + "|I" + str.tostring(math.round(bi_I * 11)) + "|f" + str.tostring(math.round(t3_pLong)) + "/" + str.tostring(math.round(t3_pShort)) + "|t" + f_b01(t3_tr1) + f_b01(t3_tr2) + f_b01(t3_tr3) + f_b01(t3_tr4) + f_b01(t3_tr5) + f_b01(t3_tr6) + "|d" + f_b01(t3_d1) + f_b01(t3_d2) + f_b01(t3_d3) + f_b01(t3_d4) + f_b01(t3_d5) + f_b01(t3_d6) + "|s" + str.tostring(t3_st3) + str.tostring(t3_st4) + str.tostring(t3_st5) + str.tostring(t3_st6) + "|a" + str.tostring(math.round(sg_adx)) + (sg_diP > sg_diM ? "+" : "-") + "|z" + str.tostring(f_det_place(dL), "0.0") + "|e" + str.tostring((close - ema_m1) / sg_atr, "0.0") + "|v" + str.tostring(ad_vr, "0.00") + "|c" + str.tostring(clx_last) + "|R" + str.tostring(risk, "0.00")
 
+// Commentaire de recherche (R16 / R48) : « clé=valeur » séparés par « | », valeurs
+// signées dans le sens du trade (positif = dans le sens). a = bougie 1 h / 4 h
+// clôturée, b = bougie en cours comme en direct : les deux sont calculées quel que
+// soit le réglage « Données multi-unités ». sl = distance du stop en points.
+f_jr2(int d, float risk) =>
+    dL = d > 0
+    sg = dL ? 1.0 : -1.0
+    tg = (e_sigOn and (dL ? sg_long : sg_short) ? "F" : "") + (e_sigOn and e_moyen and (dL ? sg_longM : sg_shortM) ? "M" : "") + (e_heiOn and (dL ? hei_bull_flip : hei_bear_flip) ? "H" : "") + (e_tlOn and (dL ? tl_rBreak : tl_sBreak) ? "T" : "") + (e_lvlOn and (dL ? lvl_up : lvl_dn) ? "N" : "") + (e_clxOn and (dL ? clx_buy : clx_sell) ? "C" : "") + (e_divOn and (dL ? dv_lo : dv_sh) ? "D" : "")
+    a1 = z4a1 > 0 ? sg * z4b1 / z4a1 : na
+    a4 = z5a1 > 0 ? sg * z5b1 / z5a1 : na
+    b1 = f4a > 0 ? sg * f4b / f4a : na
+    b4 = f5a > 0 ? sg * f5b / f5a : na
+    "d=" + tg + "|a1=" + str.tostring(a1, "0.000") + "|a4=" + str.tostring(a4, "0.000") + "|b1=" + str.tostring(b1, "0.000") + "|b4=" + str.tostring(b4, "0.000") +
+     "|e=" + str.tostring(sg * (close - ema_m1) / sg_atr, "0.00") + "|ha=" + str.tostring(sg * (close - open) / sg_atr, "0.000") +
+     "|atr=" + str.tostring(r_atr, "0.00") + "|sl=" + str.tostring(risk, "0.00") +
+     "|v=" + str.tostring(sg_volMa > 0 ? volume / sg_volMa : na, "0.00") + "|adx=" + str.tostring(math.round(sg_adx)) +
+     "|tr=" + f_b01(t3_tr1) + f_b01(t3_tr2) + f_b01(t3_tr3) + f_b01(t3_tr4) + f_b01(t3_tr5) + f_b01(t3_tr6) +
+     "|ds=" + f_b01(a1 > 0) + f_b01(a4 > 0) + "/" + f_b01(b1 > 0) + f_b01(b4 > 0)
+
 f_stop(int dir, float e) =>
     float s = na
     string nm = ""
@@ -2230,10 +2256,10 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         tr_dess   := false
         nb_jour   += 1
         if d > 0
-            strategy.entry("L", strategy.long, qty=q, comment=(jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + f_gdTag(1) + ws_tag)
+            strategy.entry("L", strategy.long, qty=q, comment=pR ? f_jr2(1, dist) : (jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + f_gdTag(1) + ws_tag)
             entree_L := true
         else
-            strategy.entry("S", strategy.short, qty=q, comment=(jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + f_gdTag(-1) + ws_tag)
+            strategy.entry("S", strategy.short, qty=q, comment=pR ? f_jr2(-1, dist) : (jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + f_gdTag(-1) + ws_tag)
             entree_S := true
         if al_on
             tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
