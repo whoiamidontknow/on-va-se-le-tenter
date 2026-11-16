@@ -256,9 +256,9 @@ grp_e = "=== 1. ENTRÉES ==="
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
-preset    = input.string("57 · 56 sans entrée après 20h", "Préréglage", group=grp_e,
-     options=["57 · 56 sans entrée après 20h", "56 · 48 avec sortie après 16 bougies (4 h)"],
-     tooltip="57 = le 56 sans entrée après 19:45 Paris (sorties inchangées). 56 = pour comparer.")
+preset    = input.string("58 · GODLIKE, sans 8h-13h ni après 20h", "Préréglage", group=grp_e,
+     options=["58 · GODLIKE, sans 8h-13h ni après 20h", "57 · 56 sans entrée après 20h", "56 · 48 avec sortie après 16 bougies (4 h)"],
+     tooltip="58 = le 57 + GODLIKE seulement + aucune entrée de 08:00 à 12:45 (entrées 00:20-07:45 et 13:00-19:45 Paris). 57 = le 56 sans entrée après 19:45 Paris. 56 = pour comparer. Sorties inchangées dans les trois.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -283,6 +283,7 @@ f_feuMode_in = input.string("Part dans le sens ≥ seuil", "Feu : règle", group
      tooltip="Part dans le sens ≥ seuil : un long exige au moins « seuil » % de voix long sur 29. Pas de Feu opposé : on bloque seulement si le Feu est franchement dans l'autre sens (au seuil).")
 f_feuSeuil_in = input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
 f_trOn_in = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
+f_god_in    = input.bool(false, "Seulement les trades GODLIKE (seuil et lecture du groupe 1)", group=grp_f)
 f_dsh60_in  = input.bool(false, "Dashator 1 h dans le sens du trade (bougie clôturée)", group=grp_f)
 f_dsh240_in = input.bool(false, "Dashator 4 h dans le sens du trade (bougie clôturée)", group=grp_f)
 f_eOn_in  = input.bool(false, "Écart à l'EMA50 maximum dans le sens du trade (× ATR)", group=grp_f, inline="eM",
@@ -547,6 +548,9 @@ f_pr_def(string nom) =>
      nom == "56 · 48 avec sortie après 16 bougies (4 h)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
      // 16/11 : 57 = 56 + plage d'entrée 00:20-19:45 sur l'ouverture de la bougie signal
      nom == "57 · 56 sans entrée après 20h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-1945;hr2On=0" :
+     // 16/11 : 58 = 57 + GODLIKE seulement + plages d'entrée 00:20-07:45 et 13:00-19:45
+     // (sur l'ouverture de la bougie signal : 0020-0745 et 1245-1945 en 15 min)
+     nom == "58 · GODLIKE, sans 8h-13h ni après 20h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-0745;hr2On=1;hr2=1245-1945;god=1" :
      nom == "57 · 48 sans sortie au temps (stop, objectif ou 22h15)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=0;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
      // 20/10 : marge sur la couleur du Dashator 1 h / 4 h (écart direct / historique sur une bougie quasi neutre).
      nom == "58 · 56 avec Dashator corps ≥ 0,1 ATR (robuste direct / historique)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;dshMin=0.1" :
@@ -621,6 +625,7 @@ var string f_feuMode = f_gs("feuMode", f_feuMode_in, f_feuMode_in, "Part dans le
 var float  f_feuSeuil = f_gf("feuSeuil", f_feuSeuil_in)
 var bool   f_trOn   = f_gb("tr",     f_trOn_in,   false)
 var bool   f_emaOn  = f_gb("ema",    f_emaOn_in,  false)
+var bool   f_god    = f_gb("god",    f_god_in,    false)
 var bool   f_hrOn   = f_gb("hr",     f_hrOn_in,   false)
 var bool   f_hr1On  = f_gb("hr1On",  f_hr1On_in,  f_hr1On_in)
 var string f_hr1    = f_gs("hr1",    f_hr1_in,    f_hr1_in, f_pv("hr1"))
@@ -1810,8 +1815,8 @@ x2_okL   = (not f_dsh60 or dz_up4) and (not f_dsh240 or dz_up5) and (not f_eOn o
 x2_okS   = (not f_dsh60 or dz_dn4) and (not f_dsh240 or dz_dn5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
 bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
 bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
-go_long   = x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
-go_short  = x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+go_long   = (not f_god or gd_L) and x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = (not f_god or gd_S) and x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
 // DIAGNOSTIC : marge de chaque filtre au moment du signal (repérer les trades « fantômes »)
 dg_r4 = dz4_a > 0 ? dz4_b / dz4_a : na    // corps HA / ATR, Dashator 1 h (signé)
