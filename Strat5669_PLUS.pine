@@ -1,5 +1,9 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
+// 17/11/2026 : préréglages 70-73 (56 avec objectif 3 ATR et/ou repli 0,8-1,0 ATR) et
+// option « retournement sur signal d'entrée opposé » (clés rev / revGod, préréglages
+// 74 et 75) : en position, un signal d'entrée valide dans l'autre sens retourne la
+// position en un seul ordre ; stop dépassé, fin de séance et 15:59 Chicago passent avant.
 // STRAT5669+ (ALERTES) — 16/11/2026 : Strat5669 + préréglage 59 (GODLIKE seulement,
 // aucune entrée après 18:45 Paris). Affichage par défaut = calcul d'origine de Strat5669.
 // À SAVOIR : en historique, le calcul d'origine lit la valeur FINALE de la bougie 1 h /
@@ -263,8 +267,8 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
 preset    = input.string("56 · d'origine", "Préréglage", group=grp_e,
-     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "59 · GODLIKE, sans entrée après 19h"],
-     tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
+     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "74 · 56 + retournement", "75 · 56 + retournement GODLIKE seul", "59 · GODLIKE, sans entrée après 19h"],
+     tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 74 = le 56 qui retourne la position sur un signal d'entrée opposé ; 75 = idem, seulement si ce signal est GODLIKE. 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -356,6 +360,9 @@ x_beTk_in = input.int(1, "Break-even : ticks au-delà du prix d'entrée", group=
      tooltip="Avec 1-2 ticks, les sorties au break-even perdent un peu après frais (étude KAIROS WRS) : 4 ticks ou plus conseillés.")
 x_oppArr_in  = input.bool(true, "Sortie sur flèche Signator opposée (Fort ou Moyen)", group=grp_x)
 x_oppHei_in  = input.bool(false, "Sortie sur changement Heishinator opposé", group=grp_x)
+x_rev_in     = input.bool(false, "Retournement sur signal d'entrée opposé", group=grp_x,
+     tooltip="En position, si un signal d'entrée valide apparaît dans l'autre sens (mêmes filtres qu'une entrée à plat), la position est retournée au marché à l'ouverture suivante : un seul ordre ferme et ouvre l'inverse. Stop dépassé, fin de séance et 15:59 Chicago passent avant. Backtest uniquement.")
+x_revGod_in  = input.bool(false, "Retournement seulement si le signal opposé est GODLIKE", group=grp_x)
 x_finOn_in   = input.bool(true, "Sortie en fin de séance (heure de Paris)", group=grp_x, inline="fin",
      tooltip="Ferme la position à la clôture de la bougie qui finit à cette heure ou après, et interdit toute nouvelle entrée ensuite jusqu'à minuit (Paris).")
 x_finH    = input.int(21, "h", group=grp_x, inline="fin", minval=0, maxval=23)
@@ -452,6 +459,7 @@ rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_
 //            atrK, fixPts,
 //            tp ⓘ (Aucun | En R | Prochain niveau), tpR, trail ⓘ (Aucun | ATR |
 //            Sous chaque nouveau swing), trK, trAct, be ⓘ, beR, oppArr ⓘ,
+//            rev ⓘ (retournement sur signal d'entrée opposé), revGod ⓘ,
 //            oppHei ⓘ, fin ⓘ, pf ⓘ (à plat avant 15:59 Chicago), beTk,
 //            tBar ⓘ (sortie après N bougies, 0 = jamais), extMarge, extMin, extMax
 //   NIVEAUX  prio, slA slM slW slD slMo slSe slRo, slMin, slMax, slMarge,
@@ -558,6 +566,9 @@ f_pr_def(string nom) =>
      nom == "71 · 56 avec repli ≤ 0,8 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.8" :
      nom == "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.8" :
      nom == "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=1.0" :
+     // 17/11 : 74-75 = le 56 d'origine + retournement sur signal d'entrée opposé (clés rev / revGod absentes du 56).
+     nom == "74 · 56 + retournement" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;rev=1" :
+     nom == "75 · 56 + retournement GODLIKE seul" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;rev=1;revGod=1" :
      // 16/11 : 59 = 56 + GODLIKE seulement + entrées 00:20-18:45 (ouverture de la bougie signal 0020-1845 en 15 min)
      nom == "59 · GODLIKE, sans entrée après 19h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-1845;hr2On=0;god=1" :
      // 16/11 : 57 = 56 + plage d'entrée 00:20-19:45 sur l'ouverture de la bougie signal
@@ -665,6 +676,8 @@ var bool   x_beOn   = f_gb("be",     x_beOn_in,   false)
 var float  x_beR    = f_gf("beR",    x_beR_in)
 var bool   x_oppArr = f_gb("oppArr", x_oppArr_in, false)
 var bool   x_oppHei = f_gb("oppHei", x_oppHei_in, false)
+var bool   x_rev    = f_gb("rev",    x_rev_in,    false)
+var bool   x_revGod = f_gb("revGod", x_revGod_in, false)
 var bool   x_finOn  = f_gb("fin",    x_finOn_in,  false)
 var bool   x_pfOn   = f_gb("pf",     x_pfOn_in,   false)
 var int    x_tBar   = int(f_gf("tBar", x_tBar_in))
@@ -2006,6 +2019,7 @@ pos = strategy.position_size
 nCT = strategy.closedtrades
 bool sortie_marq = false
 bool tr_neuf = false
+bool rev_go  = false   // retournement décidé à cette bougie (bloc 3 -> bloc 4)
 // ordres de sortie à (r)envoyer en fin de bougie
 bool  ex_go   = false
 float ex_stop = na
@@ -2163,6 +2177,20 @@ if pos != 0
         sortie_marq := true
         if al_on
             alert(syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
+    else if x_rev and (tr_dir > 0 ? go_short and (not x_revGod or gd_S) : go_long and (not x_revGod or gd_L))
+        // Retournement : on n'envoie AUCUN ordre de sortie ici. Le strategy.entry
+        // inverse du bloc 4 (pyramiding=0) ferme et retourne en un seul ordre.
+        // Les brackets de la position en cours sont annulés pour ne pas partir
+        // à la même ouverture que l'entrée inverse.
+        rev_go := true
+        strategy.cancel(tr_dir > 0 ? "XL" : "XS")
+        strategy.cancel(tr_dir > 0 ? "XL1" : "XS1")
+        strategy.cancel(tr_dir > 0 ? "XL2" : "XS2")
+        sortie_marq := true
+        if tr_dess and not na(dr_lbX)
+            label.set_xy(dr_lbX, bar_index, r_c)
+            label.set_text(dr_lbX, "Retournement " + f_sgn(strategy.openprofit, "#,##0") + " $")
+            label.set_textcolor(dr_lbX, strategy.openprofit >= 0 ? c_gain : c_risk)
     else if tr_dir > 0 and oppL
         strategy.close("L", comment="Signal opposé")
         sortie_marq := true
@@ -2175,7 +2203,7 @@ if pos != 0
         if al_on
             alert(syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
     // dessin du trade en cours, prolongé jusqu'à la bougie courante
-    if tr_dess
+    if tr_dess and not rev_go
         box.set_right(dr_bR, bar_index)
         if not na(dr_bT)
             box.set_right(dr_bT, bar_index)
@@ -2191,8 +2219,8 @@ if pos != 0
 // 4. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
 bool entree_L = false
 bool entree_S = false
-if pos == 0 and tr_dir == 0 and (go_long or go_short)
-    d  = go_long ? 1 : -1
+if (pos == 0 and tr_dir == 0 and (go_long or go_short)) or rev_go
+    d  = rev_go ? -tr_dir : go_long ? 1 : -1
     e0 = r_c
     if nv_stopNv or nv_tpNv
         f_nv_build()
@@ -2253,20 +2281,22 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         tr_tp2Nom := n2
         tr_q      := q
         tr_q1     := q1
-        tr_ct0    := nCT
+        // un retournement ferme d'abord les trades encore ouverts : ils
+        // prennent les indices nCT.. et ne doivent pas compter dans le bilan
+        tr_ct0    := rev_go ? nCT + strategy.opentrades : nCT
         tr_best   := e0
         tr_be     := false
         tr_dess   := false
         nb_jour   += 1
         if d > 0
-            strategy.entry("L", strategy.long, qty=q, comment=(jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + f_gdTag(1) + ws_tag)
+            strategy.entry("L", strategy.long, qty=q, comment=(rev_go ? "Retournement · " : "") + (jr_on ? f_jr(1, dist) : "L " + str.tostring(q)) + f_gdTag(1) + ws_tag)
             entree_L := true
         else
-            strategy.entry("S", strategy.short, qty=q, comment=(jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + f_gdTag(-1) + ws_tag)
+            strategy.entry("S", strategy.short, qty=q, comment=(rev_go ? "Retournement · " : "") + (jr_on ? f_jr(-1, dist) : "S " + str.tostring(q)) + f_gdTag(-1) + ws_tag)
             entree_S := true
         if al_on
             tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
-            alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " au marché maintenant" +
+            alert(syminfo.ticker + " · " + (rev_go ? (d > 0 ? "RETOURNER la position : fermer le SHORT et passer LONG" : "RETOURNER la position : fermer le LONG et passer SHORT") : d > 0 ? "ACHAT (long)" : "VENTE (short)") + " au marché maintenant" +
                  ((d > 0 ? gd_L : gd_S) ? "\n⭐ GODLIKE (56 + règle du 69)" : "\n56 seul : Dashator 1 h ou 4 h quasi neutre, trade fragile") +
                  "\nEntrée ≈ " + f_px(e0) +
                  "\nStop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" +
