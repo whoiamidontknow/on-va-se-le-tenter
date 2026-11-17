@@ -262,9 +262,9 @@ grp_e = "=== 1. ENTRÉES ==="
 // ligne dans f_pr_def(). Le menu peut en contenir une vingtaine sans problème.
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
-preset    = input.string("59 · GODLIKE, sans entrée après 19h", "Préréglage", group=grp_e,
-     options=["59 · GODLIKE, sans entrée après 19h", "56 · d'origine"],
-     tooltip="59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris (sorties inchangées). 56 d'origine = pour comparer.")
+preset    = input.string("56 · d'origine", "Préréglage", group=grp_e,
+     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "59 · GODLIKE, sans entrée après 19h"],
+     tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -553,6 +553,11 @@ f_pr_def(string nom) =>
      nom == "55 · 48 avec sortie après 12 bougies (3 h)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=12;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
      nom == "56 · 48 avec sortie après 16 bougies (4 h)" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
      nom == "56 · d'origine" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
+     // 17/11 : 70-73 = le 56 d'origine avec UNE ou DEUX valeurs remplacées (tpR=1 : objectif 3 ATR ; eMax : repli d'entrée max).
+     nom == "70 · 56 avec objectif 3 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6" :
+     nom == "71 · 56 avec repli ≤ 0,8 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.8" :
+     nom == "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.8" :
+     nom == "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=1;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=1.0" :
      // 16/11 : 59 = 56 + GODLIKE seulement + entrées 00:20-18:45 (ouverture de la bougie signal 0020-1845 en 15 min)
      nom == "59 · GODLIKE, sans entrée après 19h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-1845;hr2On=0;god=1" :
      // 16/11 : 57 = 56 + plage d'entrée 00:20-19:45 sur l'ouverture de la bougie signal
