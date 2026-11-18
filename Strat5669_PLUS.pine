@@ -1,5 +1,8 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
+// 18/11/2026 : préréglages 80-82 = le 56 avec confiance 1 h × 4 h minimum 60 / 70 / 80 % (clé conf) :
+// probabilité que les bougies HA 1 h et 4 h EN COURS finissent dans le sens du trade,
+// lue dans des tables mesurées (corps × ATR, temps écoulé), calculée comme en direct.
 // 18/11/2026 : préréglage 79 = 78 en GODLIKE seulement.
 // 18/11/2026 : préréglage 78 = le 56 sans entrée 8h-13h ni après 20h Paris (56 seul gardés).
 // 18/11/2026 : préréglages 76 / 77 « sans décalage » (clés muClos, hPile) : 1 h / 4 h
@@ -272,7 +275,7 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
 preset    = input.string("56 · d'origine", "Préréglage", group=grp_e,
-     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "74 · 56 + retournement", "75 · 56 + retournement GODLIKE seul", "76 · 56 sans décalage · heure pile", "77 · 56 sans décalage · toutes bougies", "78 · 56 sans 8h-13h ni après 20h", "79 · GODLIKE sans 8h-13h ni après 20h", "59 · GODLIKE, sans entrée après 19h"],
+     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "74 · 56 + retournement", "75 · 56 + retournement GODLIKE seul", "76 · 56 sans décalage · heure pile", "77 · 56 sans décalage · toutes bougies", "78 · 56 sans 8h-13h ni après 20h", "79 · GODLIKE sans 8h-13h ni après 20h", "80 · 56 avec confiance ≥ 60 %", "81 · 56 avec confiance ≥ 70 %", "82 · 56 avec confiance ≥ 80 %", "59 · GODLIKE, sans entrée après 19h"],
      tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 74 = le 56 qui retourne la position sur un signal d'entrée opposé ; 75 = idem, seulement si ce signal est GODLIKE. 76 / 77 = le 56 lu sans décalage : 1 h et 4 h pris sur la dernière bougie terminée à la clôture de la bougie signal, ce que le direct voit aussi (le menu « Données multi-unités » est ignoré) ; 76 = signal seulement sur la bougie qui se ferme à hh:00. 78 = le 56 (56 seul gardés) sans entrée de 8h à 13h ni après 20h Paris ; 79 = idem en GODLIKE seulement. 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
@@ -299,6 +302,8 @@ f_feuMode_in = input.string("Part dans le sens ≥ seuil", "Feu : règle", group
 f_feuSeuil_in = input.int(50, "Feu : seuil (%)", group=grp_f, minval=0, maxval=100)
 f_trOn_in = input.bool(false, "TREND d'une unité supérieure dans le sens", group=grp_f)
 f_god_in    = input.bool(false, "Seulement les trades GODLIKE (seuil et lecture du groupe 1)", group=grp_f)
+f_confMin_in = input.int(0, "Confiance 1 h × 4 h minimum (%, 0 = aucun)", group=grp_f, minval=0, maxval=100,
+     tooltip="Probabilité que les bougies HA 1 h et 4 h EN COURS finissent dans le sens du trade (donc que le trade ne disparaisse pas au recalcul), d'après leur corps (× ATR) et le temps écoulé dans la bougie. Tables mesurées sur NQ : 5 min des 60 derniers jours pour la 1 h, 1 h depuis 07/2024 pour la 4 h. Calculée comme en direct, aussi en historique.")
 f_dsh60_in  = input.bool(false, "Dashator 1 h dans le sens du trade (bougie clôturée)", group=grp_f)
 f_dsh240_in = input.bool(false, "Dashator 4 h dans le sens du trade (bougie clôturée)", group=grp_f)
 f_eOn_in  = input.bool(false, "Écart à l'EMA50 maximum dans le sens du trade (× ATR)", group=grp_f, inline="eM",
@@ -582,6 +587,10 @@ f_pr_def(string nom) =>
      nom == "78 · 56 sans 8h-13h ni après 20h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-0745;hr2On=1;hr2=1245-1945" :
      // 18/11 : 79 = 78 en GODLIKE seulement (mêmes réglages que le 58 de Strat5669_V2).
      nom == "79 · GODLIKE sans 8h-13h ni après 20h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-0745;hr2On=1;hr2=1245-1945;god=1" :
+     // 18/11 : 80-82 = le 56 d'origine + confiance 1 h × 4 h minimum (clé conf, absente du 56).
+     nom == "80 · 56 avec confiance ≥ 60 %" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;conf=60" :
+     nom == "81 · 56 avec confiance ≥ 70 %" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;conf=70" :
+     nom == "82 · 56 avec confiance ≥ 80 %" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;conf=80" :
      // 16/11 : 59 = 56 + GODLIKE seulement + entrées 00:20-18:45 (ouverture de la bougie signal 0020-1845 en 15 min)
      nom == "59 · GODLIKE, sans entrée après 19h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-1845;hr2On=0;god=1" :
      // 16/11 : 57 = 56 + plage d'entrée 00:20-19:45 sur l'ouverture de la bougie signal
@@ -664,6 +673,7 @@ var float  f_feuSeuil = f_gf("feuSeuil", f_feuSeuil_in)
 var bool   f_trOn   = f_gb("tr",     f_trOn_in,   false)
 var bool   f_emaOn  = f_gb("ema",    f_emaOn_in,  false)
 var bool   f_god    = f_gb("god",    f_god_in,    false)
+var float  f_confMin = f_gf("conf",  f_confMin_in)
 var bool   f_hrOn   = f_gb("hr",     f_hrOn_in,   false)
 var bool   f_hr1On  = f_gb("hr1On",  f_hr1On_in,  f_hr1On_in)
 var string f_hr1    = f_gs("hr1",    f_hr1_in,    f_hr1_in, f_pv("hr1"))
@@ -1449,7 +1459,28 @@ t3_d5 = live5 ? f5b > 0 : t3_d5c
 // GODLIKE = règle du 69 : Dashator 1 h ET 4 h nettement colorés dans le sens du trade
 gd_L = dz4_b >= gd_k * dz4_a and dz5_b >= gd_k * dz5_a
 gd_S = dz4_b <= -gd_k * dz4_a and dz5_b <= -gd_k * dz5_a
-f_gdTag(int d) => (d > 0 ? gd_L : gd_S) ? " · GODLIKE" : " · 56 seul"
+// Confiance (%) : probabilité que les bougies HA 1 h et 4 h EN COURS finissent dans le
+// sens du trade. Tables mesurées (NQ, 18/11) : lignes = temps écoulé (1 h : 5 à 55 min ;
+// 4 h : 1 à 3 h), colonnes = corps en cours / ATR précédente < 0,1 | < 0,25 | < 0,5 | < 1 | ≥ 1.
+// Corps contre le trade : 100 − valeur. Bougie qui se termine ou unité ≤ graphique : 100.
+var array<float> cf_t1 = array.from(60.0, 79.0, 93.0, 99.0, 99.0, 61.0, 81.0, 95.0, 98.0, 99.0, 61.0, 85.0, 95.0, 98.0, 100.0, 66.0, 86.0, 96.0, 99.0, 100.0, 66.0, 86.0, 97.0, 99.0, 100.0, 68.0, 90.0, 98.0, 99.0, 100.0, 74.0, 91.0, 99.0, 100.0, 100.0, 75.0, 95.0, 99.0, 100.0, 100.0, 77.0, 97.0, 100.0, 100.0, 100.0, 78.0, 98.0, 100.0, 100.0, 100.0, 82.0, 100.0, 100.0, 100.0, 100.0)
+var array<float> cf_t4 = array.from(62.0, 84.0, 95.0, 99.0, 100.0, 69.0, 88.0, 97.0, 100.0, 100.0, 76.0, 93.0, 98.0, 100.0, 100.0)
+f_cfP(array<float> t, int row, int nRows, float body, float atr, int d) =>
+    float p = 100.0
+    if row <= nRows and atr > 0 and not na(body)
+        b = d * body / atr
+        ab = math.abs(b)
+        q = array.get(t, (row - 1) * 5 + (ab < 0.1 ? 0 : ab < 0.25 ? 1 : ab < 0.5 ? 2 : ab < 1 ? 3 : 4))
+        p := b > 0 ? q : b < 0 ? 100 - q : 50
+    p
+cf_e1 = (time_close - time(t3_dd4)) / 60000
+cf_e4 = (time_close - time(t3_dd5)) / 60000
+cf_r1 = math.max(1, math.round(cf_e1 / 5))
+cf_r4 = math.max(1, int(math.floor(cf_e4 / 60)))
+f_conf(int d) => (f_gt(t3_dd4) ? f_cfP(cf_t1, cf_r1, 11, f4b, z4a1, d) : 100.0) * (f_gt(t3_dd5) ? f_cfP(cf_t4, cf_r4, 3, f5b, z5a1, d) : 100.0) / 100
+cf_okL = f_confMin <= 0 or f_conf(1) >= f_confMin
+cf_okS = f_confMin <= 0 or f_conf(-1) >= f_confMin
+f_gdTag(int d) => ((d > 0 ? gd_L : gd_S) ? " · GODLIKE" : " · 56 seul") + (f_confMin > 0 ? " · confiance " + str.tostring(f_conf(d), "0") + " %" : "")
 t3_d6 = f_dsh_req(t3_dd6)
 
 // INDICATOR | SIGNAL : 7 lignes
@@ -1868,8 +1899,8 @@ x2_okL   = (not f_dsh60 or dz_up4) and (not f_dsh240 or dz_up5) and (not f_eOn o
 x2_okS   = (not f_dsh60 or dz_dn4) and (not f_dsh240 or dz_dn5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
 bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
 bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
-go_long   = hp_ok and (not f_god or gd_L) and x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
-go_short  = hp_ok and (not f_god or gd_S) and x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+go_long   = hp_ok and cf_okL and (not f_god or gd_L) and x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = hp_ok and cf_okS and (not f_god or gd_S) and x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
 // DIAGNOSTIC : marge de chaque filtre au moment du signal (repérer les trades « fantômes »)
 dg_r4 = dz4_a > 0 ? dz4_b / dz4_a : na    // corps HA / ATR, Dashator 1 h (signé)
