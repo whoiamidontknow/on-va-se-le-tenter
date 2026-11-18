@@ -1,5 +1,8 @@
 //@version=6
 // ══════════════════════════════════════════════════════════════
+// 18/11/2026 : préréglages 76 / 77 « sans décalage » (clés muClos, hPile) : 1 h / 4 h
+// lus sur la dernière bougie terminée à la clôture de la bougie signal, en historique
+// comme en direct ; 76 = signal à hh:00 seulement.
 // 17/11/2026 : préréglages 70-73 (56 avec objectif 3 ATR et/ou repli 0,8-1,0 ATR) et
 // option « retournement sur signal d'entrée opposé » (clés rev / revGod, préréglages
 // 74 et 75) : en position, un signal d'entrée valide dans l'autre sens retourne la
@@ -267,8 +270,8 @@ grp_e = "=== 1. ENTRÉES ==="
 al_on     = input.bool(true, "Alertes : entrée (stop, objectif, heure limite) et sorties", group=grp_e)
 gd_k      = input.float(0.025, "Seuil GODLIKE : corps Dashator 1 h et 4 h (× ATR)", group=grp_e, step=0.005, minval=0.0)
 preset    = input.string("56 · d'origine", "Préréglage", group=grp_e,
-     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "74 · 56 + retournement", "75 · 56 + retournement GODLIKE seul", "59 · GODLIKE, sans entrée après 19h"],
-     tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 74 = le 56 qui retourne la position sur un signal d'entrée opposé ; 75 = idem, seulement si ce signal est GODLIKE. 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
+     options=["56 · d'origine", "70 · 56 avec objectif 3 ATR", "71 · 56 avec repli ≤ 0,8 ATR", "72 · 56 avec repli ≤ 0,8 ATR et objectif 3 ATR", "73 · 56 avec repli ≤ 1,0 ATR et objectif 3 ATR", "74 · 56 + retournement", "75 · 56 + retournement GODLIKE seul", "76 · 56 sans décalage · heure pile", "77 · 56 sans décalage · toutes bougies", "59 · GODLIKE, sans entrée après 19h"],
+     tooltip="56 d'origine = la référence. 70 à 73 = le 56 avec l'objectif à 3 ATR (au lieu de 2) et/ou un repli d'entrée jusqu'à 0,8 ou 1,0 ATR (au lieu de 0,6). 74 = le 56 qui retourne la position sur un signal d'entrée opposé ; 75 = idem, seulement si ce signal est GODLIKE. 76 / 77 = le 56 lu sans décalage : 1 h et 4 h pris sur la dernière bougie terminée à la clôture de la bougie signal, ce que le direct voit aussi (le menu « Données multi-unités » est ignoré) ; 76 = signal seulement sur la bougie qui se ferme à hh:00. 59 = le 56 en GODLIKE seulement, sans entrée après 18:45 Paris.")
 e_clxOn_in = input.bool(false, "Entrée sur climax (BUY = long, SELL = short)", group=grp_e)
 e_sens_in = input.string("Les deux", "Sens autorisé", group=grp_e, options=["Les deux", "Long seulement", "Short seulement"])
 e_sigOn_in   = input.bool(true, "Entrée sur flèche Signator", group=grp_e)
@@ -460,6 +463,7 @@ rnd_step  = input.float(100, "Niveaux ronds : intervalle (Rondator)", group=grp_
 //            tp ⓘ (Aucun | En R | Prochain niveau), tpR, trail ⓘ (Aucun | ATR |
 //            Sous chaque nouveau swing), trK, trAct, be ⓘ, beR, oppArr ⓘ,
 //            rev ⓘ (retournement sur signal d'entrée opposé), revGod ⓘ,
+//            muClos ⓘ (1 h / 4 h sans décalage, force le mode), hPile ⓘ (signal à hh:00),
 //            oppHei ⓘ, fin ⓘ, pf ⓘ (à plat avant 15:59 Chicago), beTk,
 //            tBar ⓘ (sortie après N bougies, 0 = jamais), extMarge, extMin, extMax
 //   NIVEAUX  prio, slA slM slW slD slMo slSe slRo, slMin, slMax, slMarge,
@@ -569,6 +573,9 @@ f_pr_def(string nom) =>
      // 17/11 : 74-75 = le 56 d'origine + retournement sur signal d'entrée opposé (clés rev / revGod absentes du 56).
      nom == "74 · 56 + retournement" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;rev=1" :
      nom == "75 · 56 + retournement GODLIKE seul" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;rev=1;revGod=1" :
+     // 18/11 : 76-77 = le 56 d'origine lu sans décalage (muClos force le mode, menu « Données multi-unités » ignoré) ; 76 = signal à hh:00 seulement.
+     nom == "76 · 56 sans décalage · heure pile" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;muClos=1;hPile=1" :
+     nom == "77 · 56 sans décalage · toutes bougies" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=0;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;muClos=1" :
      // 16/11 : 59 = 56 + GODLIKE seulement + entrées 00:20-18:45 (ouverture de la bougie signal 0020-1845 en 15 min)
      nom == "59 · GODLIKE, sans entrée après 19h" ? "bias=0;sens=Les deux;sig=1;sigNiv=Fort + Moyen;hei=1;tl=1;lvl=1;clx=1;div=1;divX=2.5;tr=0;tr4h=0;feu=0;ema=0;adx=0;det=0;clxF=0;bo=0;maxJour=0;hr=1;be=0;trail=Aucun;oppArr=0;oppHei=0;fin=0;pf=1;part=0;tBar=16;stop=ATR × k;atrK=3;tp=En R;tpR=0.6667;taille=Contrats fixes;fixe=2;dsh60=1;dsh240=1;eOn=1;eMax=0.6;hr1On=1;hr1=0020-1845;hr2On=0;god=1" :
      // 16/11 : 57 = 56 + plage d'entrée 00:20-19:45 sur l'ouverture de la bougie signal
@@ -751,8 +758,15 @@ grp_mu = "=== DONNÉES MULTI-UNITÉS ==="
 mu_mode   = input.string("Calcul d'origine (Strat5669)", "Données multi-unités", group=grp_mu,
      options=["Calcul d'origine (Strat5669)", "Comme en direct (bougie en cours)", "Bougie clôturée"],
      tooltip="Unités 1 h / 4 h. Calcul d'origine : identique à Strat5669 ; en historique il lit la valeur finale de la bougie en cours (connue seulement à sa clôture), en direct la bougie en formation. Comme en direct : l'historique reproduit ce que les alertes voient. Bougie clôturée : dernière bougie terminée, identique en historique et en direct.")
-mu_old    = mu_mode == "Calcul d'origine (Strat5669)"
-mu_live   = mu_mode == "Comme en direct (bougie en cours)"
+// muClos (préréglages 76 / 77) : FORCE la lecture « sans décalage », quel que soit
+// le menu ci-dessus. Chaque unité supérieure est lue sur la dernière bougie
+// terminée à la CLÔTURE de la bougie du graphique : [0] si les deux bougies se
+// ferment au même instant (la bougie 1 h vient de se terminer : pas de retard),
+// [1] sinon (dernière bougie terminée : rien de futur). Identique en historique
+// et en direct.
+var bool mu_clos = f_gb("muClos", false, false)
+mu_old    = not mu_clos and mu_mode == "Calcul d'origine (Strat5669)"
+mu_live   = not mu_clos and mu_mode == "Comme en direct (bougie en cours)"
 
 // SANS FUITE : ces fonctions ne doivent JAMAIS être appelées dans l'expression d'un
 // request.security (elles y liraient timeframe.period de l'unité demandée).
@@ -761,7 +775,10 @@ mu_live   = mu_mode == "Comme en direct (bougie en cours)"
 f_gt(tf)   => timeframe.in_seconds(tf) > timeframe.in_seconds(timeframe.period)
 f_la(tf)   => f_gt(tf) ? barmerge.lookahead_on : barmerge.lookahead_off
 // f_pick : vrai = prendre la valeur [1] (dernière bougie clôturée de l'unité)
-f_pick(tf) => f_gt(tf) and not mu_old
+// fin d'unité : la bougie du graphique se ferme au bout de la bougie supérieure
+// (time(tf) = son ouverture, fiable en direct ; bougie tronquée -> jamais -> [1])
+f_fin(tf)  => time_close - time(tf) >= timeframe.in_seconds(tf) * 1000
+f_pick(tf) => f_gt(tf) and not mu_old and not (mu_clos and f_fin(tf))
 
 // ══════════════════════════════════════════════════════════════
 // VRAIS PRIX (exécution, stops, ATR, swings, taille)
@@ -1780,6 +1797,9 @@ sig_short = (e_sigOn and (sg_short or (e_moyen and sg_shortM))) or (e_heiOn and 
 // FILTRES
 // ══════════════════════════════════════════════════════════════
 f_minParis(t) => hour(t, "Europe/Paris") * 60 + minute(t, "Europe/Paris")
+// hPile (préréglage 76) : signal accepté seulement si sa bougie se ferme à hh:00.
+var bool f_hPile = f_gb("hPile", false, false)
+hp_ok = not f_hPile or minute(time_close, "Europe/Paris") == 0
 
 // fin de séance : à partir de la bougie qui FINIT à l'heure réglée
 fin_min   = x_finH * 60 + x_finM
@@ -1842,8 +1862,8 @@ x2_okL   = (not f_dsh60 or dz_up4) and (not f_dsh240 or dz_up5) and (not f_eOn o
 x2_okS   = (not f_dsh60 or dz_dn4) and (not f_dsh240 or dz_dn5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
 bi_okL    = not bi_on or (bi_F >= bi_bF and bi_I >= bi_bI)
 bi_okS    = not bi_on or (bi_F <= -bi_bF and bi_I <= -bi_bI)
-go_long   = (not f_god or gd_L) and x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
-go_short  = (not f_god or gd_S) and x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+go_long   = hp_ok and (not f_god or gd_L) and x2_okL and bi_okL and sens_okL and sig_long  and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+go_short  = hp_ok and (not f_god or gd_S) and x2_okS and bi_okS and sens_okS and sig_short and not sig_long  and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
 
 // DIAGNOSTIC : marge de chaque filtre au moment du signal (repérer les trades « fantômes »)
 dg_r4 = dz4_a > 0 ? dz4_b / dz4_a : na    // corps HA / ATR, Dashator 1 h (signé)
