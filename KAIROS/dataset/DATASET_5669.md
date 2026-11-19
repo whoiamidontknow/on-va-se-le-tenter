@@ -56,7 +56,73 @@ Ce que le moteur Python doit encore reproduire, et qui n'est pas dans le CSV :
 - les sorties : stop, objectif, temps (tBar = 16 bougies en 56), `fin` ;
 - le compteur de trades par jour (maxJour = 0 en 56, donc sans effet).
 
-## Procédure pour Jeremy (MNQ1! et MES1!, 15 min)
+## Relevé 5669 (stratégie) — c'est lui qu'on exporte
+
+`KAIROS/dataset/RELEVE_5669.pine` reprend le même code, en **stratégie**, pour exporter 3 ans par le testeur en
+historique profond. L'export du graphique, lui, est limité aux bougies chargées.
+
+Principe : un trade d'1 contrat est ouvert à **chaque** bougie où un déclencheur existe dans le sens choisi
+(`sig_L` ou `sig_S`, avant tout filtre). L'ID est « E » + bar_index. Le trade n'a ni stop ni objectif, et il est
+fermé exactement 16 bougies plus tard. Les sorties de nuit et de 15h59 ne s'appliquent pas : les indicateurs `fin` /
+`pf` sont dans les commentaires. Les réglages sont : pyramiding 40, commission 0, glissement 0, marge 0.
+Pour chaque instrument, il faut un export **Long** et un export **Short**, parce que la position est nette sur
+TradingView et qu'un short fermerait les longs.
+
+**Commentaire d'entrée** (colonne Signal de la ligne d'entrée). Toutes les valeurs sont **brutes** : > 0 = haussier,
+quel que soit le sens du relevé, à la différence de R16 qui signait dans le sens du trade.
+
+`d=FH|go=1|x2=1|c=21034.50|atr=31.25|sl=93.75|er=0.4|o1=0.120|o4=0.031|b1=0.080|b4=-0.010|k1=0.150|k4=0.200|gd=1,0,1|cf=62|el=45,165|f=00111|adx=27|vr=1.12`
+
+| Clé | Sens |
+|---|---|
+| `d` | déclencheurs présents dans le sens du relevé : F Signator Fort, M Moyen, H Heishinator, T trendline, N niveau, C climax, D divergence |
+| `go` | la stratégie 56 aurait décidé l'entrée (tous filtres, avant « une position à la fois ») |
+| `x2` | filtre Dashator 1 h + 4 h + eMax respecté |
+| `c` | vrai close de la bougie signal |
+| `atr`, `sl` | ATR des vrais prix, distance du stop = atrK × atr |
+| `er` | écart à l'EMA50 en ATR HA, arrondi au dixième (valeur comparée à eMax) |
+| `o1 o4`, `b1 b4`, `k1 k4` | Dashator 1 h / 4 h, corps HA / ATR : origine (fuite), en cours (direct), dernière terminée |
+| `gd` | GODLIKE origine, en cours, dernière terminée (1 / −1 / 0) |
+| `cf` | confiance 1 h × 4 h dans le sens du relevé (%) |
+| `el` | minutes écoulées dans la bougie 1 h, 4 h |
+| `f` | 5 chiffres : fin, pf, hr, bo, com |
+| `adx`, `vr` | ADX 14, ATR / moyenne 96 bougies |
+
+**Commentaire de sortie** (colonne Signal de la ligne de sortie) : le parcours des bougies 1 à 16 après l'entrée.
+L'entrée se remplit à l'ouverture de la bougie 1. Tout est en **ticks entiers**, signés par rapport à ce prix
+d'ouverture (prix − ouverture, sans tenir compte du sens).
+
+`h=4,10,…(16 valeurs)|l=-3,1,…(16)|c=12|f=0|n=16`
+
+`h` et `l` sont le haut et le bas de chaque bougie, `c` la clôture de la bougie 16, `f` la première bougie (1-16) où
+`fin` passe à 1 (0 = aucune), et `n` le nombre de bougies.
+
+Le testeur remplit la sortie à l'**ouverture de la bougie 17** : son prix de sortie n'est donc pas `c`. Les ordres sont
+remplis sur les vrais prix (fill_orders_on_standard_ohlc), même sur un graphique Heikin Ashi. En fin d'historique,
+les derniers trades (16 au plus) restent ouverts et n'ont pas de commentaire de sortie : il faut les ignorer.
+
+**À contrôler sur le premier export :**
+- **La longueur des commentaires.** L'entrée fait environ 230 caractères, et la sortie de 200 à 400 selon l'amplitude. Les relevés
+  R16 ne dépassaient pas 115, et je n'ai pas pu mesurer la limite de TradingView. Si une valeur manque à la fin
+  (`vr=` en entrée, `n=` en sortie), c'est que le commentaire a été coupé : prévenir TALOS, qui compactera.
+- **Le nombre de trades.** On attend environ 3 500 à 4 500 trades par sens sur 3 ans en 15 min. Les relevés
+  R16 en ont passé 8 670.
+
+## Procédure pour Jeremy : 4 exports
+
+1. Dans l'éditeur Pine, crée une nouvelle stratégie, colle tout `KAIROS/dataset/RELEVE_5669.pine`, enregistre,
+   puis « Ajouter au graphique ». Elle s'appelle **« Relevé 5669 »**. Ne change aucun réglage, sauf le sens.
+2. Graphique **MNQ1!**, **15 min**, **Heikin Ashi**. Retire les autres stratégies.
+3. Dans les réglages, groupe « RELEVÉ » : **Sens du relevé = Long**.
+4. Testeur de stratégie : active l'**historique profond** depuis le **16/10/2023**, jusqu'à aujourd'hui.
+5. Exporte la liste des trades (même bouton d'export que d'habitude, fichier .xlsx).
+6. Remets **Sens du relevé = Short** et refais les étapes 4 et 5.
+7. Refais tout pour **MES1!** : à la fin, il y a 4 fichiers.
+8. Dépose-les dans **`~/ERGON/KAIROS-data/dataset5669/`** **sans les renommer**.
+
+Le CSV brut en 5 min n'est plus nécessaire : le parcours des 16 bougies est dans la sortie.
+
+## Ancienne procédure (indicateur, export du graphique) — limitée aux bougies chargées
 
 1. Dans l'éditeur Pine, crée un nouvel indicateur, colle tout `KAIROS/dataset/DATASET_5669.pine`, enregistre, puis
    « Ajouter au graphique ». Il s'appelle **« Dataset 5669 »**. Ne change aucun réglage.
