@@ -107,7 +107,8 @@ def mesures(pn, qty=2):
 def hasard(B, I, periode, idx, sens, n_tir=1000, ref="A", rng=None):
     """Tirages au hasard calés sur une stratégie (idx, sens) : mêmes bougies candidates (période, hors fin),
     même répartition horaire, même nombre de trades (densité réglée), même part de longs (réf. A) ou
-    sens tiré parmi les déclencheurs de la bougie (réf. B : bits hei / sF / sM / tl / lvl / clx / div)."""
+    sens tiré parmi les déclencheurs de la bougie (réf. B : bits hei / sF / sM / tl / lvl / clx / div),
+    ou tout en long (réf. L : la dérive haussière du marché, pour ne pas la prendre pour un avantage)."""
     rng = rng or np.random.default_rng(5669)
     cand = np.flatnonzero(periode & ~B.fin.values.astype(bool) & np.isfinite(I["p1_L"]))
     h = B.t.dt.hour.values
@@ -116,6 +117,8 @@ def hasard(B, I, periode, idx, sens, n_tir=1000, ref="A", rng=None):
     w = np.where(wc > 0, w56 / np.maximum(wc, 1), 0)
     w = w / w.max()
     p_long = (np.asarray(sens) > 0).mean() if len(sens) else 0.5
+    if ref == "L":                       # long seulement (dérive du marché)
+        p_long, ref = 1.0, "A"
     if ref == "B":
         L = B[["hei_L", "sF_L", "sM_L", "tl_L", "lvl_L", "clx_L", "div_L"]].values.any(axis=1)
         S = B[["hei_S", "sF_S", "sM_S", "tl_S", "lvl_S", "clx_S", "div_S"]].values.any(axis=1)
