@@ -15,7 +15,7 @@ Règles, d'après Strat5669.pine (sections 1 à 5 de la gestion des ordres) :
     après une sortie au marché remplie à l'ouverture d'une bougie, dès le signal de cette bougie
     (remplissage à la suivante).
 
-Le parcours (h1..h16, l1..l16) doit être fiable (err16 ≈ 0) : ce n'est PAS le cas des exports du 19/11.
+Le parcours (h1..h16, l1..l16) doit être fiable (err16 ≈ 0) : exports Relevé a7d2173 et suivants.
 """
 import numpy as np
 import pandas as pd
@@ -74,8 +74,9 @@ def un_trade(r, d, opn, ambigu="stop"):
             px = r.o1 + (getattr(r, f"h{f + 1}") + getattr(r, f"l{f + 1}")) / 2 * TICK
             approx = True
         sortie, raison, k_sortie, libre = px - d * TICK, "fin", f, tx + pd.Timedelta(minutes=1)
-    else:
-        sortie, raison, k_sortie, libre = r.o17 - d * TICK, "temps", 16, r.t17 + pd.Timedelta(minutes=1)
+    else:                                        # fin sur la bougie 16 : même remplissage, mais la Strat
+        sortie, raison, k_sortie, libre = (r.o17 - d * TICK, "fin" if f == 16 else "temps", 16,   # teste fin avant le temps
+                                           r.t17 + pd.Timedelta(minutes=1))
     return dict(t1=r.t1, sens="L" if d > 0 else "S", entree=fill, sortie=sortie, raison=raison, k=k_sortie,
                 ambigu=amb, approx=approx), libre
 

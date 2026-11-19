@@ -24,11 +24,12 @@ Colonnes :
   err16     (o17 - o1) / tick - c16 : clôture de la bougie 16 contre ouverture de la 17, en ticks.
             Doit valoir 0 à quelques ticks près ; sinon le parcours ne se rapporte pas à ce trade.
 
-ATTENTION (19/11) : dans les exports du 19/11, le parcours est faux pour ~90 % des trades. Dans
+ATTENTION : dans les PREMIERS exports du 19/11 (dataset5669/ancien-bug), le parcours est faux pour ~90 % des trades. Dans
 RELEVE_5669.pine (commit 04c6f6a), f_rvOut() n'est appelée que sous `if rv_ok[rv_n]` : ses
 références r_h[j], r_l[j], r_o[rv_n - 1] et fin_apres[j] lisent alors les APPELS précédents, pas
 les bougies précédentes. Seules h16 / l16 / c16 sont des valeurs de la bonne bougie, mais
-relatives à une mauvaise référence. Les commentaires d'entrée, o1, o17, t1 et t17 sont justes.
+relatives à une mauvaise référence. Corrigé dans le Relevé a7d2173 (figé en 56, sans propriété
+« Préréglage ») : |err16| <= 4 ticks pour 97 % (MNQ) et 99 % (MES), le reste surtout aux trous de séance.
 """
 import glob
 import os
