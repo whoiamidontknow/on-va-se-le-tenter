@@ -10,6 +10,9 @@
 // terminée » (muClos FORCÉ), plus la bougie 1 h / 4 h en cours reconstituée (b1,
 // b4). Aucune valeur ne dépend de la fin d'une bougie supérieure. Format :
 // KAIROS/dataset/DATASET_COMPLET.md.
+// 19/11 (5 min / 1 h) : une unité inférieure qui ne divise pas le graphique (TREND
+// 3 min sur 5 min) est lue sur sa bougie précédente terminée (f_lowOk) ; le bloc en
+// cours est fermé à la sortie de la période Début / Fin. Relevés 15 min inchangés.
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
 // 18/11/2026 : préréglages 83-95 = le 56 avec confiance minimum 5 à 75 % par pas de 5.
@@ -820,7 +823,12 @@ f_la(tf)   => f_gt(tf) ? barmerge.lookahead_on : barmerge.lookahead_off
 // fin d'unité : la bougie du graphique se ferme au bout de la bougie supérieure
 // (time(tf) = son ouverture, fiable en direct ; bougie tronquée -> jamais -> [1])
 f_fin(tf)  => time_close - time(tf) >= timeframe.in_seconds(tf) * 1000
-f_pick(tf) => f_gt(tf) and not mu_old and not (mu_clos and f_fin(tf))
+// Relevé complet : une unité INFÉRIEURE qui ne divise pas celle du graphique (3 min sur
+// 5 min, 10 min sur 15 min) a sa dernière bougie pas finie quand le graphique ne ferme
+// pas sur une de ses frontières : en historique, valeur FINALE (fuite). On lit alors
+// sa bougie précédente, terminée. Sans effet sur une unité qui divise le graphique.
+f_lowOk(tf) => (time_close / 1000) % timeframe.in_seconds(tf) == 0
+f_pick(tf) => f_gt(tf) ? not mu_old and not (mu_clos and f_fin(tf)) : mu_clos and not f_lowOk(tf)
 
 // ══════════════════════════════════════════════════════════════
 // VRAIS PRIX (exécution, stops, ATR, swings, taille)
@@ -2123,6 +2131,11 @@ rc_rec = str.tostring(rc_dt) + "," + f_tk(r_o, rc_ref) + "," + f_tk(r_h, rc_ref)
      f_q(f_dr(pW_p)) + "," + f_q(f_dr(pM_p)) + "," + f_q(f_dr(pA_p)) + "," + f_q(fb_pos) + "," + f_q(det_up) + "," + f_q(det_dn) + "," + f_q(ds_vr)
 rc_maxL := math.max(rc_maxL, str.length(rc_rec))
 
+// sortie de la période Début / Fin : le bloc en cours est fermé à la 1re bougie hors période
+if rc_mode == "Relevé" and not rc_in and rc_n > 0
+    strategy.close(rc_id, comment=rc_blk + "|n=" + str.tostring(rc_n))
+    rc_n := 0
+    rc_blk := ""
 if rc_mode == "Relevé" and rc_in and not na(r_c)
     if rc_new
         rc_id := "B" + str.tostring(bar_index)

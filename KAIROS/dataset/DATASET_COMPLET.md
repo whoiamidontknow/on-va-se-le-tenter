@@ -39,6 +39,10 @@ les mêmes modules que CompletV3, qui est plus récent. Aucun fichier existant n
 - **MACD 10 min** (bit 31, et une voix du Feu) : 10 min ne divise pas 15 min. Aux bougies qui finissent à :15 et
   :45, la dernière bougie 10 min n'est pas finie : on lit la précédente. La Strat5669_PLUS lit la bougie non
   finie (fuite de 5 min), mais sans effet sur le 56, où le Feu n'est pas utilisé.
+- **Unité inférieure qui ne divise pas le graphique** (règle générale depuis le 19/11, pour le 5 min) : TREND 3 min sur
+  un graphique 5 min. Quand la bougie du graphique ne ferme pas sur une frontière de 3 min, on lit la bougie 3 min
+  précédente. En 15 min et en 1 h, seules les unités qui divisent le graphique sont concernées (sauf le MACD 10 min
+  en 15 min, déjà traité) : les relevés 15 min déjà exportés ne changent pas.
 - **Directionnor.** L'original lit le 4 h et le 1 h en lookahead_off. C'est juste en historique, mais en direct il
   voit la bougie en formation. Ici, la lecture suit la même règle que muClos.
 
@@ -52,7 +56,8 @@ les mêmes modules que CompletV3, qui est plus récent. Aucun fichier existant n
 - Les ratios ont 5 décimales au plus (format `#.#####`).
 - Un `|n=` absent en fin de commentaire signifie que le commentaire a été coupé par TradingView.
 
-Le dernier bloc de l'historique reste ouvert et n'a pas de commentaire de sortie : ses bougies manquent.
+Quand « Fin » est réglée, le bloc en cours est fermé à la première bougie hors période : rien ne manque entre deux
+périodes contiguës (Fin de l'une = Début de la suivante). Sans « Fin », le dernier bloc de l'historique reste ouvert et n'a pas de commentaire de sortie : ses bougies manquent.
 
 Le commentaire d'entrée contient seulement `t=…` (le même horodatage que la 1re bougie).
 
@@ -127,3 +132,34 @@ commentaire ».
   périodes, soit 2 exports par instrument.
 
 Au total : 1 test + 2 à 4 relevés, soit 3 à 5 exports.
+
+## Relevés 5 min et 1 h (plan du 19/11)
+
+Mesures sur les relevés 15 min exportés (MNQ, MES) : le test de longueur passe **4 000 caractères intacts**, une fiche
+fait **205 caractères** en moyenne, et un bloc en contient **18,6**. Le 15 min a donné **9 566 trades** par instrument,
+en un seul export.
+
+| Unité | Bougies par instrument | Trades à 4 000 car. | Exports par instrument |
+|---|---|---|---|
+| 1 h | ≈ 44 000 | ≈ 2 400 | 1 |
+| 5 min | ≈ 530 000 | ≈ 28 500 | 3 périodes de ≈ 9 500 trades (la taille déjà passée en 15 min) |
+
+Les mêmes réglages pour tous les exports : Mode = Relevé, longueur max = **4 000**. Testeur : historique profond
+du **01/01/2019** à aujourd'hui, toujours le même, même quand « Début » / « Fin » découpent. Seuls les deux
+réglages du script changent :
+
+| # | Graphique (Heikin Ashi) | Début | Fin |
+|---|---|---|---|
+| 1 | MNQ1! 1 h | 01/01/2019 | (défaut, 2099) |
+| 2 | MES1! 1 h | 01/01/2019 | (défaut) |
+| 3 | MNQ1! 5 min | 01/01/2019 | 01/11/2021 |
+| 4 | MNQ1! 5 min | 01/11/2021 | 01/05/2024 |
+| 5 | MNQ1! 5 min | 01/05/2024 | (défaut) |
+| 6-8 | MES1! 5 min | idem 3-5 | |
+
+Contrôles :
+- La 1re date de chaque export doit être ≈ « Début ». Sinon, TradingView a tronqué la liste : prévenir TALOS, qui
+  passera à 4 périodes.
+- Si le calcul échoue (délai dépassé) en 5 min : régler le testeur pour qu'il commence 1 an avant « Début » au lieu
+  de 2019. L'année en plus sert de chauffe aux moyennes longues (SMA 200 jour, EMA 50 4 h).
+- Déposer les fichiers dans `~/ERGON/KAIROS-data/releve_complet/5min/` et `.../1h/` sans les renommer.
