@@ -78,7 +78,7 @@ def un_trade(r, d, opn, ambigu="stop"):
         sortie, raison, k_sortie, libre = (r.o17 - d * TICK, "fin" if f == 16 else "temps", 16,   # teste fin avant le temps
                                            r.t17 + pd.Timedelta(minutes=1))
     return dict(t1=r.t1, sens="L" if d > 0 else "S", entree=fill, sortie=sortie, raison=raison, k=k_sortie,
-                ambigu=amb, approx=approx), libre
+                ambigu=amb, approx=approx, sl=dist, tx=libre), libre
 
 
 def simuler(t, ambigu="stop", lecture="o", filtre=None):
