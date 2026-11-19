@@ -23,3 +23,35 @@ Une hypothèse est retenue seulement si p < seuil corrigé en construction ET en
   2 tests (MNQ, MES) : seuil corrigé 0,025.
 - Lecture : si le témoin ne trouve aucun avantage hors échantillon, les familles faites à la main
   ont peu de chances (elles utilisent les mêmes champs).
+
+**Résultat C1 (19/11)** : aucun avantage hors échantillon (contrôle MNQ p = 0,056, MES p = 0,47 ;
+corrélations de rang expliquées par le coût fixe en R). Voir registre C1-01, C1-02.
+
+## Familles faites à la main (écrites le 19/11, avant le test)
+Signal décidé à la clôture de la bougie i (champs de la fiche i), entrée à l'ouverture suivante.
+Long et short en miroir ; si les deux sont vrais sur la même bougie, pas de trade. Pas d'entrée sur une
+bougie `fin` (moteur). 2 000 tirages au hasard (réf. A). Moins de 30 trades en construction = non testé.
+Seuil = 0,05 / nombre de tests de la famille ; le contrôle utilise 0,05 / nombre d'hypothèses retenues.
+
+### F1 Tendance — géométrie fixe : stop 2 ATR, objectif 1,5 R, 16 bougies — 3 × 2 instruments = 6 tests (seuil 0,0083)
+- T1 : TREND 1 h et 4 h haussiers (bits tr1h, tr4h) ET Dashator 1 h / 4 h terminés haussiers (k1 > 0, k4 > 0)
+  ET flip Heishinator haussier (hei_L) : fin de repli dans la tendance.
+- T2 : T1 ET TREND 15 min haussier ET Directionnor 4 h long (dirH = 1).
+- T3 : T1 ET 0 ≤ e1 ≤ 1 (clôture HA au-dessus de l'EMA 50, à 1 ATR au plus : repli près de la moyenne).
+
+### F2 Retour à la moyenne — géométrie fixe : stop 1,5 ATR, objectif 1 R, 8 bougies — 5 × 2 = 10 tests (seuil 0,005)
+- M1 : climax d'achat sur la bougie (clx_L) → long ; climax de vente → short.
+- M2 : divergence (div_L / div_S).
+- M3 : pW ≤ −2 (close à 2 ATR ou plus sous le pivot weekly) ET hei_L → long ; pW ≥ 2 ET hei_S → short.
+- M4 : Fibonacci. Swing haussier (fib_bas = 0) ET 0,5 ≤ fib ≤ 0,786 (repli de 50 à 78,6 %) ET hei_L
+  → long ; swing baissier (fib_bas = 1) ET 0,5 ≤ fib ≤ 0,786 ET hei_S → short.
+- M5 : zone Detector proche : detD ≤ 0,5 ATR ET hei_L → long ; detU ≤ 0,5 ATR ET hei_S → short.
+
+### F3 Cassure — géométrie fixe : stop 2 ATR, objectif 1,5 R, 16 bougies — 3 × 2 = 6 tests (seuil 0,0083)
+- B1 : cassure de trendline (tl_L / tl_S).
+- B2 : cassure de niveau de séance ou Monday (lvl_L / lvl_S).
+- B3 : (B1 ou B2) ET Feu ≥ 60 ET STRENGTH ≥ 60 → long ; (B1 ou B2 baissiers) ET Feu ≤ 40 ET STRENGTH ≤ 40 → short.
+
+### F4 Filtre de régime — sur chacune des 11 hypothèses, géométrie de sa famille — 11 × 2 × 2 = 44 tests (seuil 0,00114)
+- R1 : vr ≥ 1,2 (volatilité au-dessus de sa moyenne 96 bougies).
+- R2 : ADX ≥ 25.
