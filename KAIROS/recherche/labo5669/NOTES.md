@@ -11,3 +11,8 @@
 Alerte MES du 02/11 00:45 (achat, sortie au temps) : aucune lecture ne la reproduit. Au recalcul, les
 bougies de 00:15 et 00:30 ont com = 0 / fin = 1. Réouverture de séance au lendemain du passage des
 États-Unis à l'heure d'hiver (01/11) : à vérifier dans le calcul de la fenêtre horaire en historique.
+
+## Lecture k (dernière bougie terminée) non validée contre le testeur
+Aucun export en préréglage 76 / 77 dans KAIROS-data. La lecture k applique à k1/k4 la règle qui
+reproduit x2 à 99,97 % en lecture o ; un export Strat5669+ préréglage 77 (MNQ 15 min, 3 ans)
+permettrait de la valider comme les lectures o et b.
