@@ -1,0 +1,7 @@
+ins,lecture,simules,sans_alerte_flux_actif,sans_alerte_apres_silence,detail_sans
+MNQ,o,10,6,4,"27/10 04:00 S objectif, 02/11 13:45 S stop, 02/11 15:30 S stop, 05/11 00:45 S objectif, 06/11 22:00 S fin, 12/11 13:00 S objectif"
+MNQ,b,10,1,1,12/11 13:00 S objectif
+MNQ,k,4,4,2,"26/10 06:15 L stop, 09/11 07:15 S objectif, 09/11 11:15 L objectif, 12/11 13:00 S objectif"
+MES,o,13,2,3,"29/10 10:15 L temps, 05/11 15:30 S objectif"
+MES,b,11,0,2,
+MES,k,4,2,2,"26/10 05:30 L temps, 09/11 11:15 L objectif"

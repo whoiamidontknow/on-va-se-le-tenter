@@ -82,11 +82,12 @@ def un_trade(r, d, opn, ambigu="stop"):
 
 
 def simuler(t, ambigu="stop", lecture="o", filtre=None):
-    """lecture "o" = Dashator 1 h / 4 h d'origine (graphique), "b" = bougie en cours (direct).
+    """lecture "o" = Dashator 1 h / 4 h d'origine (graphique), "b" = bougie en cours (direct),
+    "k" = dernière bougie terminée.
     filtre : masque booléen optionnel sur t (ex. GODLIKE seulement), appliqué aux signaux."""
     vp = t.attrs["val_point"]
     opn = ouvertures(t)
-    gl, gs = ("go56_L", "go56_S") if lecture == "o" else ("go56b_L", "go56b_S")
+    gl, gs = ("go56_L", "go56_S") if lecture == "o" else (f"go56{lecture}_L", f"go56{lecture}_S")
     m = t.parcours & ((t[gl] == 1) | (t[gs] == 1))
     if filtre is not None:
         m &= filtre

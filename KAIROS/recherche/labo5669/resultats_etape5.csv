@@ -1,0 +1,22 @@
+ins,t1,sens,etiq,reel,pnl_reel,o,pnl_o,b,pnl_b,k,gd_o,gd_b,gd_k,pnl_k
+MNQ,2026-10-20 16:15:00,L,GODLIKE,objectif,661.0,objectif,661.0,objectif,661.0,—,1.0,1.0,0.0,
+MNQ,2026-10-21 10:45:00,S,GODLIKE,temps,,temps,-139.0,temps,-139.0,—,1.0,1.0,0.0,
+MNQ,2026-10-23 08:30:00,L,56 seul,temps,,—,,temps,-291.0,—,0.0,0.0,0.0,
+MNQ,2026-10-23 16:15:00,L,GODLIKE,objectif,467.0,objectif,467.0,objectif,467.0,—,1.0,1.0,0.0,
+MNQ,2026-10-28 19:45:00,L,GODLIKE,objectif,506.0,—,,objectif,506.0,—,0.0,1.0,0.0,
+MNQ,2026-11-02 14:45:00,L,GODLIKE,stop,-558.0,—,,stop,-551.0,—,0.0,1.0,0.0,
+MNQ,2026-11-06 06:00:00,L,56 seul,temps,,—,,temps,55.0,—,0.0,0.0,0.0,
+MNQ,2026-11-06 20:15:00,L,GODLIKE,fin,,—,,fin,-464.0,—,0.0,1.0,0.0,
+MNQ,2026-11-12 16:15:00,L,GODLIKE,objectif,778.0,objectif,778.0,objectif,778.0,—,1.0,1.0,0.0,
+MES,2026-10-21 08:30:00,S,GODLIKE,objectif,90.0,objectif,90.0,objectif,90.0,—,1.0,1.0,0.0,
+MES,2026-10-23 02:15:00,S,GODLIKE,objectif,188.0,objectif,187.5,objectif,187.5,—,0.0,1.0,0.0,
+MES,2026-10-26 09:45:00,L,GODLIKE,temps,,temps,-22.5,temps,-22.5,—,1.0,1.0,0.0,
+MES,2026-10-28 19:45:00,L,GODLIKE,objectif,213.0,objectif,212.5,objectif,212.5,objectif,1.0,1.0,1.0,212.5
+MES,2026-11-02 00:45:00,L,GODLIKE,temps,,—,,—,,—,,,,
+MES,2026-11-03 14:30:00,L,GODLIKE,objectif,178.0,objectif,177.5,objectif,177.5,—,1.0,1.0,0.0,
+MES,2026-11-05 09:15:00,L,56 seul,objectif,158.0,objectif,157.5,objectif,157.5,—,1.0,0.0,0.0,
+MES,2026-11-06 15:45:00,L,GODLIKE,objectif,325.0,objectif,325.0,objectif,325.0,—,1.0,1.0,0.0,
+MES,2026-11-06 22:00:00,S,GODLIKE,fin,,fin,-37.5,fin,-37.5,—,1.0,1.0,0.0,
+MES,2026-11-09 08:15:00,S,GODLIKE,objectif,223.0,objectif,222.5,objectif,222.5,—,1.0,1.0,0.0,
+MES,2026-11-12 13:00:00,S,GODLIKE,stop,-183.0,stop,-182.5,stop,-182.5,stop,1.0,1.0,1.0,-182.5
+MES,2026-11-12 16:30:00,L,GODLIKE,objectif,278.0,objectif,277.5,objectif,277.5,—,1.0,1.0,0.0,
