@@ -56,5 +56,32 @@ Idées 4, 7, 8, 9, 10 non lancées (décision de DAEMON) : sans signal même en 
 `resultats_*.csv` · `banc.py` (hasard, propfirm) · `reel.py` (alertes réelles) · `variantes.py`,
 `variante5.py`, `variante6.py`, `variante3.py` · `NOTES.md` (améliorations du Relevé pour TALOS).
 
-Suite possible, en attente de la décision de Jeremy : un relevé de toutes les bougies, pour
-chercher d'autres familles de signaux.
+## 7. Relevé complet : toutes les bougies, sans fuite (19/11 au soir)
+Données : Relevé complet (KAIROS/dataset/RELEVE_COMPLET.pine, KAIROS-data/releve_complet), 177 729
+bougies MNQ et 177 735 MES, 31 champs et 35 bits par bougie, toutes lectures sans fuite.
+- **Chargeur** `KAIROS/dataset/releve_complet.py` : OHLC identique au Relevé 5669 à 100 % ; bits go =
+  lecture k1/k4 à 99,4 % (8 écarts, tous dus à l'arrondi 0.000 du Relevé 5669).
+- **Moteur générique** `complet/moteur.py` : redonne simu56 trade pour trade (368/368 en MNQ) ; seuls
+  écarts = sorties `fin` dont simu56 estimait l'ouverture.
+- **Témoin C1** (gradient boosting, tous les champs, cible R à géométrie fixe) : l'arrêt précoce garde
+  1 à 11 itérations ; la corrélation de rang (+0,05 à +0,18) est plus faible que celle du seul coût
+  fixe en R (+0,25) ; la stratégie témoin, très bonne en échantillon (p = 0,001), tombe en contrôle
+  (MNQ p = 0,056, MES −998 $, p = 0,47). Aucun avantage hors échantillon.
+- **Familles F1-F4** (66 tests, écrites avant dans HYPOTHESES.md) : tendance, retour à la moyenne,
+  cassure, filtres de régime. 65 ne passent pas la construction. MNQ M1 (climax) passe le critère
+  formel mais perd de l'argent dans les deux périodes : rejeté, scellé fermé.
+
+## 8. Bilan des 190 essais
+| Bloc | Essais | Résultat |
+|---|---|---|
+| Validation du moteur (56, MES, lecture b, témoins) | 7 | validé |
+| 56 tel quel : hasard, évaluations propfirm, contrôle du réel | 17 | lecture o au-dessus du hasard (fuite) ; lecture b dans la masse ; les alertes réelles suivent b |
+| Variantes du 56 en lecture b (1, 2, 3, 5, 6) + références | 98 | aucune ne passe la construction |
+| Témoin C1 sur le Relevé complet | 2 | rien hors échantillon |
+| Familles F1-F4 sur le Relevé complet | 66 | rien de rentable hors échantillon (M1 rejeté) |
+
+Conclusion : avec nos indicateurs lus sans fuite, sur MNQ et MES en 15 min, aucune règle testée ne
+gagne d'argent hors échantillon. Le protocole exige désormais un P&L net positif en construction ET en
+contrôle, en plus de battre le hasard et la référence « long seulement ».
+
+Suite probable, selon la décision de Jeremy : le même relevé en 5 min (l'unité du bot) et en 1 h.

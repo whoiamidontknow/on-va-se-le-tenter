@@ -6,6 +6,10 @@ Hasard au même nombre de trades, mêmes heures (référence A : sens au hasard,
 Chaque test va au registre avec le nombre d'essais cumulé ; correction de Bonferroni par famille.
 Une hypothèse est retenue seulement si p < seuil corrigé en construction ET en contrôle.
 
+**Critère ajouté le 19/11 (après le rejet de M1, décision DAEMON), pour tout ce qui suit :** P&L net
+positif (coûts compris) en construction ET en contrôle, en plus de battre le hasard (réf. A) et la
+référence « long seulement » (réf. L, dérive haussière) avec correction des tests multiples.
+
 ## C1 — Témoin « tout ou rien » (écrit le 19/11, avant le test)
 - Cible : résultat en R (P&L par contrat, coûts compris, divisé par le risque 2 ATR × valeur du point)
   d'un trade décidé à la clôture de chaque bougie, dans chaque sens, géométrie FIXE : stop 2 ATR,
@@ -55,3 +59,8 @@ Seuil = 0,05 / nombre de tests de la famille ; le contrôle utilise 0,05 / nombr
 ### F4 Filtre de régime — sur chacune des 11 hypothèses, géométrie de sa famille — 11 × 2 × 2 = 44 tests (seuil 0,00114)
 - R1 : vr ≥ 1,2 (volatilité au-dessus de sa moyenne 96 bougies).
 - R2 : ADX ≥ 25.
+
+**Résultat F1-F4 (19/11)** : 65 tests sur 66 ne passent pas la construction. MNQ M1 (climax) passe le
+critère d'alors (construction p = 0,0035, contrôle p = 0,0495) mais perd de l'argent dans les deux
+périodes (−3 314 $, −1 465 $) et ne bat pas « long seulement » en contrôle (p = 0,084) : REJETÉ,
+scellé fermé. C'est ce cas qui a fait ajouter le critère de P&L positif.
