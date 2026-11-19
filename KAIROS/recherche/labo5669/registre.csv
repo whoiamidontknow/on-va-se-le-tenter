@@ -1,0 +1,8 @@
+date,id,etape,instrument,lecture,periode,description,trades,resultat,scelle_ouvert,commit
+2026-11-19,V0-01,0,MNQ,o,2023-10-16..2026-11-06,simulateur 56 contre 6ef10 (Strat5669 12/11),631,"631/631 identiques ; P&L -0,5 % ; 3 ambiguës",non (validation moteur),58265b9
+2026-11-19,V0-02,0,MNQ,o,2023-10-16..2026-11-13,simulateur 56 contre 39d22 (préréglage 74),643,"625/643 (écarts = 9 retournements du 74) ; P&L -0,9 %",non (validation moteur),
+2026-11-19,V0-03,0,MNQ,o,2023-10-16..2026-11-13,contre ca427 SANSFUITE ancien calcul (témoin),634,"634/634 ; P&L -0,5 %",non (validation moteur),
+2026-11-19,V0-04,0,MNQ,b,2023-10-19..2026-11-12,lecture direct contre aedc3 SANSFUITE mode b,453,"451/453 (99,6 %) ; P&L 4 681 contre 4 925 $ (-5,0 %) ; écarts = b1h/b4h à 0.000 dans le commentaire",non (validation moteur),
+2026-11-19,V0-05,0,MES,o,2023-10-18..2026-11-06,simulateur 56 contre f47fe (Strat5669 12/11),694,"693/694 (99,9 %) ; P&L -0,4 % ; 1 ambiguë comptée stop où le testeur a l'objectif",non (validation moteur),
+2026-11-19,V0-06,0,MES,o,2023-10-18..2026-11-13,contre a52ff SANSFUITE ancien calcul (témoin),698,"697/698 ; P&L -0,3 %",non (validation moteur),
+2026-11-19,V0-07,0,MES,b,2023-10-18..2026-11-12,lecture direct contre 886b4 SANSFUITE mode b,521,"516/521 (99,0 %) ; P&L -504 contre +802 $ : 3 ambiguës stop d'abord -632 $, 5 trades décalés (b à 0.000) -575 $, fins approchées -100 $",non (validation moteur),

@@ -12,6 +12,8 @@ Colonnes :
   o1        ouverture de la bougie 1 = prix d'entrée du testeur (vrai prix)
   o17       ouverture de la bougie 17 = prix de sortie du testeur
   d_L d_S go_L go_S x2_L x2_S cf_L cf_S   clés qui dépendent du sens (NaN = pas de déclencheur)
+  go56b_L go56b_S  même décision, Dashator 1 h / 4 h lus sur la bougie EN COURS (b1h / b4h : direct)
+  x2o_* x2b_*  filtre Dashator + eMax recalculé en lecture origine / direct (x2o doit égaler x2)
   go56_L go56_S   décision du 56 recalculée : déclencheur dans le sens, aucun en sens opposé, x2 = 1,
             com = 1 (les autres filtres sont neutres en 56). `go` vaut celle du préréglage de l'export
             (les exports du 19/11 sont en 83 = 56 + confiance >= 5 %, voir la propriété « Préréglage »)
@@ -143,6 +145,13 @@ def charger(instrument, dossier=DOSSIER, controle=True):
         t[k] = t[k].fillna(0).astype(int)
     for s_, o_ in (("L", "S"), ("S", "L")):
         t[f"go56_{s_}"] = (t[f"d_{s_}"].notna() & t[f"d_{o_}"].isna() & (t[f"x2_{s_}"] == 1) & (t.com == 1)).astype(int)
+    # lecture « direct » (b) : Dashator 1 h / 4 h de la bougie EN COURS, comme Strat5669_SANSFUITE mode b
+    # (direction haussière = corps > 0 ; baissière = corps <= 0 ; eMax 0,6 sur er)
+    for lec, c1, c4 in (("o", "o1h", "o4h"), ("b", "b1h", "b4h")):
+        t[f"x2{lec}_L"] = ((t[c1] > 0) & (t[c4] > 0) & (t.er <= 0.6)).astype(int)
+        t[f"x2{lec}_S"] = ((t[c1] <= 0) & (t[c4] <= 0) & (t.er >= -0.6)).astype(int)
+    for s_, o_ in (("L", "S"), ("S", "L")):
+        t[f"go56b_{s_}"] = (t[f"d_{s_}"].notna() & t[f"d_{o_}"].isna() & (t[f"x2b_{s_}"] == 1) & (t.com == 1)).astype(int)
     t["err16"] = (t.o17 - t.o1) / TICK - t.c16
     t["parcours"] = t[[f"h{i}" for i in range(1, 17)] + [f"l{i}" for i in range(1, 17)]].notna().all(axis=1)
     pr = prop_communes(fs)
