@@ -16,3 +16,12 @@ bougies de 00:15 et 00:30 ont com = 0 / fin = 1. Réouverture de séance au lend
 Aucun export en préréglage 76 / 77 dans KAIROS-data. La lecture k applique à k1/k4 la règle qui
 reproduit x2 à 99,97 % en lecture o ; un export Strat5669+ préréglage 77 (MNQ 15 min, 3 ans)
 permettrait de la valider comme les lectures o et b.
+
+## 20/11 — fantômes et volatilité (DAEMON, fantomes_vol.py)
+Question de Jeremy : les trades fantômes sont-ils plus nombreux en période agitée (earnings, news) ?
+2019-2024, scellé fermé. Fantôme = go56b sans go56 ; né après coup = go56 sans go56b.
+- Taux de fantômes plat par quintile d'ATR relatif : MNQ 17-19 %, MES 16-21 %. 2020 (covid) = 2023.
+- Nés après coup : plus fréquents au calme (Q1 : 50 % MNQ, 48 % MES).
+- Résultat en lecture b par quintile : aucun quintile significativement positif (R entre -0,08 et +0,08, erreur ±0,045).
+Conclusion : la volatilité ne prédit ni les fantômes ni le résultat. Le fantôme naît quand le Dashator 1 h / 4 h
+est près de son seuil, pas quand le marché bouge fort. Limite : ATR, pas un calendrier d'annonces.
