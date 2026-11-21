@@ -39,7 +39,9 @@ logs["sym"] = logs["Ticker"].str.split(",").str[0].str.split(":").str[-1]
 logs["tf"] = logs["Ticker"].str.split(", ").str[1]
 logs = logs.sort_values("t", kind="stable")
 # nom de la stratégie de chaque alerte (lu dans les messages « ordre … effectué » qui commencent par le nom)
-STRATS = ("correctifstest", "Bot5669", "Strat5669", "Stratégie 56")
+# 21/11 : « LucidBot V2 » ajouté. Sans lui, les alertes du bot (MNQ 5 min) étaient jugées contre l'export Strat5669
+# 5 min, qui n'a ni ses coupe-circuits ni son plafond de risque : faux fantômes.
+STRATS = ("correctifstest", "Bot5669", "Strat5669", "Stratégie 56", "LucidBot V2")
 strat_id = {}
 for _, a in logs.iterrows():
     for n in STRATS:
@@ -88,6 +90,19 @@ def plage(f):
     return None, None
 
 
+def unite_export(f):
+    """« 15m », « 5m », « 2m »… lu dans la feuille Propriétés ; None si absent."""
+    try:
+        p = pd.read_excel(f, "Propriétés", header=None)
+    except Exception:
+        return None
+    for _, r in p.iterrows():
+        if str(r.iloc[0]) == "Plage temporelle":
+            m = re.match(r"(\d+) minute", str(r.iloc[1]))
+            return f"{m.group(1)}m" if m else None
+    return None
+
+
 exports = {}
 for f in fichiers("*.xlsx"):
     nom = os.path.basename(f)
@@ -107,9 +122,13 @@ for f in fichiers("*.xlsx"):
         t = t.dropna(subset=["Date et heure"])
     if t.empty:
         continue
-    # unité lue dans les minutes d'entrée : depuis LUCIDBOT, un export 5 min porte aussi le nom Strat5669
-    tf = "15m" if (t["Date et heure"].dt.minute % 15 == 0).all() and nom.startswith(("Strat", "Stratégie", "correctif")) \
-        and os.sep + "5min" + os.sep not in f else "5m"
+    # unité lue dans la feuille Propriétés (« Plage temporelle = 2 minutes ») : le 21/11, des exports 2 min et 5 min
+    # du même symbole se seraient confondus. À défaut, déduite des minutes d'entrée (depuis LUCIDBOT, un export 5 min
+    # porte aussi le nom Strat5669).
+    tf = unite_export(f)
+    if tf is None:
+        tf = "15m" if (t["Date et heure"].dt.minute % 15 == 0).all() and nom.startswith(("Strat", "Stratégie", "correctif")) \
+            and os.sep + "5min" + os.sep not in f else "5m"
     # export couvert jusqu'à la fin de sa « Plage de backtesting » (feuille Propriétés). Le 07/11, des exports faits
     # le samedi s'arrêtaient au vendredi 01:00 (graphique pas rechargé) : la date du fichier aurait déclaré
     # fantômes tous les trades du vendredi. À défaut de plage, dernier trade ou jour de l'export.
@@ -146,6 +165,17 @@ for tr in trades:
     etiq = "GODLIKE" if "GODLIKE" in r["Signal"] else "56 seul"
     tr["historique"] = "présent" if etiq == tr["etiq"] else f"présent, devenu « {etiq} »"
     tr["pnl_hist"] = r["P&L net USD"]
+    # même sortie ? raison (objectif / stop / temps / fin) et instant, à une bougie près : l'export date la sortie au
+    # début de la bougie, l'alerte part à sa clôture
+    s = t[(t["Numéro de trade"] == r["Numéro de trade"]) & t["Type"].str.startswith("Sortir")]
+    if len(s) and tr["sortie"] is not None:
+        o = str(s["Signal"].iloc[0]).lower()
+        tr["sortie_hist"] = ("objectif" if "obj" in o else "stop" if "stop" in o else "temps" if "temps" in o
+                             else "fin de fenêtre")
+        bougie = pd.Timedelta(minutes=int(tr["tf"].rstrip("m")))
+        meme = tr["sortie_hist"] == tr["raison"].replace(" (P&L de l'historique)", "") \
+            and abs(s["Date et heure"].iloc[0] - tr["sortie"]) <= 2 * bougie
+        tr["meme_sortie"] = "oui" if meme else f"non ({tr['sortie_hist']} {s['Date et heure'].iloc[0]:%d/%m %H:%M})"
     if tr["pnl"] is None and tr["sortie"] is not None:
         tr["pnl"], tr["raison"] = r["P&L net USD"], tr["raison"] + " (P&L de l'historique)"
 
@@ -363,7 +393,8 @@ print("TRADES SIGNALÉS EN DIRECT (journal d'alertes)\n")
 for tr in trades:
     pnl = "en cours" if tr["sortie"] is None else ("P&L ?" if tr["pnl"] is None else f"{tr['pnl']:+,.0f} $")
     print(f"{tr['strat'][:14]:14} {tr['entree']:%d/%m %H:%M} {tr['sym']:7}{tr['tf']:>4} {tr['sens']} {tr['etiq']:8} @ {tr['px']:<10} "
-          f"→ {tr['raison'] or '—':<16} {pnl:>10}   historique : {tr['historique']}")
+          f"→ {tr['raison'] or '—':<16} {pnl:>10}   historique : {tr['historique']}"
+          + (f" · même sortie : {tr['meme_sortie']}" if tr.get("meme_sortie") else ""))
 
 
 def stats(sous, titre):
