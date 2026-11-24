@@ -25,3 +25,13 @@ Question de Jeremy : les trades fantômes sont-ils plus nombreux en période agi
 - Résultat en lecture b par quintile : aucun quintile significativement positif (R entre -0,08 et +0,08, erreur ±0,045).
 Conclusion : la volatilité ne prédit ni les fantômes ni le résultat. Le fantôme naît quand le Dashator 1 h / 4 h
 est près de son seuil, pas quand le marché bouge fort. Limite : ATR, pas un calendrier d'annonces.
+
+## 24/11 — range contre tendance (DAEMON, range_tendance.py)
+Question de Jeremy (posée pour le 2 min ; faite en 15 min faute de bougies 2 min). 56 lu sur bougies 1 h / 4 h
+terminées (go56k), 2019-2024, trades indépendants. Régimes : Directionnor graphique / 1 h / 4 h (avec, contre, range)
+et ADX 15 min (<20, 20-25, >25). 12 découpes × 2 instruments × 2 périodes.
+- Aucun régime positif et significatif sur les deux instruments et les deux périodes. Meilleure case : ADX 20-25,
+  R positif dans les 4 cases (+0,07 / +0,07 MNQ, +0,13 / +0,01 MES) mais erreur ±0,08-0,13, P&L négatif sur 2 cases sur 4.
+- MES : ADX > 25 nettement perdant en 2019-22 (−0,30 ± 0,13), pas en 2023-24.
+- Fantômes : 16-20 % partout ; seule exception MES contre la tendance 4 h, 24 %.
+Conclusion : range ou tendance ne sépare pas les bons trades du 56 sur 15 min. Non inscrit comme candidat.
