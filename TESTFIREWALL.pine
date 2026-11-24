@@ -1378,17 +1378,15 @@ if tr_dir != 0 and not tr_fixe
         tr_p1    := false
         tr_fixe  := true
         tr_neuf  := true
-        if a_trades
+        if a_trades and not na(dr_bR)
             tr_dess := true
-            dr_bR := box.new(tr_bar0, math.max(tr_entry, tr_stop0), bar_index, math.min(tr_entry, tr_stop0), border_color=color.new(c_risk, 55), bgcolor=color.new(c_risk, 82))
-            dr_bT  := na
-            dr_bT2 := na
+            box.set_right(dr_bR, bar_index)
+            if not na(dr_bT)
+                box.set_right(dr_bT, bar_index)
+            if not na(dr_bT2)
+                box.set_right(dr_bT2, bar_index)
+            line.set_x2(dr_lE, bar_index)
             dr_lbT := na
-            if not na(tr_tp)
-                dr_bT := box.new(tr_bar0, math.max(tr_entry, tr_tp), bar_index, math.min(tr_entry, tr_tp), border_color=color.new(c_gain, 55), bgcolor=color.new(c_gain, 82))
-                if not na(tr_tp2)
-                    dr_bT2 := box.new(tr_bar0, math.max(tr_tp, tr_tp2), bar_index, math.min(tr_tp, tr_tp2), border_color=color.new(c_gain, 70), bgcolor=color.new(c_gain, 91))
-            dr_lE := line.new(tr_bar0, tr_entry, bar_index, tr_entry, color=c_txt, style=line.style_dotted, width=1)
             dr_lbE := na
             dr_lbS := na
             dr_lbX := na
@@ -1414,6 +1412,11 @@ if tr_dir != 0 and not tr_fixe
                     label.delete(array.shift(dr_labels))
     else
         tr_dir := 0
+        box.delete(dr_bR), box.delete(dr_bT), box.delete(dr_bT2), line.delete(dr_lE)
+        dr_bR := na
+        dr_bT := na
+        dr_bT2 := na
+        dr_lE := na
 
 if tr_dir != 0 and tr_fixe and pos == 0
     float pnl = 0.0
@@ -1606,6 +1609,17 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short)
         else
             strategy.entry("S", strategy.short, qty=q, comment="entrée" + f_gdTag(-1))
             entree_S := true
+        dr_bR  := na
+        dr_bT  := na
+        dr_bT2 := na
+        dr_lE  := na
+        if a_trades
+            dr_bR := box.new(bar_index, math.max(e0, s0), bar_index + 1, math.min(e0, s0), border_color=color.new(c_risk, 55), bgcolor=color.new(c_risk, 82))
+            if not na(tp0)
+                dr_bT := box.new(bar_index, math.max(e0, tp0), bar_index + 1, math.min(e0, tp0), border_color=color.new(c_gain, 55), bgcolor=color.new(c_gain, 82))
+                if not na(tr_tp2)
+                    dr_bT2 := box.new(bar_index, math.max(tp0, tr_tp2), bar_index + 1, math.min(tp0, tr_tp2), border_color=color.new(c_gain, 70), bgcolor=color.new(c_gain, 91))
+            dr_lE := line.new(bar_index, e0, bar_index + 1, e0, color=c_txt, style=line.style_dotted, width=1)
         if al_on
             tSort = time_close + x_tBar * timeframe.in_seconds() * 1000
             alert(syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " · " + ((d > 0 ? gd_L : gd_S) ? "GODLIKE (fort)" : "56 (faible/moyen)") + " · Entrée ≈ " + f_px(e0) + " · Stop " + f_px(s0) + " (" + str.tostring(dist, "0.00") + " pts)" + " · Objectif " + (na(tp0) ? "aucun" : f_px(tp0) + " (" + str.tostring(math.abs(tp0 - e0), "0.00") + " pts)") + " · Sortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris)", alert.freq_once_per_bar_close)
