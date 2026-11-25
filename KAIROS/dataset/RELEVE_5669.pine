@@ -1947,6 +1947,9 @@ grp_rv = "=== RELEVÉ ==="
 rv_sens = input.string("Long", "Sens du relevé", group=grp_rv, options=["Long", "Short"],
      tooltip="Un export par sens : sur TradingView la position est nette, un short fermerait les longs.")
 rv_n    = input.int(16, "Durée de mesure (bougies)", group=grp_rv, minval=1, maxval=30)
+rv_t0   = input.time(timestamp("2019-01-01T00:00:00"), "Début", group=grp_rv,
+     tooltip="Période des entrées relevées (Début inclus, Fin exclue). Une entrée prise avant Fin est fermée normalement 16 bougies plus tard, même après Fin : deux périodes contiguës ne se chevauchent pas.")
+rv_t1   = input.time(timestamp("2099-12-31T00:00:00"), "Fin", group=grp_rv)
 rv_L    = rv_sens == "Long"
 rv_dg   = rv_L ? 1 : -1
 rv_ent  = rv_L ? sig_long : sig_short
@@ -1985,7 +1988,7 @@ f_rvOut() =>
 // précédentes (bug du 19/11 : h1..h15 identiques).
 rv_out = f_rvOut()
 rv_in  = f_rvIn()
-rv_ok = rv_ent and not na(r_c) and not na(r_atr)
+rv_ok = rv_ent and not na(r_c) and not na(r_atr) and time >= rv_t0 and time < rv_t1
 if rv_ok[rv_n]
     strategy.close("E" + str.tostring(bar_index - rv_n), comment=rv_out)
 if rv_ok

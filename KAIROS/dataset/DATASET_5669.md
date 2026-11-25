@@ -142,3 +142,15 @@ MNQ1! puis MES1!. Dépose les fichiers dans le même dossier.
 Le 5 min est l'unité la plus fine réaliste. Pour 3 ans, il faut environ 210 000 bougies en 5 min, contre plus d'un
 million en 1 min, ce que le graphique ne charge pas. Avant d'exporter, regarde la date de la première bougie
 chargée : si elle ne remonte pas jusqu'en octobre 2023, exporte quand même et signale la date.
+
+## Relevé 5669 en 5 min (plan du 25/11)
+
+Le script est juste en 5 min sans changement : b1/b4 reconstitués avec les bougies 5 min, k1/k4 via f_fin, fin au bout
+de 16 bougies (80 min), parcours sur 16 bougies 5 min. La décision du 56 ne dépend d'aucune unité inférieure qui ne
+divise pas 5 min (TREND 3 min et MACD 10 min n'y entrent pas). Réglages « Début » / « Fin » ajoutés (25/11).
+
+Volume estimé : en 15 min, environ 15 500 déclencheurs long et 12 700 short par instrument (2019-2026). En 5 min,
+environ 3 fois plus, soit ≈ 47 000 long et ≈ 38 000 short (estimation, à contrôler sur le 1er export). Pour rester
+sous ≈ 9 500 trades par export, 5 périodes par sens :
+01/01/2019 → 01/11/2020 → 01/05/2022 → 01/11/2023 → 01/05/2025 → Fin par défaut.
+Soit 5 périodes × 2 sens × 2 instruments = **20 exports**, dans `~/ERGON/KAIROS-data/dataset5669/5min/`.
