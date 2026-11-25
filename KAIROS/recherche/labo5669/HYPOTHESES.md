@@ -341,3 +341,11 @@ Choisi en connaissant le total de H2 (écart signalé plus haut) : l'historique 
 **Critère du test en avant (fixé maintenant).** Sur les 40 premiers trades à partir du 26/11/2026 : P&L > 0 ET p < 0,10
 contre le hasard « mêmes heures, autres jours » (jours tirés dans la même période en avant, même stop en ATR
 journalier, sens au hasard ; 2 000 tirages), calculé sur ces seuls trades. Aucune modification de règle pendant le test.
+**Mesures descriptives ORB30-K4, 17/10/2023 → 13/11/2026 (H2 CONTAMINÉE ; fiable/orb30k4.py, trades dans
+fiable/orb30k4_trades.csv).** 408 trades (11,0 par mois), 52,9 % gagnants ; H1 +15 724 $ (R/C 1,95), H2 +8 746 $ (0,89),
+total +24 470 $ à 2 contrats (R/C 1,25). Par micro : pire creux 3 188 $, pire jour 890 $. FTMO 100k : 2 micros dans les
+règles → 8,0 % par an, 0,64 % par mois, 27 mois positifs sur 38, 1 mois ≥ 6 % ; challenge réussi depuis 48 % des jours de
+départ (aucun échec, le reste n'a pas assez de jours restants ; 464 jours médians) ; phase financée à 1 micro : 0 % de
+règle enfreinte en 250 jours. Tradeify 50k : aucune taille dans les règles (creux d'un micro > 1 600 $), 1 micro enfreint
+le plancher suiveur dans 90 % des fenêtres de 250 jours. Plateau sur H1 : 9 cases sur 9 positives, R/C médian 1,65,
+mais décroissant avec la longueur du range (25 min : 4,16 ; 35 min : 0,71).
