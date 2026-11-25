@@ -1,0 +1,118 @@
+//@version=6
+// ORB30_K4 (25/11/2026) : test en avant de la règle gelée D2-30 + k4
+// (KAIROS/recherche/labo5669/HYPOTHESES.md, « ORB30-K4 », code fiable/effets.py et orb30k4.py).
+// Alertes seulement : aucun envoi d'ordre, aucun webhook, aucun jeton.
+// Graphique : MNQ1! 5 min (Heikin Ashi ou bougies normales : le script lit lui-même les vrais prix).
+// Heures ET (America/New_York).
+//   1. Range = plus haut / plus bas des vraies bougies 5 min de 9:30 à 10:00 (9:30 à 9:55).
+//   2. Bougies 10:00 à 14:55 incluses : première CLÔTURE au-dessus du plus haut → long,
+//      au-dessous du plus bas → short. Une seule tentative par jour : la première cassure décide.
+//   3. Filtre k4 (Dashator 4 h, dernière bougie 4 h TERMINÉE, corps HA / ATR 14 HA, calcul
+//      ds_k4 de RELEVE_COMPLET.pine) : long si k4 > 0, short si k4 ≤ 0, sinon rien ce jour-là.
+//   4. Entrée au marché à l'ouverture suivante ; stop = l'autre côté du range ; pas d'objectif ;
+//      sortie au marché à l'ouverture de la bougie 15:55 ET. 2 contrats, 1,25 $/côté, 1 tick.
+// Graphique = alertes : aucune lecture de bougie en cours d'une unité supérieure. k4 lit la
+// bougie 4 h [1], ou [0] seulement sur la bougie 5 min qui ferme la bougie 4 h (elle est alors
+// terminée). Le range et la cassure lisent la bougie 5 min close. Tout est décidé à la clôture
+// (calc_on_every_tick = false), dans le même bloc que l'ordre du testeur et l'alerte.
+// Écarts attendus avec le fichier KAIROS (orb30k4_trades.csv) :
+//   - jours de fermeture anticipée (lendemain de Thanksgiving, 24/12, 03/07…) : absents du labo
+//     (jours de moins de 70 bougies de séance) ; ici un trade reste possible et, sans bougie
+//     15:55, il sort à l'ouverture de la 2e bougie après la réouverture ;
+//   - ouverture qui saute déjà le stop : le labo ne prend pas le trade, ici il sort aussitôt.
+strategy("ORB30_K4", overlay=true, initial_capital=50000, default_qty_type=strategy.fixed, default_qty_value=2,
+     commission_type=strategy.commission.cash_per_contract, commission_value=1.25, slippage=1,
+     process_orders_on_close=false, calc_on_every_tick=false, calc_on_order_fills=false,
+     fill_orders_on_standard_ohlc=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+grp = "ORB30-K4"
+t0 = input.time(timestamp("2023-10-17T00:00:00"), "Début (entrées)", group=grp)
+t1 = input.time(timestamp("2099-12-31T00:00:00"), "Fin (entrées)", group=grp)
+dessin = input.bool(true, "Dessiner range et zones", group=grp)
+
+ny = "America/New_York"
+ok5 = timeframe.in_seconds() == 300
+
+// Vrais prix (même unité que le graphique : bougie close, pas de fuite)
+r_tick = ticker.new(syminfo.prefix, syminfo.ticker, syminfo.session, adjustment.none, backadjustment.inherit, settlement_as_close.inherit)
+[r_o, r_h, r_l, r_c] = request.security(r_tick, timeframe.period, [open, high, low, close])
+
+// k4 : comme ds_k4 de RELEVE_COMPLET.pine (Dashator 4 h sur le HA, lecture muClos)
+ha_tick = ticker.heikinashi(r_tick)
+[z5b0, z5a0, z5b1, z5a1] = request.security(ha_tick, "240", [close - open, ta.atr(14), (close - open)[1], ta.atr(14)[1]], lookahead=barmerge.lookahead_on)
+f_dsR(float bd, float at) => at > 0 ? bd / at : na
+fin4 = time_close - time("240") >= timeframe.in_seconds("240") * 1000
+k4 = fin4 ? f_dsR(z5b0, z5a0) : f_dsR(z5b1, z5a1)
+
+// Horloge ET
+f_min(t) => hour(t, ny) * 60 + minute(t, ny)
+m_o = f_min(time)
+m_c = f_min(time_close)
+jour = dayofmonth(time, ny)
+nouveau = na(jour[1]) or jour != jour[1]
+f_txt(float p) => str.tostring(p, format.mintick)
+
+var float rg_h = na
+var float rg_l = na
+var bool  essai = false
+var box   b_rg = na
+var int   x_fin = na
+if nouveau
+    rg_h := na
+    rg_l := na
+    essai := false
+    b_rg := na
+    x_fin := timestamp(ny, year(time, ny), month(time, ny), jour, 15, 55)
+
+// 1. range 9:30-10:00
+dans_rg = ok5 and m_o >= 9 * 60 + 30 and m_o < 10 * 60 and not na(r_h)
+if dans_rg
+    rg_h := na(rg_h) ? r_h : math.max(rg_h, r_h)
+    rg_l := na(rg_l) ? r_l : math.min(rg_l, r_l)
+    if dessin
+        if na(b_rg)
+            b_rg := box.new(time, rg_h, x_fin, rg_l, xloc=xloc.bar_time, border_color=color.new(color.gray, 30),
+                 bgcolor=color.new(color.gray, 88), text="Range 9:30-10:00", text_size=size.small,
+                 text_color=color.gray, text_halign=text.align_left, text_valign=text.align_top)
+        else
+            box.set_top(b_rg, rg_h)
+            box.set_bottom(b_rg, rg_l)
+
+// 2-4. cassure, filtre, entrée
+fenetre = ok5 and m_o >= 10 * 60 and m_o < 15 * 60 and time >= t0 and time < t1
+if fenetre and not essai and strategy.position_size == 0 and not na(rg_h) and not na(r_c)
+    sens = r_c > rg_h ? 1 : r_c < rg_l ? -1 : 0
+    if sens != 0
+        essai := true
+        if (sens > 0 and k4 > 0) or (sens < 0 and k4 <= 0)
+            st = sens > 0 ? rg_l : rg_h
+            nom = sens > 0 ? "LONG" : "SHORT"
+            strategy.entry("ORB", sens > 0 ? strategy.long : strategy.short,
+                 comment=nom + " k4=" + str.tostring(k4, "#.###"))
+            strategy.exit("ORB-SL", "ORB", stop=st, comment_loss="stop")
+            alert("ORB30-K4 · " + nom + " · entrée ≈ " + f_txt(r_c) + " · stop " + f_txt(st) + " · sortie 15:55 ET",
+                 alert.freq_once_per_bar_close)
+            if dessin
+                box.new(time_close, r_c, x_fin, st, xloc=xloc.bar_time, border_color=color.new(color.red, 40),
+                     bgcolor=color.new(color.red, 85), text="stop " + f_txt(st), text_size=size.small,
+                     text_color=color.red, text_halign=text.align_right, text_valign=sens > 0 ? text.align_bottom : text.align_top)
+                line.new(time_close, r_c, x_fin, r_c, xloc=xloc.bar_time, color=sens > 0 ? color.teal : color.orange, width=2)
+                line.new(x_fin, rg_h, x_fin, rg_l, xloc=xloc.bar_time, color=color.gray, style=line.style_dashed)
+                label.new(time_close, r_c, nom + " ≈ " + f_txt(r_c) + "\nk4 " + str.tostring(k4, "#.###"),
+                     xloc=xloc.bar_time, style=sens > 0 ? label.style_label_up : label.style_label_down,
+                     color=sens > 0 ? color.teal : color.orange, textcolor=color.white, size=size.small)
+
+// Sortie au marché à l'ouverture de la bougie 15:55 ET (ordre passé à la clôture de 15:50) ;
+// sans bougie 15:55 (fermeture anticipée), à l'ouverture de la 2e bougie après la réouverture.
+if strategy.position_size != 0 and m_c >= 15 * 60 + 55
+    strategy.close("ORB", comment="15:55")
+    alert("ORB30-K4 · SORTIE au marché (15:55 ET)", alert.freq_once_per_bar_close)
+
+// Stop touché pendant la bougie (même celle de l'entrée) : alerte à sa clôture
+if strategy.closedtrades > nz(strategy.closedtrades[1])
+    if strategy.closedtrades.exit_comment(strategy.closedtrades - 1) == "stop"
+        alert("ORB30-K4 · SORTIE stop touché à " + f_txt(strategy.closedtrades.exit_price(strategy.closedtrades - 1)),
+             alert.freq_once_per_bar_close)
+
+if not ok5 and barstate.islast
+    label.new(bar_index, high, "ORB30_K4 : graphique 5 min requis", color=color.red, textcolor=color.white)
