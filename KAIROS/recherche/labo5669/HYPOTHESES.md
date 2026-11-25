@@ -363,3 +363,9 @@ R/C 1,67 ; FTMO 100k : 13,2 % par an, 1,07 % par mois, 23 mois positifs sur 38, 
 des jours de départ (aucun échec, 287 jours médians). Tradeify 50k : aucune taille (minimum 1 micro, creux 3 188 $).
 Corrélation journalière d'ORB30-K4 : avec D5 −0,01 (−0,03 les jours communs), avec le 56 alertes 15 min MNQ +0,10
 (+0,22 les jours communs).
+**ORB30-K4-R sur FTMO 100k, descriptif (H2 contaminée, fiable/orb30k4r_ftmo.py ; blocs de 5 jours, 1 000 chemins de
+500 jours).** Challenge (réussi / échec / jours médians, historique puis blocs) : 1 050 $ 47 % / 0 % / 287 j, 80 % / 10 % /
+222 j ; 1 500 $ 58 % / 3 % / 138 j, 80 % / 19 % / 140 j ; 2 000 $ 57 % / 21 % / 77 j, 66 % / 34 % / 93 j ; 2 500 $ 44 % / 38 % /
+43 j, 61 % / 39 % / 65 j ; 3 000 $ 40 % / 47 % / 40 j, 57 % / 43 % / 50 j (le reste de l'historique : pas assez de jours).
+Financé 12 mois : 1 050 $ règle enfreinte 0 % (historique) / 3 % (blocs), % mensuel médian 0,52 % (moyen 1,07 %) ; 700 $
+0 % / 0 %, médian 0,39 % (moyen 0,64 %).
