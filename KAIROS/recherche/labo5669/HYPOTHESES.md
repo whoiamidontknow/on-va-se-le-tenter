@@ -186,3 +186,28 @@ engagée et coupe autant de trades qui se seraient rétablis. S3 dégrade partou
 - **Rapporté, hors critère** : R/C, % annuel à la taille FTMO 100k dans les règles, P&L par année, fantômes.
 - **Aucun réglage modifié après avoir vu les données.** Script gelé : fiable/examen1.py (même commit). Essai à blanc sur
   les données de recherche (pas l'export) : 319 trades, +8 326 $, fantômes 21 %, identique à 2c79a6a.
+
+**EXAMEN-1 SUSPENDU (25/11, 11h36)** : consigne de Jeremy, exclusivement MNQ et MES et données de 2023 à aujourd'hui ;
+pas d'export 2019-2023. L'hypothèse et le script restent gelés (7f0c2d8), jamais exécutés sur des données d'examen.
+
+## Programme 5 min — familles F1-F5 et témoin C1 (écrit le 25/11, avant tout test)
+Consigne de Jeremy (11h36) : MNQ et MES seulement, 17/10/2023 → 13/11/2026 (fiable/5min). Plus de période jamais vue.
+**Protocole.** H1 (→ 01/05/2025) = sélection, H2 = contrôle. Lecture alertes (b) ou bougie terminée (k), jamais o : les
+champs du Relevé complet sont tous sans fuite. Moteur complet/moteur.py, une position à la fois, 2 contrats.
+Références de hasard B (sens du déclencheur) et L (long seulement), 1 000 tirages, mêmes heures, même nombre de trades.
+- **H1** : candidat si au moins 30 trades, P&L > 0, p_B et p_L < 0,05 / (nombre de tests de la famille). Pas de tirage si
+  le P&L de H1 est ≤ 0 (le critère est alors déjà manqué).
+- **H2** : P&L > 0, p_B et p_L < 0,05 / (nombre de candidats retenus sur H1), ET plateau : sur H2, la géométrie du
+  candidat et ses 6 voisines (k ∈ {1 ; 1,5 ; 2 ; 3 ; 4} ATR, R ∈ {0,5 ; 0,667 ; 1 ; 1,5 ; 2}, N ∈ {8 ; 16 ; 32 ; 64}, ± 1 cran)
+  ont au moins 5 cas sur 7 à P&L > 0 et un R/C médian > 0.
+- Pour un candidat qui passe : R/C, % mensuel à la taille FTMO 100k dans les règles, part de mois positifs.
+**Familles F1-F4.** Définitions et géométries (en bougies) identiques au 19/11 (complet/familles.py) : F1 T1-T3,
+F2 M1-M5, F3 B1-B3, F4 = les 11 avec R1 (vr ≥ 1,2) ou R2 (ADX ≥ 25). 66 tests.
+**Famille F5, entrées seules** (stop 2 ATR, objectif 1 R, 16 bougies), long / short en miroir :
+SF flèche Signator forte ; SM flèche moyenne ; HEI flip Heishinator ; DIR Directionnor du graphique qui passe à 1 / −1 ;
+DIRH Directionnor 4 h qui passe à 1 / −1 ; PIV pW ≤ −2 / ≥ 2 seul ; FIB swing haussier / baissier et 0,5 ≤ fib ≤ 0,786
+seul ; DET detD ≤ 0,5 / detU ≤ 0,5 seul ; DK Dashator 1 h terminé (k1) qui change de signe dans le sens de k4.
+9 × 2 instruments = 18 tests.
+**Témoin C1** en 5 min : même modèle qu'au 19/11 (gradient boosting, tous les champs, cible R à stop 2 ATR, 1 R,
+16 bougies), appris sur H1 (arrêt précoce sur ses 20 % les plus récents), stratégie au 98e centile, contrôle sur H2.
+2 tests.
