@@ -271,3 +271,12 @@ Detector perd partout et lourdement (5 min MES −52 022 $ par contrat). Les seu
 k4 (4 h terminé dans le sens) ; le meilleur, 15 min MNQ cassure de pivot + k4, fait H1 +6 723 $ (188 trades) avec p_B 0,025
 et p_L 0,008, pour un seuil de 0,0014. P2 (biais terminé, séance US) : meilleur 5 min MES biais 4 h, première entrée,
 H1 +4 592 $, p_B 0,16. Pas de contrôle H2 (aucun candidat), pas de simulation de prop firm.
+
+## PIVC-K4 — hypothèse UNIQUE sur H2 (écrite le 25/11 avant le test, décision DAEMON)
+Règle telle quelle, choisie sur H1 (meilleur des 52 tests NIVEAUX / HORIZON), jamais regardée sur H2 : MNQ 15 min,
+clôture précédente sous un pivot P (weekly, mensuel ou annuel ; prix = close − pX × ATR) et clôture au-dessus de P +
+0,1 ATR, avec k4 > 0 → long ; miroir avec k4 ≤ 0 → short ; pas de trade si les deux ; stop 1,5 ATR, objectif 1,5 R,
+16 bougies ; une position à la fois, 2 contrats (fiable/niveaux.py, evenements_p1 / contextes / issues_gen).
+Période : décisions du 01/05/2025 au 13/11/2026. Critère, un seul test : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (2 000 tirages,
+graine 5669). Rapporté hors critère : trades par mois, R/C, % annuel à la taille FTMO 100k et Tradeify 50k dans les
+règles, mois positifs ; même règle sur MES 15 min pour information. S'il passe : liste des trades H2 en CSV.
