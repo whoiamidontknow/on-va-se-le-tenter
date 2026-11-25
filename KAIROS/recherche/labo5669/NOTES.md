@@ -44,3 +44,9 @@ p_tf = P(couleur finale = couleur en cours | |corps| en quintiles, part écoulé
   (même ordre en construction). Le score divise les fantômes par deux, ne les supprime pas.
 - Résultat : MES moitié haute positive en contrôle (+2 549 $, Q3 R +0,10 ± 0,07), MNQ moitié haute négative (−2 047 $).
   Aucun avantage établi ; à ne pas présenter comme un filtre gagnant.
+
+## 25/11 — accord alertes / graphique par seuil de fiabilité (accord_seuil.py)
+Décisions 2019-2024 (pas des trades : une position à la fois en réduit le nombre). Seuil 0 → 80 % :
+alertes présentes sur le graphique MNQ 68 → 91 %, MES 69 → 86 % ; mais trades du graphique qui ont eu une alerte
+MNQ 47 → 36 %, MES 50 → 37 % ; accord global 38-45 % au mieux (seuil 70 %) ; décisions par mois 17 → 1,6.
+Le score protège des fantômes, pas des trades nés après coup. Accord 100 % = seulement la lecture bougies terminées.
