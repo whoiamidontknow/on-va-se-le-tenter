@@ -18,7 +18,7 @@ for ins in ("MNQ", "MES"):
     lignes = []
     for per, m in (("2019-22", t.t1 < "2023-01-01"), ("2023-24", t.t1 >= "2023-01-01")):
         tt = t[m]; mois = (tt.t1.max() - tt.t1.min()).days / 30.4
-        for s in [0] + list(range(40, 100, 5)):
+        for s in range(0, 100, 5):
             f = tt.score >= s / 100
             a = simuler(tt, lecture="b", filtre=f)
             g = simuler(tt, lecture="ab", filtre=f)
@@ -32,3 +32,7 @@ for ins in ("MNQ", "MES"):
     r = pd.DataFrame(lignes)
     print(f"\n===== {ins}")
     print(r.round({"trades_mois": 1, "fantomes": 2, "gagnants": 2, "alertes_usd": 0, "dd_usd": 0, "graphique_usd": 0}).to_string(index=False))
+    tot = r.groupby("seuil").agg(gain_6ans=("alertes_usd", "sum"), graphique_6ans=("graphique_usd", "sum"),
+                                 fantomes=("fantomes", "mean"), trades_mois=("trades_mois", "mean"))
+    tot["ecart_aujourdhui"] = tot.gain_6ans - tot.gain_6ans.loc[0]
+    print("TOTAL 2019-24\n" + tot.round({"fantomes": 2, "trades_mois": 1, "gain_6ans": 0, "graphique_6ans": 0, "ecart_aujourdhui": 0}).to_string())
