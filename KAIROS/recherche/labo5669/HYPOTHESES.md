@@ -349,3 +349,11 @@ départ (aucun échec, le reste n'a pas assez de jours restants ; 464 jours méd
 règle enfreinte en 250 jours. Tradeify 50k : aucune taille dans les règles (creux d'un micro > 1 600 $), 1 micro enfreint
 le plancher suiveur dans 90 % des fenêtres de 250 jours. Plateau sur H1 : 9 cases sur 9 positives, R/C médian 1,65,
 mais décroissant avec la longueur du range (25 min : 4,16 ; 35 min : 0,71).
+
+## ORB30-K4-R — variante de taille du test en avant (écrite le 25/11 avant toute mesure, décision DAEMON)
+Même signal et mêmes sorties qu'ORB30-K4. Taille : risque fixe en $ par trade ; micros = arrondi inférieur de
+(risque / (distance entrée → stop en points × 2 $)), au minimum 1 (pratique standard de l'ORB, non optimisée).
+Risque du test en avant = le plus grand multiple de 50 $ tel que, sur 17/10/2023 → 13/11/2026, le pire creux reste
+< 8 000 $ et le pire jour < 4 000 $ (règles FTMO 100k avec marge). Critère en avant identique : 40 premiers trades à partir
+du 26/11/2026, P&L > 0 ET p < 0,10 contre le hasard « mêmes heures, autres jours », où chaque trade tiré au hasard reçoit la
+même règle de taille avec sa propre distance de stop.
