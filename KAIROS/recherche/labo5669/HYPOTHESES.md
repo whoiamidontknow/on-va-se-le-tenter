@@ -316,3 +316,13 @@ mêmes p < 0,05 / (nombre de candidats), ET plateau sur H2 : D1 fin du signal {9
 entrée {9:30 ; 9:45}, D6 entrée {14:45 ; 15:00 ; 15:15} × sortie {15:50 ; 15:55} : au moins 4 sur 6 et R/C médian > 0.
 Un candidat qui passe H1 puis H2 : DAEMON prévenu immédiatement, liste exacte des trades en CSV pour un vérificateur
 indépendant ; puis tailles FTMO 100k / Tradeify 50k dans les règles, % annuel et mensuel, mois positifs, évaluations.
+
+**Résultat D1-D6 (25/11).** Calendrier D4 : dates officielles (federalreserve.gov, bls.gov) récupérées par un agent,
+62 annonces (25 FOMC, 37 CPI ; le CPI d'octobre 2025, jamais publié, est absent), 2024 vérifiée date par date.
+22 tests, **aucun candidat sur H1**. Le plus proche : MNQ ORB 9:30-9:45 sans filtre, H1 +24 916 $ (380 trades, R/C 3,57),
+p_A 0,021 et p_L 0,025 pour un seuil de 0,0023. Momentum de la dernière demi-heure (D1) et gap (D3) : rien. Tournant du
+mois MNQ : H1 +7 732 $, p_L 0,15.
+**Écart de protocole à signaler** : en vérifiant le banc avant le lancement (après le commit des règles), j'ai affiché le
+P&L de chaque règle sur toute la période (H1 + H2). Les règles n'ont pas changé, mais H2 a été entrevue en total. On en
+déduit H2 = total − H1 : MNQ ORB 15 min ≈ −12 400 $ sur H2 (il aurait échoué), MNQ ORB 30 min + k4 ≈ +8 700 $, MNQ tournant
+du mois ≈ +11 500 $. Ces chiffres ne doivent pas servir à choisir une hypothèse sans le dire.
