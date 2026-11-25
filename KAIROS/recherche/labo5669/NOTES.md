@@ -50,3 +50,10 @@ Décisions 2019-2024 (pas des trades : une position à la fois en réduit le nom
 alertes présentes sur le graphique MNQ 68 → 91 %, MES 69 → 86 % ; mais trades du graphique qui ont eu une alerte
 MNQ 47 → 36 %, MES 50 → 37 % ; accord global 38-45 % au mieux (seuil 70 %) ; décisions par mois 17 → 1,6.
 Le score protège des fantômes, pas des trades nés après coup. Accord 100 % = seulement la lecture bougies terminées.
+
+## 25/11 — tableau des seuils 40 → 95 % (seuils_fiabilite.py), une position à la fois, 2 contrats
+P&L des trades d'alerte 2019-2024 (construction + contrôle) : MNQ négatif jusqu'à 60 %, +137 à 70 %, +1 516 à 80 %,
++2 151 à 85 % (≈ 1 trade / mois) ; MES négatif partout sauf 65 % (+595), 85-95 % (+90 à +668, < 1 trade / mois).
+Fantômes : 31-32 % sans filtre → ~21 % à 70 % → 10-15 % à 80 %. Le graphique avec la case cochée reste plus flatteur que
+les alertes (ghosts perdants retirés) : à 80 %, MNQ +4 604 contre +1 516, MES +2 084 contre −416.
+Meilleur compromis fiabilité : 80 %, mais aucun seuil ne gagne nettement sur les deux instruments et les deux périodes.
