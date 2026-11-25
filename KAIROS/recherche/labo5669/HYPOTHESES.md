@@ -165,3 +165,10 @@ p < 0,05 / 24. Contrôle « sortie au hasard » (S1, S2, S3) : même nombre de s
 bougie de contrôle pour S1 / S2, même décalage pour S3), mais sur des trades tirés au hasard parmi ceux encore ouverts ;
 l'information compte si moins de 5 % des tirages font aussi bien. Mesures : R/C, % annuel (taille FTMO 100k dans les
 règles), nombre de sorties anticipées. Examen 2019-2023 toujours scellé.
+
+**Résultat H-SORTIE (25/11).** Aucune des 24 règles ne passe. Seules S1 / S2 / S3 en 5 min MNQ à 70 % gagnent sur H1 et
+H2, mais moins que le 56 seul (S1 : +654 / +2 895 $ par contrat contre +1 140 / +3 031 $), et le hasard B / L sur H2 donne
+p de 0,004 à 0,021 pour un seuil de 0,05 / 24 = 0,002. La sortie anticipée sur la couleur finale ne fait pas mieux qu'une
+sortie au hasard au même moment (p de 0,24 à 1,00) : couper le fantôme à la clôture 1 h / 4 h réalise une perte déjà
+engagée et coupe autant de trades qui se seraient rétablis. S3 dégrade partout ; E1 perd partout (5 min MNQ H2 −3 210 $,
+15 min MNQ H2 −5 440 $) : entrer après confirmation arrive trop tard. Examen toujours scellé.
