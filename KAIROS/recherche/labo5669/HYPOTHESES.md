@@ -283,3 +283,36 @@ règles, mois positifs ; même règle sur MES 15 min pour information. S'il pass
 **Résultat PIVC-K4 (25/11) : ÉCHOUÉ.** MNQ 15 min H2 : 220 trades (11,9 par mois), 41,8 % gagnants, −3 920 $ (2 contrats),
 creux 9 041 $, R/C −0,28, 10 mois positifs sur 17 (tirages non faits : P&L ≤ 0). MES 15 min (information) : −7 275 $.
 Programme de recherche clos (décision DAEMON).
+
+## Programme EFFETS DOCUMENTÉS D1-D6 (écrit le 25/11, avant tout calcul) — 22 tests
+Consigne de Jeremy (11h52) relayée par DAEMON. MNQ et MES, 17/10/2023 → 13/11/2026, bougies 5 min de fiable/5min (OHLC
+seulement, plus k4 pour le filtre de D2). Heures en ET (America/New_York, depuis l'heure de Paris, changements d'heure
+compris). Séance = 9:30-16:00 ET ; « clôture de la veille » = clôture de la bougie 15:55-16:00 ET du jour de bourse
+précédent. Une position à la fois (un trade par jour au plus par règle), 2 contrats, entrée et sortie au marché à
+l'ouverture d'une bougie avec 1 tick de glissement chacune, stop rempli au niveau + 1 tick, 1,25 $ par contrat et par côté,
+stop testé avant l'objectif dans une même bougie. Rien n'est gardé la nuit. ATR journalier = moyenne sur 14 jours de
+l'étendue vraie de la séance 9:30-16:00, jours précédents seulement.
+- **D1 momentum intrajournalier** (Gao, Han, Li, Zhou 2018) : sens = signe du rendement clôture de la veille → 10:00 ET
+  (D1a) ou 9:30 → 10:00 (D1b) ; entrée 15:30, sortie à la clôture de la bougie 15:55-16:00. 2 × 2 instruments = 4.
+- **D2 ouverture (ORB)** : range 9:30-9:45 (D2-15) ou 9:30-10:00 (D2-30) ; première clôture de bougie 5 min au-delà du
+  range avant 15:00 → entrée à l'ouverture suivante dans ce sens ; stop de l'autre côté du range ; sortie 15:55. Filtre :
+  aucun, ou k4 dans le sens (sinon pas de trade ce jour-là). 2 × 2 × 2 instruments = 8.
+- **D3 gap d'ouverture** : |ouverture 9:30 − clôture de la veille| > x × ATR journalier (x = 0,5 ; 1) → entrée à 9:30
+  contre le gap, objectif = clôture de la veille (comblement), sinon sortie 11:00 ; pas de stop. 2 × 2 = 4.
+- **D4 annonces** : CPI (8:30 ET) et FOMC (14:00 ET), regroupés ; sens de la première bougie de 15 min après l'heure ;
+  entrée à la fin de ce quart d'heure, sortie 15:55. Calendrier : dates officielles (federalreserve.gov, bls.gov),
+  récupérées et vérifiées avant le test ; à défaut, on le signale et on s'arrête pour D4. 1 × 2 = 2.
+- **D5 tournant du mois** : long de 9:30 à 15:55 le dernier jour de bourse du mois et les 3 premiers du mois suivant.
+  1 × 2 = 2.
+- **D6 dernière heure** : sens = signe de (clôture 15:00 − ouverture 9:30) ; entrée 15:00, sortie 15:55. 1 × 2 = 2.
+
+**Hasard « mêmes heures, autres jours ».** Pour chaque trade, un autre jour de bourse tiré au hasard dans la même moitié,
+mêmes heures d'entrée et de sortie, même stop / objectif exprimés en ATR journalier de ce jour-là ; sens au hasard (réf. A,
+même part de longs) et long seulement (réf. L). 2 000 tirages ; p = (tirages ≥ P&L + 1) / 2 001.
+**Critères.** H1 : au moins 30 trades, P&L > 0, p_A et p_L < 0,05 / 22 (pour D5, long seul : p_L seulement). H2 : P&L > 0,
+mêmes p < 0,05 / (nombre de candidats), ET plateau sur H2 : D1 fin du signal {9:55 ; 10:00 ; 10:05} × entrée {15:25 ;
+15:30 ; 15:35} ; D2 range ± 5 min × sortie {15:55 ; 1 R ; 2 R} ; D3 x ± 0,25 × sortie {10:30 ; 11:00 ; 11:30} : au moins 6 sur
+9 à P&L > 0 et R/C médian > 0 ; D4 attente {10 ; 15 ; 20 min} × sortie {15:00 ; 15:55}, D5 fenêtre {+2 ; +3 ; +4 jours} ×
+entrée {9:30 ; 9:45}, D6 entrée {14:45 ; 15:00 ; 15:15} × sortie {15:50 ; 15:55} : au moins 4 sur 6 et R/C médian > 0.
+Un candidat qui passe H1 puis H2 : DAEMON prévenu immédiatement, liste exacte des trades en CSV pour un vérificateur
+indépendant ; puis tailles FTMO 100k / Tradeify 50k dans les règles, % annuel et mensuel, mois positifs, évaluations.
