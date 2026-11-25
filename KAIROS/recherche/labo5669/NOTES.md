@@ -69,3 +69,6 @@ Scellé 2025-26 ouvert par décision de Jeremy. Tables apprises sur la 1re moiti
   5 min MES : aucun (1re moitié négative partout).
 - Gains répartis entre longs et shorts (sens.py) : pas seulement la dérive haussière. Pas de tirage au hasard fait ici.
 - Tables Pine 5 min : fiable/tables_pine_5min.txt (même format que Strat5669_FIABLE ; part écoulée à l'heure de Paris).
+- Contrôle au hasard du 5 min MNQ (fiable/hasard5.py, 1 000 tirages A / B / L par moitié) : seuil 70 %, 1re moitié
+  p_A 0,083, p_B 0,155, p_L 0,073 ; 2de moitié 0,010 à 0,013. Seuil 75 % : 1re 0,08 / 0,16 / 0,09, 2de 0,004 à 0,009.
+  Seuil 0 : 0,08 à 0,24. Aucun p sous 0,05/80 : candidat invalidé, ne bat pas B ni L dans la 1re moitié.
