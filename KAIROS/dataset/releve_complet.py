@@ -61,9 +61,10 @@ def unite(f):
     raise ValueError(f"{os.path.basename(f)} : « Plage temporelle » absente des propriétés")
 
 
-def charger(instrument, dossier=DOSSIER):
+def charger(instrument, dossier=DOSSIER, fichier=None):
+    """fichier : un export précis (pour un relevé livré en plusieurs morceaux) ; sinon l'unique export du dossier."""
     dossier = os.path.expanduser(dossier)
-    fs = [f for f in glob.glob(os.path.join(dossier, "*.xlsx")) if f"_{instrument}1!_" in f]
+    fs = [fichier] if fichier else [f for f in glob.glob(os.path.join(dossier, "*.xlsx")) if f"_{instrument}1!_" in f]
     if len(fs) != 1:
         raise ValueError(f"{instrument} : un export attendu dans {dossier}, trouvé {fs}")
     pas_min = unite(fs[0])

@@ -172,3 +172,17 @@ p de 0,004 à 0,021 pour un seuil de 0,05 / 24 = 0,002. La sortie anticipée sur
 sortie au hasard au même moment (p de 0,24 à 1,00) : couper le fantôme à la clôture 1 h / 4 h réalise une perte déjà
 engagée et coupe autant de trades qui se seraient rétablis. S3 dégrade partout ; E1 perd partout (5 min MNQ H2 −3 210 $,
 15 min MNQ H2 −5 440 $) : entrer après confirmation arrive trop tard. Examen toujours scellé.
+
+## EXAMEN-1 — hypothèse GELÉE (écrite le 25/11 avant le dépôt de l'export, décision DAEMON)
+- **Règle** : 56 en lecture alertes (b), MNQ 5 min, score de fiabilité p1 × p4 ≥ 70 % avec les tables 5 min de 2c79a6a
+  (identiques à Strat5669_FIABLE a9301a8), FIXES, jamais réapprises ; part écoulée calculée comme le Pine (heure de Paris) ;
+  score inconnu = pas de trade. Sorties du 56 : 3 ATR, 0,6667 R, 16 bougies. Une position à la fois, 2 contrats,
+  1,25 $ par contrat et par côté, moteur complet/moteur.py.
+- **Données** : Relevé complet MNQ 5 min du 01/01/2019 au 16/10/2023, jamais vu (KAIROS-data/fiable/5min-avant/). En
+  plusieurs morceaux : concaténés, doublons d'horodatage retirés, rien d'autre. Décisions du 07/01/2019 (une semaine de
+  mise en route) au 16/10/2023 00:00 exclu.
+- **Critère de succès, un seul test, α = 0,05** : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (moteur.hasard, 1 000 tirages,
+  graine 5669, mêmes heures, même nombre de trades, mêmes sorties ; p = (tirages ≥ P&L + 1) / 1 001).
+- **Rapporté, hors critère** : R/C, % annuel à la taille FTMO 100k dans les règles, P&L par année, fantômes.
+- **Aucun réglage modifié après avoir vu les données.** Script gelé : fiable/examen1.py (même commit). Essai à blanc sur
+  les données de recherche (pas l'export) : 319 trades, +8 326 $, fantômes 21 %, identique à 2c79a6a.

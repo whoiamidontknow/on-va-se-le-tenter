@@ -37,7 +37,11 @@ def blocs(B):
 
 
 def charger56(ins, unite):
-    B = charger(ins, dossier=os.path.join(DOSSIER, f"{unite}min"))
+    return complete56(charger(ins, dossier=os.path.join(DOSSIER, f"{unite}min")))
+
+
+def complete56(B):
+    """Ajoute à un relevé chargé les blocs 1 h / 4 h, o1 / o4 et les décisions du 56 en lectures k, b, o."""
     h, q, B["e1h"], B["e4h"] = blocs(B)
     B["bloc1"], B["bloc4"] = h.values, q.values
     # o = b de la dernière bougie du graphique dans la même bougie 1 h / 4 h
