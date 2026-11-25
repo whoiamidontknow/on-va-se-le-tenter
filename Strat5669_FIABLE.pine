@@ -2119,7 +2119,7 @@ if pos != 0
 // FIABILITÉ : bougie 1 h / 4 h en cours reconstituée (vrais prix), calculée à chaque bougie
 grp_fi = "=== 6. FIABILITÉ ==="
 fi_min = input.float(0, "Fiabilité minimum (%)", group=grp_fi, minval=0, maxval=100, step=5,
-     tooltip="0 = aucun filtre (mêmes trades que Strat5669). Au-dessus, un signal dont la fiabilité est sous ce seuil (ou inconnue) n'est pas pris. Tables mesurées en 15 min sur MNQ et MES : sur une autre unité, la fiabilité est « — » (inconnue), donc aucun trade n'est pris si ce seuil est au-dessus de 0.")
+     tooltip="0 = aucun filtre (mêmes trades que Strat5669). Au-dessus, un signal dont la fiabilité est sous ce seuil (ou inconnue) n'est pas pris. Tables mesurées en 15 min et en 5 min sur MNQ et MES : sur une autre unité, la fiabilité est « — » (inconnue), donc aucun trade n'est pris si ce seuil est au-dessus de 0.")
 fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi)
 ga_on  = input.bool(false, "Graphique = alertes", group=grp_fi,
      tooltip="Coché : un trade n'est pris que si la décision du 56 est AUSSI vraie avec le Dashator 1 h / 4 h de la bougie EN COURS (reconstituée, comme en direct). En direct, rien ne change ; en historique, les trades apparus après coup (que le direct n'aurait pas pris) disparaissent du graphique.")
@@ -2163,6 +2163,15 @@ var array<float> fi_q1E = array.from(0.231, 0.407, 0.581, 0.864)
 var array<float> fi_t1E = array.from(74.16, 78.37, 89.64, 100.00, 93.54, 96.33, 98.99, 100.00, 97.55, 98.60, 99.39, 100.00, 97.38, 99.42, 99.85, 100.00, 99.87, 99.85, 100.00, 100.00)
 var array<float> fi_q4E = array.from(0.089, 0.204, 0.376, 0.616)
 var array<float> fi_t4E = array.from(61.02, 63.66, 68.58, 78.97, 77.36, 82.86, 90.06, 92.99, 88.89, 95.83, 96.18, 97.16, 96.56, 98.49, 99.49, 99.55, 98.84, 99.85, 99.83, 100.00)
+// tables 5 min (KAIROS, fiable/seuils.py, commit 2c79a6a : apprises du 17/10/2023 au 01/05/2025)
+var array<float> fi_q1N5 = array.from(0.060, 0.155, 0.324, 0.637)
+var array<float> fi_t1N5 = array.from(58.20, 59.98, 68.84, 81.34, 73.06, 78.27, 88.87, 94.97, 88.65, 93.97, 94.71, 99.46, 96.32, 97.87, 99.20, 99.87, 98.81, 99.10, 99.76, 100.00)
+var array<float> fi_q4N5 = array.from(0.107, 0.217, 0.360, 0.604)
+var array<float> fi_t4N5 = array.from(60.49, 72.60, 74.51, 80.93, 78.48, 86.56, 89.39, 94.43, 90.25, 92.98, 95.41, 97.72, 96.40, 97.84, 99.14, 99.57, 99.14, 99.87, 99.87, 100.00)
+var array<float> fi_q1E5 = array.from(0.064, 0.166, 0.332, 0.651)
+var array<float> fi_t1E5 = array.from(59.06, 64.02, 72.78, 84.89, 77.38, 78.35, 87.11, 97.75, 90.57, 93.35, 95.97, 99.18, 95.53, 97.44, 99.09, 100.00, 98.42, 99.18, 100.00, 100.00)
+var array<float> fi_q4E5 = array.from(0.105, 0.220, 0.364, 0.607)
+var array<float> fi_t4E5 = array.from(56.97, 63.09, 72.07, 80.46, 75.61, 82.66, 92.37, 93.38, 90.12, 93.41, 97.32, 98.05, 93.39, 96.11, 98.74, 99.46, 99.02, 99.75, 99.62, 100.00)
 f_fiP(array<float> qa, array<float> tb, float v, float e) =>
     float p = na
     if not na(v) and math.abs(v) <= 99
@@ -2175,10 +2184,12 @@ f_fiP(array<float> qa, array<float> tb, float v, float e) =>
         c = e <= 0.26 ? 0 : e <= 0.51 ? 1 : e <= 0.76 ? 2 : 3
         p := array.get(tb, r * 4 + c)
     p
-fi_p1 = fi_nq ? f_fiP(fi_q1N, fi_t1N, fi_v1, fi_e1) : fi_es ? f_fiP(fi_q1E, fi_t1E, fi_v1, fi_e1) : na
-fi_p4 = fi_nq ? f_fiP(fi_q4N, fi_t4N, fi_v4, fi_e4) : fi_es ? f_fiP(fi_q4E, fi_t4E, fi_v4, fi_e4) : na
-// tables mesurées en 15 min : ailleurs, score inconnu (« — ») plutôt que faux
-fi_sc = timeframe.in_seconds() == 900 ? fi_p1 * fi_p4 / 100 : na
+fi_15 = timeframe.in_seconds() == 900
+fi_5  = timeframe.in_seconds() == 300
+fi_p1 = fi_nq ? (fi_15 ? f_fiP(fi_q1N, fi_t1N, fi_v1, fi_e1) : f_fiP(fi_q1N5, fi_t1N5, fi_v1, fi_e1)) : fi_es ? (fi_15 ? f_fiP(fi_q1E, fi_t1E, fi_v1, fi_e1) : f_fiP(fi_q1E5, fi_t1E5, fi_v1, fi_e1)) : na
+fi_p4 = fi_nq ? (fi_15 ? f_fiP(fi_q4N, fi_t4N, fi_v4, fi_e4) : f_fiP(fi_q4N5, fi_t4N5, fi_v4, fi_e4)) : fi_es ? (fi_15 ? f_fiP(fi_q4E, fi_t4E, fi_v4, fi_e4) : f_fiP(fi_q4E5, fi_t4E5, fi_v4, fi_e4)) : na
+// tables mesurées en 15 et 5 min : ailleurs, score inconnu (« — ») plutôt que faux
+fi_sc = (fi_15 or fi_5) ? fi_p1 * fi_p4 / 100 : na
 // Graphique = alertes : filtre Dashator 1 h / 4 h + eMax relu sur la bougie en cours (go56b de RELEVE_5669)
 gb_up4 = f_dshMin <= 0 ? fi1b > 0 : fi1b >= f_dshMin * fi1t
 gb_dn4 = f_dshMin <= 0 ? fi1b <= 0 : fi1b <= -f_dshMin * fi1t
