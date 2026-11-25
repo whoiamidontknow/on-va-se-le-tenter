@@ -21,7 +21,11 @@ for u, ins in ((15, "MNQ"), (15, "MES"), (5, "MNQ")):
         for nom, L, S in (("tv", goo["L"], goo["S"]), ("ga", gob["L"] & goo["L"], gob["S"] & goo["S"]), ("al", gob["L"], gob["S"])):
             idx = np.flatnonzero(f & (L | S)); pris, ss, pn = sequence(I, idx, np.where(L[idx], 1, -1))
             r[nom] = pn.sum() * QTY; r[nom + "_n"] = len(pris)
+            if nom == "tv":
+                r["recalcules"] = np.mean([not gob["L" if d == 1 else "S"][i] for i, d in zip(pris, ss)]) if len(pris) else np.nan
             if nom == "al":
+                fa = np.array([not goo["L" if d == 1 else "S"][i] for i, d in zip(pris, ss)], bool)
+                r["fant_perdants"] = np.mean(fa & (pn < 0)) if len(pris) else np.nan
                 r["fantomes"] = np.mean([not goo["L" if d == 1 else "S"][i] for i, d in zip(pris, ss)]) if len(pris) else np.nan
                 r["trades_mois"] = len(pris) / mois
         out.append(r)
@@ -30,4 +34,4 @@ for c in ("tv", "ga", "al"):
     R[c + "_diff"] = R[c] - R.groupby(["unite", "instrument"])[c].transform("first")
 R.to_csv(os.path.join(ICI, "tableau_jeremy.csv"), index=False)
 for (u, i), g in R.groupby(["unite", "instrument"], sort=False):
-    print(f"\n{u} {i}"); print(g[["seuil", "tv", "tv_diff", "ga", "al", "al_diff", "fantomes", "trades_mois"]].round(2).to_string(index=False))
+    print(f"\n{u} {i}"); print(g[["seuil", "tv", "tv_diff", "ga", "al", "al_diff", "fantomes", "fant_perdants", "recalcules", "trades_mois"]].round(2).to_string(index=False))
