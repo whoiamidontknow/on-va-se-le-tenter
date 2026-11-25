@@ -104,3 +104,11 @@ part de mois positifs, part de mois ≥ 6 %. Évaluations FTMO (phase 1 +10 %, p
 (+3 000 $, consistance 40 %) depuis chaque jour de départ et en blocs de 5 jours (1 000 chemins de 250 jours) :
 phase rapide à la taille maximale, phase financée à la moitié (part de mois ≥ 6 %, probabilité d'enfreindre une
 règle en 12 mois).
+
+**Résultat (25/11).** Sélection sur H1 : 541 cases. Meilleur R/C au plateau : A = seuil 80 %, stop 4 ATR, objectif
+2 R, 64 bougies (R/C 1,29, au bord de la grille) ; B (lecture k) 0,25, presque rien ; C n'améliore pas A ; D3 (MNQ 5 +
+MNQ 15 + MES 15) 2,31. Contrôle sur H2 : les 5 finalistes gagnent de l'argent (+1 157 à +2 436 $ par contrat) mais aucun
+ne bat le hasard : p contre B de 0,13 à 0,25, contre L de 0,11 à 0,24, pour un seuil de 0,01. R/C sur H2 de 0,48 à 1,07.
+**Aucun finaliste gelé ; l'examen 2019-2023 n'est pas ouvert** (il reste disponible pour une hypothèse future).
+Objectifs : un R/C ≥ 3 n'est atteint par aucune case, même sur H1 sauf rien (max 2,31 en combinaison) ; 6 % par mois avec
+un creux sous 10 % demanderait un R/C proche de 7.
