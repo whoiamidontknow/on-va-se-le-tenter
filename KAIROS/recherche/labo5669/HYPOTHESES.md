@@ -226,3 +226,5 @@ trade si les deux ; géométrie F2 (stop 1,5 ATR, objectif 1 R, 8 bougies) ; une
 complet/moteur.py. Période : décisions du 01/05/2025 au 13/11/2026 (H2).
 Critère, un seul test : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (moteur.hasard, 1 000 tirages, graine 5669).
 Rapporté hors critère : gain par trade et par contrat, R/C, % annuel à la taille FTMO 100k dans les règles, mois positifs.
+**Résultat CLX-ADX (25/11) : ÉCHOUÉ.** H2 : 1 701 trades, 49,0 % gagnants, −11 215 $ (2 contrats), p_B 0,29, p_L 0,19 ;
+−3,30 $ par trade et par contrat, pire creux 14 496 $, R/C −0,50, 7 mois positifs sur 19.
