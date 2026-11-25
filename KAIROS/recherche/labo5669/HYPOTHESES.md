@@ -211,3 +211,10 @@ seul ; DET detD ≤ 0,5 / detU ≤ 0,5 seul ; DK Dashator 1 h terminé (k1) qui 
 **Témoin C1** en 5 min : même modèle qu'au 19/11 (gradient boosting, tous les champs, cible R à stop 2 ATR, 1 R,
 16 bougies), appris sur H1 (arrêt précoce sur ses 20 % les plus récents), stratégie au 98e centile, contrôle sur H2.
 2 tests.
+
+**Résultat programme 5 min (25/11).** Familles F1-F5, 84 tests : **aucun candidat sur H1**. 75 tests perdent de l'argent
+sur H1 ; les entrées seules (F5) perdent toutes lourdement (ex. PIV MNQ −86 958 $, DET MNQ −61 383 $ par contrat : en
+5 min, le coût par trade écrase le signal). Le plus proche : MNQ M1 climax + ADX ≥ 25, H1 +1 622 $, p_B = p_L = 0,003 pour
+un seuil de 0,0011 (même famille que le candidat formel rejeté le 19/11). Témoin C1 : très bon dans l'échantillon (H1 MNQ
++35 952 $, MES +19 492 $) puis effondré sur H2 (MNQ +1 732 $, p_B 0,034, p_L 0,052 ; MES −890 $) pour un seuil de 0,025 :
+sur-apprentissage, rien hors échantillon. Aucun contrôle H2 de famille n'a eu lieu (pas de candidat).
