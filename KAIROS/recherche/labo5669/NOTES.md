@@ -35,3 +35,12 @@ et ADX 15 min (<20, 20-25, >25). 12 découpes × 2 instruments × 2 périodes.
 - MES : ADX > 25 nettement perdant en 2019-22 (−0,30 ± 0,13), pas en 2023-24.
 - Fantômes : 16-20 % partout ; seule exception MES contre la tendance 4 h, 24 %.
 Conclusion : range ou tendance ne sépare pas les bons trades du 56 sur 15 min. Non inscrit comme candidat.
+
+## 25/11 — score de fiabilité de la couleur 1 h / 4 h (idée de Jeremy, score_fiabilite.py)
+p_tf = P(couleur finale = couleur en cours | |corps| en quintiles, part écoulée en quarts), table 2019-22 ; score = p1 × p4.
+- La table confirme l'intuition : 1 h quasi sûre dès |corps| > 0,4 ; 4 h fragile (petit corps : 58 % en début de bougie,
+  78 % même en fin de bougie).
+- Sur les trades pris en direct (go56b), fantômes par quart de score, contrôle 2023-24 : MNQ 39 % → 18 %, MES 41 % → 22 %
+  (même ordre en construction). Le score divise les fantômes par deux, ne les supprime pas.
+- Résultat : MES moitié haute positive en contrôle (+2 549 $, Q3 R +0,10 ± 0,07), MNQ moitié haute négative (−2 047 $).
+  Aucun avantage établi ; à ne pas présenter comme un filtre gagnant.
