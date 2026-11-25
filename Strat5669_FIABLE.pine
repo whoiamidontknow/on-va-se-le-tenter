@@ -7,6 +7,9 @@
 // reconstituée à partir des bougies du graphique (comme b1 / b4 de RELEVE_5669) : jamais
 // la bougie terminée (fuite). Le score sert seulement à l'affichage et au réglage
 // « Fiabilité minimum » ; à 0 (défaut), mêmes trades que Strat5669.
+// 25/11 : « Graphique = alertes » (décoché par défaut) : le trade n'est pris que si le 56
+// est aussi vrai avec le Dashator 1 h / 4 h en cours (go56b) : le graphique ne garde que
+// les trades que le direct aurait pris.
 // Strat5669speed (24/11/2026) : copie exacte de Strat5669.pine, seul l'AFFICHAGE change.
 // Les zones stop / objectif et la ligne d'entrée sont dessinées dès la bougie signal,
 // aux prix exacts de l'alerte d'entrée (e0, s0, tp0), puis ne bougent plus : elles
@@ -2118,6 +2121,8 @@ grp_fi = "=== 6. FIABILITÉ ==="
 fi_min = input.float(0, "Fiabilité minimum (%)", group=grp_fi, minval=0, maxval=100, step=5,
      tooltip="0 = aucun filtre (mêmes trades que Strat5669). Au-dessus, un signal dont la fiabilité est sous ce seuil (ou inconnue) n'est pas pris. Tables mesurées en 15 min sur MNQ et MES.")
 fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi)
+ga_on  = input.bool(false, "Graphique = alertes", group=grp_fi,
+     tooltip="Coché : un trade n'est pris que si la décision du 56 est AUSSI vraie avec le Dashator 1 h / 4 h de la bougie EN COURS (reconstituée, comme en direct). En direct, rien ne change ; en historique, les trades apparus après coup (que le direct n'aurait pas pris) disparaissent du graphique.")
 f_fiForming(simple string tf, float haO, float haCp, float atrP) =>
     var float fo = na
     var float fh = na
@@ -2173,6 +2178,14 @@ f_fiP(array<float> qa, array<float> tb, float v, float e) =>
 fi_p1 = fi_nq ? f_fiP(fi_q1N, fi_t1N, fi_v1, fi_e1) : fi_es ? f_fiP(fi_q1E, fi_t1E, fi_v1, fi_e1) : na
 fi_p4 = fi_nq ? f_fiP(fi_q4N, fi_t4N, fi_v4, fi_e4) : fi_es ? f_fiP(fi_q4E, fi_t4E, fi_v4, fi_e4) : na
 fi_sc = timeframe.in_seconds() < 3600 ? fi_p1 * fi_p4 / 100 : na
+// Graphique = alertes : filtre Dashator 1 h / 4 h + eMax relu sur la bougie en cours (go56b de RELEVE_5669)
+gb_up4 = f_dshMin <= 0 ? fi1b > 0 : fi1b >= f_dshMin * fi1t
+gb_dn4 = f_dshMin <= 0 ? fi1b <= 0 : fi1b <= -f_dshMin * fi1t
+gb_up5 = f_dshMin <= 0 ? fi4b > 0 : fi4b >= f_dshMin * fi4t
+gb_dn5 = f_dshMin <= 0 ? fi4b <= 0 : fi4b <= -f_dshMin * fi4t
+x2b_okL = (not f_dsh60 or gb_up4) and (not f_dsh240 or gb_up5) and (not f_eOn or (not na(jr_e) and jr_e <= f_eMax))
+x2b_okS = (not f_dsh60 or gb_dn4) and (not f_dsh240 or gb_dn5) and (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax))
+ga_ok = not ga_on or (go_long ? x2b_okL : x2b_okS)
 fi_ok = fi_min <= 0 or (not na(fi_sc) and fi_sc >= fi_min)
 fi_txt = "Fiabilité " + (na(fi_sc) ? "—" : str.tostring(math.round(fi_sc)) + " %")
 var array<label> fi_labels = array.new_label()
@@ -2180,7 +2193,7 @@ var array<label> fi_labels = array.new_label()
 // 4. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
 bool entree_L = false
 bool entree_S = false
-if pos == 0 and tr_dir == 0 and (go_long or go_short) and fi_ok
+if pos == 0 and tr_dir == 0 and (go_long or go_short) and fi_ok and ga_ok
     d  = go_long ? 1 : -1
     e0 = r_c
     if nv_stopNv or nv_tpNv
