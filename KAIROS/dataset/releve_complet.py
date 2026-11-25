@@ -4,6 +4,7 @@ Une table par instrument, une ligne par bougie (toutes les bougies), champs déc
 
     from releve_complet import charger
     B = charger("MNQ")           # dossier par défaut : ~/ERGON/KAIROS-data/releve_complet (sans test/)
+    B = charger("MES", dossier="~/ERGON/KAIROS-data/fiable/5min")   # unité lue dans les propriétés (B.attrs["unite"])
 
 Colonnes : t (ouverture de la bougie, heure de Paris, naïve), bloc, dt, o h l c (vrais prix),
 bits b01..b35 sous des noms parlants (BITS), clx adx di sgs feu str dirC dirM dirH atr e1 e2 k1 k4 b1 b4
@@ -49,19 +50,32 @@ def _blocs(f):
     return lignes, coupes
 
 
+def unite(f):
+    """Durée d'une bougie en minutes, lue dans la feuille Propriétés (« Plage temporelle = 5 minutes »)."""
+    p = pd.read_excel(f, sheet_name="Propriétés", header=None)
+    for _, r in p.iterrows():
+        if str(r.iloc[0]) == "Plage temporelle":
+            v = str(r.iloc[1])
+            n = int(v.split()[0])
+            return n * 60 if "heure" in v else n
+    raise ValueError(f"{os.path.basename(f)} : « Plage temporelle » absente des propriétés")
+
+
 def charger(instrument, dossier=DOSSIER):
+    dossier = os.path.expanduser(dossier)
     fs = [f for f in glob.glob(os.path.join(dossier, "*.xlsx")) if f"_{instrument}1!_" in f]
     if len(fs) != 1:
         raise ValueError(f"{instrument} : un export attendu dans {dossier}, trouvé {fs}")
+    pas_min = unite(fs[0])
     lignes, coupes = _blocs(fs[0])
     D = pd.DataFrame(lignes, columns=["t0", "r", "bloc", "i"] + CHAMPS)
     for c in CHAMPS:
         if c != "bits":
             D[c] = pd.to_numeric(D[c], errors="coerce")
-    # horodatage : t0 = 1re bougie du bloc, puis dt bougies de 15 min à chaque fiche
+    # horodatage : t0 = 1re bougie du bloc, puis dt bougies de l'unité du graphique à chaque fiche
     D = D.sort_values(["t0", "i"]).reset_index(drop=True)
     pas = D.groupby("bloc").dt.cumsum() - D.dt.where(D.i == 0, 0).groupby(D.bloc).transform("first")
-    D["t"] = (pd.to_datetime(D.t0, unit="s") + pd.to_timedelta(pas * 15, unit="m")).dt.tz_localize("UTC") \
+    D["t"] = (pd.to_datetime(D.t0, unit="s") + pd.to_timedelta(pas * pas_min, unit="m")).dt.tz_localize("UTC") \
         .dt.tz_convert("Europe/Paris").dt.tz_localize(None)
     for c in ("o", "h", "l", "c"):
         D[c] = D.r + D[c] * TICK
@@ -72,7 +86,7 @@ def charger(instrument, dossier=DOSSIER):
     for j, nom in enumerate(BITS):
         D[nom] = bits[:, j].astype(np.int8)
     D = D.drop(columns=["bits", "t0", "i"]).sort_values("t").reset_index(drop=True)
-    D.attrs.update(instrument=instrument, val_point=VAL_POINT[instrument], coupes=coupes, fichier=os.path.basename(fs[0]))
+    D.attrs.update(instrument=instrument, unite=pas_min, val_point=VAL_POINT[instrument], coupes=coupes, fichier=os.path.basename(fs[0]))
     return D
 
 

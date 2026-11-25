@@ -57,3 +57,15 @@ P&L des trades d'alerte 2019-2024 (construction + contrôle) : MNQ négatif jusq
 Fantômes : 31-32 % sans filtre → ~21 % à 70 % → 10-15 % à 80 %. Le graphique avec la case cochée reste plus flatteur que
 les alertes (ghosts perdants retirés) : à 80 %, MNQ +4 604 contre +1 516, MES +2 084 contre −416.
 Meilleur compromis fiabilité : 80 %, mais aucun seuil ne gagne nettement sur les deux instruments et les deux périodes.
+
+## 25/11 — seuils de fiabilité en 15 et 5 min, période de Jeremy (fiable/, Relevés complets 16/10/2023 → 13/11/2026)
+Scellé 2025-26 ouvert par décision de Jeremy. Tables apprises sur la 1re moitié (→ 01/05/2025), 15 min réappris aussi.
+- Décision du 56 reconstituée sur chaque bougie (decision56.py) : lecture k = bits go de l'export à 100 % ; contre le
+  Relevé 5669 en 15 min (valide15.py), go56 (o) 99,7 % MNQ et MES, go56b (b) 98,5 % MNQ, 98,9 % MES.
+- Seuils 0-35 % = mêmes trades (score jamais si bas). P&L des alertes > 0 dans les deux moitiés :
+  15 min MNQ dès le seuil 0 (+3 515 / +1 410 $), aucun seuil ne fait mieux que 0 sur les deux moitiés ;
+  15 min MES à 80 et 85 % (+1 025 / +940 $ à 80 %, 1,7 trade / mois, fantômes 11 %) ;
+  5 min MNQ à tous les seuils, meilleur 70-75 % (+2 276 / +6 050 $ à 70 %, 8,6 trades / mois, fantômes 21 %) ;
+  5 min MES : aucun (1re moitié négative partout).
+- Gains répartis entre longs et shorts (sens.py) : pas seulement la dérive haussière. Pas de tirage au hasard fait ici.
+- Tables Pine 5 min : fiable/tables_pine_5min.txt (même format que Strat5669_FIABLE ; part écoulée à l'heure de Paris).

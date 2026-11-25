@@ -1,0 +1,12 @@
+// Tables 5 min (labo fiable/seuils.py, apprises du 17/10/2023 au 01/05/2025, bougies avec déclencheur du 56)
+// lignes = |valeur| ≤ quintile 1..4 puis au-delà ; colonnes = part écoulée ≤ 26 / 51 / 76 / 100 % ; en %
+// MNQ 5 min
+var array<float> fi_q1N = array.from(0.060, 0.155, 0.324, 0.637)
+var array<float> fi_t1N = array.from(58.20, 59.98, 68.84, 81.34, 73.06, 78.27, 88.87, 94.97, 88.65, 93.97, 94.71, 99.46, 96.32, 97.87, 99.20, 99.87, 98.81, 99.10, 99.76, 100.00)
+var array<float> fi_q4N = array.from(0.107, 0.217, 0.360, 0.604)
+var array<float> fi_t4N = array.from(60.49, 72.60, 74.51, 80.93, 78.48, 86.56, 89.39, 94.43, 90.25, 92.98, 95.41, 97.72, 96.40, 97.84, 99.14, 99.57, 99.14, 99.87, 99.87, 100.00)
+// MES 5 min
+var array<float> fi_q1E = array.from(0.064, 0.166, 0.332, 0.651)
+var array<float> fi_t1E = array.from(59.06, 64.02, 72.78, 84.89, 77.38, 78.35, 87.11, 97.75, 90.57, 93.35, 95.97, 99.18, 95.53, 97.44, 99.09, 100.00, 98.42, 99.18, 100.00, 100.00)
+var array<float> fi_q4E = array.from(0.105, 0.220, 0.364, 0.607)
+var array<float> fi_t4E = array.from(56.97, 63.09, 72.07, 80.46, 75.61, 82.66, 92.37, 93.38, 90.12, 93.41, 97.32, 98.05, 93.39, 96.11, 98.74, 99.46, 99.02, 99.75, 99.62, 100.00)
