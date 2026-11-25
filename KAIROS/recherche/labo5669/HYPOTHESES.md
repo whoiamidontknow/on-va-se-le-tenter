@@ -112,3 +112,27 @@ ne bat le hasard : p contre B de 0,13 à 0,25, contre L de 0,11 à 0,24, pour un
 **Aucun finaliste gelé ; l'examen 2019-2023 n'est pas ouvert** (il reste disponible pour une hypothèse future).
 Objectifs : un R/C ≥ 3 n'est atteint par aucune case, même sur H1 (max 2,31, en combinaison) ; 6 % par mois avec
 un creux sous 10 % demanderait un R/C proche de 7.
+
+## H-ORACLE — prévoir la couleur finale du Dashator 1 h / 4 h (écrit le 25/11, avant tout test)
+Idée de Jeremy, carte blanche du 25/11 11h17. L'avantage du graphique vient de la couleur FINALE (o) du Dashator 1 h /
+4 h. Hypothèse : un modèle prévoit sign(o1) et sign(o4) mieux que la persistance (« la couleur en cours reste »).
+
+**Population.** Bougies qui portent un déclencheur du 56 (bits sF / sM / hei / tl / lvl / clx / div), fiable/5min et
+fiable/15min, MNQ et MES. Apprentissage sur H1 (17/10/2023 → 01/05/2025), test sur H2 (→ 13/11/2026).
+**Cibles.** o1 > 0 et o4 > 0 (o = b de la dernière bougie du graphique dans la bougie 1 h / 4 h).
+**Variables (connues à la clôture de la bougie signal).** b1, b4, part écoulée 1 h / 4 h ; chemin dans la bougie 1 h / 4 h
+en cours (clôture − ouverture, plus haut − ouverture, ouverture − plus bas, en ATR du graphique) ; tous les champs
+numériques et les 35 bits du Relevé complet de la bougie et des 3 précédentes (sauf les prix bruts) ; heure et minute.
+**Modèle.** HistGradientBoostingClassifier, un par unité × instrument × 1 h / 4 h (8 modèles) ; 500 itérations max,
+taux 0,05, 31 feuilles, 100 exemples par feuille min, arrêt précoce sur les 20 % les plus récents de H1.
+**Référence « persistance ».** Signe de b ; probabilité = table de fiabilité (fiable/seuils.py, apprise sur H1).
+**Métriques sur H2.** (1) précision et log-loss du modèle contre la persistance, pour o1 et o4 ; (2) gain de précision par
+quart de part écoulée ; (3) calibration (déciles de probabilité) ; (4) **décision du 56** : sur les bougies où le reste du
+56 est vrai (déclencheur sans opposé, pas `fin`, écart EMA ≤ 0,6), part de décisions égales à la décision du graphique
+(lecture o), modèle (couleurs prévues) contre persistance (lecture b).
+**Arrêt.** Si le gain de précision sur les décisions du 56 est inférieur à 2 points (moyenne des 4 cas unité ×
+instrument), on s'arrête.
+**Sinon (étape 4).** Décision du 56 avec les couleurs prévues (P ≥ seuil, seuil choisi sur des prévisions hors
+échantillon de H1, validation croisée par blocs de temps), mesurée en alertes sur H2, une position à la fois, sorties du
+56 : hasard A / B / L (1 000 tirages, seuil 0,05 / nombre de cas), R/C, % annuel, % mensuel, fantômes, trades nés après
+coup. Examen 2019-2023 toujours scellé.
