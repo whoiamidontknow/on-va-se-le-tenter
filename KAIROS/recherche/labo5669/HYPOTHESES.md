@@ -136,3 +136,9 @@ instrument), on s'arrête.
 échantillon de H1, validation croisée par blocs de temps), mesurée en alertes sur H2, une position à la fois, sorties du
 56 : hasard A / B / L (1 000 tirages, seuil 0,05 / nombre de cas), R/C, % annuel, % mensuel, fantômes, trades nés après
 coup. Examen 2019-2023 toujours scellé.
+
+**Résultat H-ORACLE (25/11).** Sur H2, le modèle ne prévoit pas mieux la couleur finale que la persistance. Précision
+o1 / o4 : de −0,9 à +0,02 point (5 min MNQ 1 h 88,99 % → 88,57 % ; 15 min MES 4 h 88,75 % → 87,88 %). Log-loss un peu
+meilleure sur le 1 h (5 min MNQ 0,268 → 0,259), pas sur le 4 h. Aucun gain net par quart de part écoulée. Calibration
+correcte (écart moyen 0,6 à 3,7 points). Décisions du 56 égales au graphique : persistance 85,8 à 92,1 %, modèle −1,30 à
++0,13 point, **moyenne −0,50 point** : sous le seuil de 2 points, ARRÊT. Étape 4 non faite, examen toujours scellé.
