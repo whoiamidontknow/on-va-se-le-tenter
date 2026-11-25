@@ -326,3 +326,18 @@ mois MNQ : H1 +7 732 $, p_L 0,15.
 P&L de chaque règle sur toute la période (H1 + H2). Les règles n'ont pas changé, mais H2 a été entrevue en total. On en
 déduit H2 = total − H1 : MNQ ORB 15 min ≈ −12 400 $ sur H2 (il aurait échoué), MNQ ORB 30 min + k4 ≈ +8 700 $, MNQ tournant
 du mois ≈ +11 500 $. Ces chiffres ne doivent pas servir à choisir une hypothèse sans le dire.
+
+## ORB30-K4 — candidat GELÉ pour un TEST EN AVANT (écrit le 25/11, décision DAEMON)
+Choisi en connaissant le total de H2 (écart signalé plus haut) : l'historique ne peut plus le valider, seul l'avenir le peut.
+**Règles exactes (D2-30 + k4, fiable/effets.py).** MNQ (micro, 2 $ / point), heures ET (America/New_York).
+1. Range = plus haut / plus bas des bougies 5 min de 9:30 à 10:00 ET (6 bougies, 9:30 à 9:55).
+2. De la bougie 10:00 à la bougie 14:55 incluse : à la première clôture 5 min au-dessus du plus haut du range → long ;
+   au-dessous du plus bas → short. Une seule tentative par jour.
+3. Filtre : k4 = Dashator 4 h, dernière bougie 4 h TERMINÉE (corps HA / ATR) lu sur la bougie de cassure ; long seulement
+   si k4 > 0, short seulement si k4 ≤ 0 ; sinon aucun trade ce jour-là.
+4. Entrée au marché à l'ouverture de la bougie suivante (+ 1 tick de glissement) ; stop = l'autre côté du range (rempli
+   au niveau + 1 tick) ; pas d'objectif ; sortie au marché à l'ouverture de la bougie 15:55 ET (− 1 tick). Stop testé sur
+   le plus haut / plus bas de chaque bougie dès la bougie d'entrée. 2 contrats, 1,25 $ par contrat et par côté.
+**Critère du test en avant (fixé maintenant).** Sur les 40 premiers trades à partir du 26/11/2026 : P&L > 0 ET p < 0,10
+contre le hasard « mêmes heures, autres jours » (jours tirés dans la même période en avant, même stop en ATR
+journalier, sens au hasard ; 2 000 tirages), calculé sur ces seuls trades. Aucune modification de règle pendant le test.
