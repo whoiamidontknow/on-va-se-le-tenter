@@ -142,3 +142,26 @@ o1 / o4 : de −0,9 à +0,02 point (5 min MNQ 1 h 88,99 % → 88,57 % ; 15 min M
 meilleure sur le 1 h (5 min MNQ 0,268 → 0,259), pas sur le 4 h. Aucun gain net par quart de part écoulée. Calibration
 correcte (écart moyen 0,6 à 3,7 points). Décisions du 56 égales au graphique : persistance 85,8 à 92,1 %, modèle −1,30 à
 +0,13 point, **moyenne −0,50 point** : sous le seuil de 2 points, ARRÊT. Étape 4 non faite, examen toujours scellé.
+
+## H-SORTIE — couper un trade quand on SAIT qu'il est fantôme (écrit le 25/11, avant tout test)
+Demande de Jeremy du 06/11 (« que les trades se stoppent immédiatement lorsqu'ils disparaissent au recalcul »), relayée
+par DAEMON sous la carte blanche. La couleur finale de la bougie 1 h (puis 4 h) qui contient le signal est connue, sans
+fuite, à sa clôture.
+
+**Cas.** Lecture alertes (b), 56 d'origine (3 ATR, 0,667 R, 16 bougies), seuil de score 0 et 70 %, en 5 min MNQ,
+15 min MNQ et 15 min MES. Fichiers fiable/, H1 (→ 01/05/2025) / H2 (→ 13/11/2026). Une position à la fois.
+**Règles (stop, objectif et durée du 56 inchangés ; sorties au marché à l'ouverture suivante, 1 tick de glissement ;
+stop / objectif testés d'abord dans chaque bougie).**
+- S1 : à la clôture de la bougie 1 h qui contient la bougie signal, si sa couleur finale (o1) est contre le trade → sortie.
+- S2 : S1, puis même règle à la clôture de la bougie 4 h du signal (o4), si le trade est encore ouvert.
+- S3 : à la clôture de chaque bougie en position, si b1 ou b4 en cours est contre le trade → sortie.
+- E1 : pas d'entrée au signal ; à la clôture de chaque bougie 1 h, s'il y a eu dans cette heure une bougie où le reste du
+  56 est vrai (déclencheur sans opposé, pas `fin`, écart EMA ≤ 0,6) et que o1 et b4 de cet instant confirment ce sens
+  (sens unique), et qu'aucun trade n'est ouvert → entrée à l'ouverture suivante, stop / objectif sur l'ATR de cet instant.
+Soit 4 règles × 2 seuils × 3 cas = 24 tests (référence : le 56 sans règle, mêmes cas).
+**Critère.** P&L > 0 sur H1 et H2, et battre le hasard B (sens du déclencheur) et L (long seulement) sur H2, avec les
+mêmes règles de sortie appliquées aux entrées tirées au hasard (1 000 tirages, mêmes heures, même nombre de trades),
+p < 0,05 / 24. Contrôle « sortie au hasard » (S1, S2, S3) : même nombre de sorties anticipées, au même moment (même
+bougie de contrôle pour S1 / S2, même décalage pour S3), mais sur des trades tirés au hasard parmi ceux encore ouverts ;
+l'information compte si moins de 5 % des tirages font aussi bien. Mesures : R/C, % annuel (taille FTMO 100k dans les
+règles), nombre de sorties anticipées. Examen 2019-2023 toujours scellé.
