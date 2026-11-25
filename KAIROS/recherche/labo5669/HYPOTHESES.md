@@ -228,3 +228,40 @@ Critère, un seul test : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (moteur.hasard, 1 0
 Rapporté hors critère : gain par trade et par contrat, R/C, % annuel à la taille FTMO 100k dans les règles, mois positifs.
 **Résultat CLX-ADX (25/11) : ÉCHOUÉ.** H2 : 1 701 trades, 49,0 % gagnants, −11 215 $ (2 contrats), p_B 0,29, p_L 0,19 ;
 −3,30 $ par trade et par contrat, pire creux 14 496 $, R/C −0,50, 7 mois positifs sur 19.
+
+## Programme NIVEAUX / HORIZON (écrit le 25/11, avant tout test) — 52 tests
+Carte blanche de Jeremy (11h44). MNQ et MES, fiable/5min et fiable/15min, 17/10/2023 → 13/11/2026, champs sans fuite
+(b / k, jamais o). H1 (→ 01/05/2025) = sélection, H2 = contrôle. Une position à la fois, 2 contrats, 1,25 $ par côté.
+
+### P1 — réaction aux niveaux (36 tests)
+Niveaux reconstitués exactement : pivots P weekly / mensuel / annuel, prix = close − pW × ATR (idem pM, pA ; ATR des
+vrais prix, comme RELEVE_COMPLET f_dr). Bande de contact x = 0,1 ATR. Les cassures de niveaux de séance et de trendlines
+(bits lvl, tl) sont déjà testées (B1, B2 du 19/11 et du programme 5 min) : non reprises.
+- **PIV-R (rejet)** : bougie dont le plus bas touche la bande d'un pivot (W, M ou A) avec clôture précédente et clôture
+  au-dessus du pivot → long ; miroir au-dessus → short.
+- **PIV-C (cassure)** : clôture précédente sous un pivot et clôture au-dessus de pivot + 0,1 ATR → long ; miroir → short.
+- **DET-R (rejet Detector, proxy à la clôture)** : detD ≤ 0,25 et bougie haussière (c > o) → long ; detU ≤ 0,25 et bougie
+  baissière → short.
+- Contexte, 1 au maximum : aucun ; Dashator 4 h terminé dans le sens (k4) ; Directionnor 4 h dans le sens (dirH).
+3 événements × 3 contextes × 2 instruments × 2 unités (5, 15 min) = 36. Sortie testée : stop 1,5 ATR, objectif 1,5 R,
+16 bougies (centre de la grille stop {1 ; 1,5 ; 2} × R {1 ; 1,5 ; 2} × N {8 ; 16 ; 32}).
+
+### P2 — biais du jour en lecture terminée, séance US (16 tests)
+- Biais : long si k4 > 0 ET Directionnor terminé = 1, short si k4 ≤ 0 ET Directionnor = −1, sinon rien. Deux variantes :
+  Directionnor 4 h (dirH) ou 1 h (dirM).
+- Entrée, deux variantes : (a) heure fixe, décision à la clôture de la bougie qui finit à 08:45 Chicago (ouverture US +
+  15 min) ; (b) première bougie entre 08:30 et 14:00 Chicago portant un déclencheur du 56 (sF / sM / hei / tl / lvl / clx /
+  div) dans le sens du biais. Entrée à l'ouverture suivante, 1 trade par jour et par instrument.
+- Sortie : à la clôture de la bougie qui finit à 15:00 Chicago (fin de séance US), remplie à l'ouverture suivante, ou
+  sortie `fin`, ou stop à k ATR du graphique (5 min : k = 8 ; 15 min : k = 4). Pas d'objectif.
+2 biais × 2 entrées × 2 instruments × 2 unités = 16.
+
+### Critères
+- **H1** : au moins 30 trades, P&L > 0, p_B et p_L < 0,05 / 36 (P1) ou 0,05 / 16 (P2), 2 000 tirages (moteur.hasard,
+  mêmes heures, même nombre de trades, mêmes sorties). Pas de tirage si P&L H1 ≤ 0.
+- **H2** : P&L > 0, p_B et p_L < 0,05 / (nombre de candidats H1), ET plateau sur H2 : P1, la sortie centrale et ses
+  6 voisines de la grille, au moins 5 sur 7 à P&L > 0 et R/C médian > 0 ; P2, stop {bas, centre, haut} (5 min 4 / 8 / 12,
+  15 min 2 / 4 / 6) × décalage de l'entrée {−30 min, 0, +30 min} (a) ou du début de fenêtre {08:00, 08:30, 09:00} (b),
+  au moins 6 sur 9 à P&L > 0 et R/C médian > 0.
+- Finaliste : % annuel à la taille FTMO 100k et Tradeify 50k dans les règles, % mensuel, mois positifs, R/C, évaluations
+  FTMO / Tradeify depuis chaque jour de départ (phase rapide à la taille maximale, phase financée à la moitié).
