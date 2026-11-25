@@ -1,0 +1,173 @@
+//@version=6
+// ORB30_K4_HA (25/11/2026) : version INDICATEUR de ORB30_K4.pine, pour le test en avant sur un
+// graphique Heikin Ashi. Même règle gelée D2-30 + k4 (KAIROS/recherche/labo5669/HYPOTHESES.md),
+// tout calculé sur les VRAIS prix lus par le script (range, cassure, stop, sortie), k4 sur le HA
+// 4 h comme ds_k4 de RELEVE_COMPLET.pine. Alertes seulement : aucun ordre, aucun webhook, aucun jeton.
+// Graphique : MNQ1! 5 min. Heures ET (America/New_York).
+//   1. Range = plus haut / plus bas des vraies bougies 9:30 à 9:55 ET.
+//   2. Bougies 10:00 à 14:55 incluses : première clôture au-delà du range → long / short ;
+//      une seule tentative par jour : la première cassure décide.
+//   3. k4 (Dashator 4 h, dernière bougie 4 h TERMINÉE) : long si k4 > 0, short si k4 ≤ 0, sinon rien.
+//   4. Entrée à l'ouverture réelle suivante (+ 1 tick) ; stop = l'autre côté du range, testé sur les
+//      vrais plus haut / plus bas dès la bougie d'entrée, rempli au niveau − 1 tick ; sortie à
+//      l'ouverture réelle de la bougie 15:55 (− 1 tick). Si l'ouverture d'entrée a déjà sauté le
+//      stop, pas de trade (comme le labo) : alerte « annulé ».
+// Suivi interne depuis « Suivi depuis » : 2 micros, 2 $ / point, 1,25 $ par contrat et par côté.
+// P&L d'un trade = 4 × points − 5 $ (mêmes chiffres que orb30k4_trades.csv). Le suivi ne couvre que
+// l'historique chargé par le graphique ; pour 3 ans, utiliser la stratégie ORB30_K4.pine.
+// Graphique = alertes : k4 lit la bougie 4 h [1], ou [0] seulement sur la bougie 5 min qui ferme
+// la bougie 4 h ; le reste lit des bougies 5 min closes. Tout est décidé à la clôture.
+indicator("ORB30_K4_HA", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+grp = "ORB30-K4"
+t0 = input.time(timestamp("2026-11-26T00:00:00"), "Suivi depuis", group=grp)
+t1 = input.time(timestamp("2099-12-31T00:00:00"), "Suivi jusqu'à", group=grp)
+dessin = input.bool(true, "Dessiner range et zones", group=grp)
+
+ny = "America/New_York"
+ok5 = timeframe.in_seconds() == 300
+TK = syminfo.mintick
+VP = 2.0
+QTY = 2
+COMM = 1.25
+
+// Vrais prix (même unité que le graphique : bougie close, pas de fuite)
+r_tick = ticker.new(syminfo.prefix, syminfo.ticker, syminfo.session, adjustment.none, backadjustment.inherit, settlement_as_close.inherit)
+[r_o, r_h, r_l, r_c] = request.security(r_tick, timeframe.period, [open, high, low, close])
+
+// k4 : comme ds_k4 de RELEVE_COMPLET.pine (Dashator 4 h sur le HA, lecture muClos)
+ha_tick = ticker.heikinashi(r_tick)
+[z5b0, z5a0, z5b1, z5a1] = request.security(ha_tick, "240", [close - open, ta.atr(14), (close - open)[1], ta.atr(14)[1]], lookahead=barmerge.lookahead_on)
+f_dsR(float bd, float at) => at > 0 ? bd / at : na
+fin4 = time_close - time("240") >= timeframe.in_seconds("240") * 1000
+k4 = fin4 ? f_dsR(z5b0, z5a0) : f_dsR(z5b1, z5a1)
+
+// Horloge ET
+f_min(int t) => hour(t, ny) * 60 + minute(t, ny)
+m_o = f_min(time)
+m_c = f_min(time_close)
+jour = dayofmonth(time, ny)
+nouveau = na(jour[1]) or jour != jour[1]
+f_txt(float p) => str.tostring(p, format.mintick)
+
+var float rg_h = na
+var float rg_l = na
+var bool  essai = false
+var box   b_rg = na
+var int   x_fin = na
+// position simulée
+var int   att = 0         // entrée en attente (sens) pour l'ouverture suivante
+var int   pos = 0
+var float px_e = na
+var float px_s = na
+var bool  sortir = false  // sortie 15:55 en attente
+// suivi
+var int   n_tr = 0
+var int   n_g = 0
+var float pnl = 0.0
+var float pic = 0.0
+var float creux = 0.0
+f_val(float pts) => QTY * (pts * VP - 2 * COMM)
+
+if nouveau
+    rg_h := na
+    rg_l := na
+    essai := false
+    b_rg := na
+    x_fin := timestamp(ny, year(time, ny), month(time, ny), jour, 15, 55)
+
+var int t_ent = na
+float clos = na           // P&L du trade fermé sur cette bougie (au plus un)
+// A. ordres en attente, exécutés à l'ouverture réelle de cette bougie
+if sortir and pos != 0
+    clos := f_val((r_o - pos * TK - px_e) * pos)
+    pos := 0
+    sortir := false
+if att != 0
+    f = r_o + att * TK
+    if (att > 0 and f <= rg_l) or (att < 0 and f >= rg_h)
+        alert("ORB30-K4 · ANNULÉ : l'ouverture a déjà sauté le stop", alert.freq_once_per_bar_close)
+    else
+        pos := att
+        px_e := f
+        px_s := att > 0 ? rg_l : rg_h
+        t_ent := time
+    att := 0
+
+// B. stop sur les vrais plus haut / plus bas (dès la bougie d'entrée)
+if pos != 0 and ((pos > 0 and r_l <= px_s) or (pos < 0 and r_h >= px_s))
+    v = f_val((px_s - pos * TK - px_e) * pos)
+    clos := v
+    alert("ORB30-K4 · SORTIE stop touché à " + f_txt(px_s) + " · " + str.tostring(v, "#.##") + " $", alert.freq_once_per_bar_close)
+    if dessin
+        label.new(bar_index, px_s, "stop " + str.tostring(v, "#") + " $", style=pos > 0 ? label.style_label_up : label.style_label_down,
+             color=color.red, textcolor=color.white, size=size.tiny)
+    pos := 0
+    sortir := false
+
+if not na(clos) and t_ent >= t0 and t_ent < t1
+    n_tr += 1
+    n_g += clos > 0 ? 1 : 0
+    pnl += clos
+    pic := math.max(pic, pnl)
+    creux := math.max(creux, pic - pnl)
+
+// 1. range 9:30-10:00
+dans_rg = ok5 and m_o >= 9 * 60 + 30 and m_o < 10 * 60 and not na(r_h)
+if dans_rg
+    rg_h := na(rg_h) ? r_h : math.max(rg_h, r_h)
+    rg_l := na(rg_l) ? r_l : math.min(rg_l, r_l)
+    if dessin
+        if na(b_rg)
+            b_rg := box.new(time, rg_h, x_fin, rg_l, xloc=xloc.bar_time, border_color=color.new(color.gray, 30),
+                 bgcolor=color.new(color.gray, 88), text="Range 9:30-10:00", text_size=size.small,
+                 text_color=color.gray, text_halign=text.align_left, text_valign=text.align_top)
+        else
+            box.set_top(b_rg, rg_h)
+            box.set_bottom(b_rg, rg_l)
+
+// 2-4. cassure, filtre, alerte d'entrée
+fenetre = ok5 and m_o >= 10 * 60 and m_o < 15 * 60
+if fenetre and not essai and pos == 0 and not na(rg_h) and not na(r_c)
+    sens = r_c > rg_h ? 1 : r_c < rg_l ? -1 : 0
+    if sens != 0
+        essai := true
+        if (sens > 0 and k4 > 0) or (sens < 0 and k4 <= 0)
+            st = sens > 0 ? rg_l : rg_h
+            nom = sens > 0 ? "LONG" : "SHORT"
+            att := sens
+            alert("ORB30-K4 · " + nom + " · entrée ≈ " + f_txt(r_c) + " · stop " + f_txt(st) + " · sortie 15:55 ET",
+                 alert.freq_once_per_bar_close)
+            if dessin
+                box.new(time_close, r_c, x_fin, st, xloc=xloc.bar_time, border_color=color.new(color.red, 40),
+                     bgcolor=color.new(color.red, 85), text="stop " + f_txt(st), text_size=size.small,
+                     text_color=color.red, text_halign=text.align_right, text_valign=sens > 0 ? text.align_bottom : text.align_top)
+                line.new(time_close, r_c, x_fin, r_c, xloc=xloc.bar_time, color=sens > 0 ? color.teal : color.orange, width=2)
+                line.new(x_fin, rg_h, x_fin, rg_l, xloc=xloc.bar_time, color=color.gray, style=line.style_dashed)
+                label.new(time_close, r_c, nom + " ≈ " + f_txt(r_c) + "\nk4 " + str.tostring(k4, "#.###"),
+                     xloc=xloc.bar_time, style=sens > 0 ? label.style_label_up : label.style_label_down,
+                     color=sens > 0 ? color.teal : color.orange, textcolor=color.white, size=size.small)
+
+// Sortie au marché à l'ouverture de la bougie 15:55 ET (décidée à la clôture de 15:50) ;
+// sans bougie 15:55 (fermeture anticipée), à l'ouverture de la 2e bougie après la réouverture.
+if pos != 0 and not sortir and m_c >= 15 * 60 + 55
+    sortir := true
+    alert("ORB30-K4 · SORTIE au marché (15:55 ET)", alert.freq_once_per_bar_close)
+
+// Tableau de suivi
+var table tb = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_width=1)
+if barstate.islast
+    en_cours = pos != 0 ? (pos > 0 ? "LONG " : "SHORT ") + f_txt(px_e) + " · " +
+         str.tostring(QTY * ((r_c - px_e) * pos * VP - 2 * COMM), "#") + " $" : att != 0 ? "entrée à l'ouverture" : "à plat"
+    table.cell(tb, 0, 0, "ORB30-K4 depuis " + str.format_time(t0, "dd/MM/yyyy", ny), text_color=color.white, text_size=size.small)
+    table.merge_cells(tb, 0, 0, 1, 0)
+    table.cell(tb, 0, 1, "Trades", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 1, str.tostring(n_tr), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 2, "Gagnants", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 2, str.tostring(n_g) + (n_tr > 0 ? " (" + str.tostring(100.0 * n_g / n_tr, "#") + " %)" : ""), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 3, "P&L 2 micros", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 3, str.tostring(pnl, "#,###") + " $", text_color=pnl >= 0 ? color.lime : color.red, text_size=size.small)
+    table.cell(tb, 0, 4, "Creux", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 4, "−" + str.tostring(creux, "#,###") + " $", text_color=color.orange, text_size=size.small)
+    table.cell(tb, 0, 5, ok5 ? "En cours" : "Graphique 5 min requis", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 5, ok5 ? en_cours : "", text_color=color.white, text_size=size.small)

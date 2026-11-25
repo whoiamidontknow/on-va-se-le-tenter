@@ -20,8 +20,12 @@
 //     (jours de moins de 70 bougies de séance) ; ici un trade reste possible et, sans bougie
 //     15:55, il sort à l'ouverture de la 2e bougie après la réouverture ;
 //   - ouverture qui saute déjà le stop : le labo ne prend pas le trade, ici il sort aussitôt.
+// 25/11 : margin_long / margin_short = 0. En v6, la marge par défaut est de 100 % : 2 MNQ
+// (60 000 à 112 000 $ de valeur) dépassaient le capital de 50 000 $ et tout était refusé
+// (0 trade en MNQ, 50 en MES tant que le MES était sous 5 000). Marche aussi sur un
+// graphique Heikin Ashi (remplissages sur les vrais prix). Suivi en direct : ORB30_K4_HA.pine.
 strategy("ORB30_K4", overlay=true, initial_capital=50000, default_qty_type=strategy.fixed, default_qty_value=2,
-     commission_type=strategy.commission.cash_per_contract, commission_value=1.25, slippage=1,
+     commission_type=strategy.commission.cash_per_contract, commission_value=1.25, slippage=1, margin_long=0, margin_short=0,
      process_orders_on_close=false, calc_on_every_tick=false, calc_on_order_fills=false,
      fill_orders_on_standard_ohlc=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
