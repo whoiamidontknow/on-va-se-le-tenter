@@ -1,4 +1,4 @@
-# Labo 5669 — bilan (19/11/2026)
+# Labo 5669 — bilan (19/11/2026, complété le 25/11)
 
 **Objectif.** Reconstruire la Strat5669 (préréglage 56) en Python, la valider contre TradingView,
 puis chercher une amélioration qui tienne sans lire l'avenir. Données : exports « Relevé 5669 »
@@ -85,3 +85,25 @@ gagne d'argent hors échantillon. Le protocole exige désormais un P&L net posit
 contrôle, en plus de battre le hasard et la référence « long seulement ».
 
 Suite probable, selon la décision de Jeremy : le même relevé en 5 min (l'unité du bot) et en 1 h.
+
+## 9. Journée du 25/11 : MNQ et MES, 17/10/2023 → 13/11/2026 (Relevés complets 5 et 15 min)
+Consigne de Jeremy : MNQ et MES seulement, données 2023 → aujourd'hui, lecture alertes (b) ou bougie terminée (k).
+Protocole partout : hypothèse écrite et commitée avant le test, choix sur H1 (→ 01/05/2025), contrôle sur H2, hasard
+B (sens du déclencheur) et L (long seulement), correction pour essais multiples. Scellé 2025-26 ouvert par Jeremy.
+| Piste | Essais | Résultat |
+|---|---|---|
+| Décision du 56 reconstituée sur toutes les bougies | — | o 99,7 %, b 98,5-98,9 % contre le Relevé 5669 |
+| Seuils de fiabilité 0-95 % (15 / 5 min) | 80 | P&L > 0 pour plusieurs seuils, mais 5 min MNQ 70 % ne bat pas B / L sur H1 (p 0,15 / 0,07) |
+| Programme objectifs : sorties, lecture k, filtres, combinaisons | 541 + 5 | 5 finalistes, aucun ne bat le hasard sur H2 (p 0,11-0,25) |
+| H-ORACLE : prévoir la couleur finale 1 h / 4 h | 8 | pas mieux que la persistance (−0,5 point) |
+| H-SORTIE : couper les fantômes, entrée confirmée | 24 | pas mieux qu'une sortie au hasard ; E1 perd partout |
+| Familles F1-F5 et témoin C1 en 5 min | 86 | aucun candidat ; C1 sur-appris |
+| CLX-ADX, test unique sur H2 | 1 | −11 215 $, p_B 0,29 |
+| Niveaux (pivots, Detector) et biais du jour en séance US | 52 | aucun candidat |
+EXAMEN-1 (2019-2023) gelé puis suspendu sur consigne de Jeremy, jamais exécuté. Registre : 1 005 essais.
+
+**Conclusion.** Avec nos indicateurs lus sans fuite, sur MNQ et MES 5 et 15 min de 2023 à 2026, aucune règle testée ne
+bat le hasard une fois corrigé le nombre d'essais. Les meilleurs résultats gagnent un peu d'argent (R/C de 0,5 à 1,1 sur
+H2), soit de l'ordre de 10 % par an dans les règles FTMO, loin des 25-40 % par an et des 4-6 % par mois visés, et sans
+preuve que ce gain vienne d'autre chose que de la chance ou de la hausse du marché. L'avantage du graphique vient de la
+couleur finale des bougies 1 h / 4 h, qu'aucune variable connue au moment du signal ne permet de prévoir.

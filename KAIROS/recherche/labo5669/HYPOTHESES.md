@@ -265,3 +265,9 @@ vrais prix, comme RELEVE_COMPLET f_dr). Bande de contact x = 0,1 ATR. Les cassur
   au moins 6 sur 9 à P&L > 0 et R/C médian > 0.
 - Finaliste : % annuel à la taille FTMO 100k et Tradeify 50k dans les règles, % mensuel, mois positifs, R/C, évaluations
   FTMO / Tradeify depuis chaque jour de départ (phase rapide à la taille maximale, phase financée à la moitié).
+
+**Résultat NIVEAUX / HORIZON (25/11).** 52 tests, **aucun candidat sur H1**. 39 perdent de l'argent sur H1. Le rejet
+Detector perd partout et lourdement (5 min MES −52 022 $ par contrat). Les seuls P&L positifs en MNQ viennent du contexte
+k4 (4 h terminé dans le sens) ; le meilleur, 15 min MNQ cassure de pivot + k4, fait H1 +6 723 $ (188 trades) avec p_B 0,025
+et p_L 0,008, pour un seuil de 0,0014. P2 (biais terminé, séance US) : meilleur 5 min MES biais 4 h, première entrée,
+H1 +4 592 $, p_B 0,16. Pas de contrôle H2 (aucun candidat), pas de simulation de prop firm.
