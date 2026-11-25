@@ -369,3 +369,15 @@ Corrélation journalière d'ORB30-K4 : avec D5 −0,01 (−0,03 les jours commun
 43 j, 61 % / 39 % / 65 j ; 3 000 $ 40 % / 47 % / 40 j, 57 % / 43 % / 50 j (le reste de l'historique : pas assez de jours).
 Financé 12 mois : 1 050 $ règle enfreinte 0 % (historique) / 3 % (blocs), % mensuel médian 0,52 % (moyen 1,07 %) ; 700 $
 0 % / 0 %, médian 0,39 % (moyen 0,64 %).
+
+## Test en avant à plusieurs flux (gelé le 25/11, décision DAEMON, sans nouvelle mesure ni nouveau réglage)
+Chaque flux est jugé séparément sur SES 40 premiers trades à partir du 26/11/2026 : P&L > 0 ET p < 0,10 contre son hasard.
+- **FWD-1** : ORB30-K4 sur MNQ 5 min (règles plus haut, commit 11a81ad), et sa variante de taille ORB30-K4-R (risque
+  1 050 $ par trade, commit 34a34a1). Hasard : « mêmes heures, autres jours », sens au hasard.
+- **FWD-2** : ORB30-K4 sur MES 5 min (micro, 5 $ / point), exactement les mêmes règles que sur MNQ (range 9:30-10:00 ET,
+  cassure en clôture 5 min de 10:00 à 14:55, filtre k4, stop de l'autre côté du range, sortie 15:55, 2 contrats). Même hasard.
+- **FWD-3** : 56 de Strat5669_FIABLE, MNQ 5 min, fiabilité ≥ 70 % (tables 5 min de 2c79a6a / a9301a8), case « Graphique =
+  alertes » cochée, sorties du 56 (3 ATR, 0,6667 R, 16 bougies), lu en ALERTES (les trades réellement signalés en direct),
+  2 contrats. Hasard : moteur.hasard références B et L (mêmes heures, même nombre de trades, mêmes sorties), p < 0,10 pour
+  les deux.
+- **Portefeuille** FWD-1 + FWD-2 + FWD-3 à risque égal : rapporté pour information, pas comme critère.
