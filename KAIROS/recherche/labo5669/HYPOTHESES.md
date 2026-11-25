@@ -357,3 +357,9 @@ Risque du test en avant = le plus grand multiple de 50 $ tel que, sur 17/10/2023
 < 8 000 $ et le pire jour < 4 000 $ (règles FTMO 100k avec marge). Critère en avant identique : 40 premiers trades à partir
 du 26/11/2026, P&L > 0 ET p < 0,10 contre le hasard « mêmes heures, autres jours », où chaque trade tiré au hasard reçoit la
 même règle de taille avec sa propre distance de stop.
+**Mesures descriptives ORB30-K4-R (H2 contaminée, fiable/orb30k4r.py).** Risque retenu pour le test en avant : **1 050 $
+par trade** (1 à 12 micros, 3,6 en moyenne). Sur 17/10/2023 → 13/11/2026 : +40 574 $, creux 7 901 $, pire jour 1 068 $,
+R/C 1,67 ; FTMO 100k : 13,2 % par an, 1,07 % par mois, 23 mois positifs sur 38, 2 mois ≥ 6 % ; challenge réussi depuis 47 %
+des jours de départ (aucun échec, 287 jours médians). Tradeify 50k : aucune taille (minimum 1 micro, creux 3 188 $).
+Corrélation journalière d'ORB30-K4 : avec D5 −0,01 (−0,03 les jours communs), avec le 56 alertes 15 min MNQ +0,10
+(+0,22 les jours communs).
