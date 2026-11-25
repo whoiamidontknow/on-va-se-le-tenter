@@ -218,3 +218,11 @@ sur H1 ; les entrées seules (F5) perdent toutes lourdement (ex. PIV MNQ −86 9
 un seuil de 0,0011 (même famille que le candidat formel rejeté le 19/11). Témoin C1 : très bon dans l'échantillon (H1 MNQ
 +35 952 $, MES +19 492 $) puis effondré sur H2 (MNQ +1 732 $, p_B 0,034, p_L 0,052 ; MES −890 $) pour un seuil de 0,025 :
 sur-apprentissage, rien hors échantillon. Aucun contrôle H2 de famille n'a eu lieu (pas de candidat).
+
+## CLX-ADX — hypothèse UNIQUE sur H2 (écrite le 25/11 avant le test, décision DAEMON)
+Règle telle quelle, choisie sur H1 seulement (meilleur des 84 tests du programme 5 min, jamais regardée sur H2) :
+MNQ 5 min, climax d'achat (clx_L) → long, climax de vente (clx_S) → short, si ADX ≥ 25 sur la bougie signal ; pas de
+trade si les deux ; géométrie F2 (stop 1,5 ATR, objectif 1 R, 8 bougies) ; une position à la fois, 2 contrats, moteur
+complet/moteur.py. Période : décisions du 01/05/2025 au 13/11/2026 (H2).
+Critère, un seul test : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (moteur.hasard, 1 000 tirages, graine 5669).
+Rapporté hors critère : gain par trade et par contrat, R/C, % annuel à la taille FTMO 100k dans les règles, mois positifs.
