@@ -280,3 +280,6 @@ clôture précédente sous un pivot P (weekly, mensuel ou annuel ; prix = close 
 Période : décisions du 01/05/2025 au 13/11/2026. Critère, un seul test : P&L > 0 ET p_B < 0,05 ET p_L < 0,05 (2 000 tirages,
 graine 5669). Rapporté hors critère : trades par mois, R/C, % annuel à la taille FTMO 100k et Tradeify 50k dans les
 règles, mois positifs ; même règle sur MES 15 min pour information. S'il passe : liste des trades H2 en CSV.
+**Résultat PIVC-K4 (25/11) : ÉCHOUÉ.** MNQ 15 min H2 : 220 trades (11,9 par mois), 41,8 % gagnants, −3 920 $ (2 contrats),
+creux 9 041 $, R/C −0,28, 10 mois positifs sur 17 (tirages non faits : P&L ≤ 0). MES 15 min (information) : −7 275 $.
+Programme de recherche clos (décision DAEMON).

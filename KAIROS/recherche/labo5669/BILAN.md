@@ -100,7 +100,8 @@ B (sens du déclencheur) et L (long seulement), correction pour essais multiples
 | Familles F1-F5 et témoin C1 en 5 min | 86 | aucun candidat ; C1 sur-appris |
 | CLX-ADX, test unique sur H2 | 1 | −11 215 $, p_B 0,29 |
 | Niveaux (pivots, Detector) et biais du jour en séance US | 52 | aucun candidat |
-EXAMEN-1 (2019-2023) gelé puis suspendu sur consigne de Jeremy, jamais exécuté. Registre : 1 005 essais.
+| PIVC-K4, test unique sur H2 | 1 | −3 920 $ |
+EXAMEN-1 (2019-2023) gelé puis suspendu sur consigne de Jeremy, jamais exécuté. Registre : 1 006 essais. Programme clos le 25/11.
 
 **Conclusion.** Avec nos indicateurs lus sans fuite, sur MNQ et MES 5 et 15 min de 2023 à 2026, aucune règle testée ne
 bat le hasard une fois corrigé le nombre d'essais. Les meilleurs résultats gagnent un peu d'argent (R/C de 0,5 à 1,1 sur
