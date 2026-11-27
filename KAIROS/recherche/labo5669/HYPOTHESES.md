@@ -381,3 +381,27 @@ Chaque flux est jugé séparément sur SES 40 premiers trades à partir du 26/11
   2 contrats. Hasard : moteur.hasard références B et L (mêmes heures, même nombre de trades, mêmes sorties), p < 0,10 pour
   les deux.
 - **Portefeuille** FWD-1 + FWD-2 + FWD-3 à risque égal : rapporté pour information, pas comme critère.
+
+## RATTRAPAGE des trades nés après coup (écrit le 27/11, avant toute mesure ; idée de Jeremy, 27/11 15h42)
+MNQ et MES, 5 et 15 min (fiable/), 17/10/2023 → 13/11/2026 ; H1 → 01/05/2025, H2 après. Lecture sans fuite.
+**Bougie d'origine i** : le reste du 56 est vrai (déclencheur sans opposé, pas `fin`, écart EMA ≤ 0,6), la décision est
+vraie en lecture o (graphique) et fausse en lecture b (pas d'alerte).
+**Instant de rattrapage j > i** : première bougie du graphique dont la clôture rend vraie la décision de la bougie i avec ce
+qui est connu à cet instant : couleur 1 h de la bougie 1 h de i = b1[j] si j est encore dans cette bougie 1 h, sinon sa
+valeur finale (bougie close) ; idem pour le 4 h. Rattrapage seulement si j − i < 16. Entrée au marché à l'ouverture de
+j + 1 (1 tick de glissement), même sens ; durée max = 16 − (j − i) bougies ; sortie `fin` comme le 56.
+**Variantes (3)** : (a) stop 3 ATR et objectif 0,6667 R recalculés depuis le prix d'entrée, ATR de la bougie j ;
+(b) = (a), seulement si |clôture de j − prix d'entrée d'origine (ouverture de i + 1)| < 1 ATR (ATR de i) ;
+(c) stop et objectif d'ORIGINE en prix absolus (ceux d'un trade entré à l'ouverture de i + 1) ; entrée seulement si la
+clôture de j est strictement entre les deux.
+**Tests** : 3 variantes × 2 instruments × 2 unités = 12. Flux de rattrapage seul, une position à la fois.
+**Hasard** : entrées tirées au hasard (mêmes heures, même nombre de trades), stop 3 ATR / objectif 0,6667 R de la bougie
+tirée, durée tirée dans la distribution des durées des rattrapages ; sens A (au hasard, même part de longs), B (sens du
+déclencheur), L (long). 2 000 tirages.
+**Critères** : H1 : au moins 30 trades, P&L > 0, p_A, p_B, p_L < 0,05 / 12. H2 : P&L > 0, mêmes p < 0,05 / (nombre de
+candidats), plateau : (a, b) stop {2 ; 3 ; 4} ATR × objectif {0,5 ; 0,6667 ; 1} R, au moins 6 sur 9 à P&L > 0 et R/C médian > 0 ;
+(c) sans réglage : positif sur H2 pour les deux instruments de la même unité.
+**Mesures** (par moitié) : rattrapages par mois, % gagnants, R moyen ± IC 95 %, $ à 2 micros, creux ; apport au 56 en
+lecture alertes : 56 seul contre 56 + rattrapage, une position à la fois, priorité au trade déjà ouvert.
+**Contrôle anti-fuite** : sur 20 rattrapages tirés au hasard, vérifier que l'ouverture de j + 1 est postérieure à la
+clôture de toutes les bougies lues (bougie j, et dernière bougie de la bougie 1 h / 4 h de i quand sa valeur finale est lue).
