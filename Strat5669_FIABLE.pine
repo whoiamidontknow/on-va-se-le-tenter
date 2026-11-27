@@ -7,6 +7,9 @@
 // reconstituée à partir des bougies du graphique (comme b1 / b4 de RELEVE_5669) : jamais
 // la bougie terminée (fuite). Le score sert seulement à l'affichage et au réglage
 // « Fiabilité minimum » ; à 0 (défaut), mêmes trades que Strat5669.
+// 27/11 : « Reprendre après fin de fenêtre » (décoché par défaut) : un trade fermé par la fin de
+// fenêtre est repris à la 1re bougie de la fenêtre suivante, mêmes niveaux, compteur de bougies
+// conservé, une fois ; commentaire « [reprise] ». P&L des alertes FERMER net des commissions.
 // 25/11 : « Graphique = alertes » (décoché par défaut) : le trade n'est pris que si le 56
 // est aussi vrai avec le Dashator 1 h / 4 h en cours (go56b) : le graphique ne garde que
 // les trades que le direct aurait pris.
@@ -355,6 +358,8 @@ x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
 x_fenOn   = input.bool(true, "Fenêtre de trading autorisée (heure de Paris)", group=grp_x, inline="fen",
      tooltip="Règle de Jeremy (17/10) : trader seulement de 00:20 à 22:15 heure de Paris (UTC+2 en été). Aucune entrée hors fenêtre ; position fermée à la clôture de la bougie qui finit à 22:15 ou après. S'applique à TOUS les préréglages.")
 x_fen     = input.session("0020-2215", "", group=grp_x, inline="fen")
+x_repOn   = input.bool(false, "Reprendre après fin de fenêtre", group=grp_x,
+     tooltip="27/11 (test). Un trade fermé par la fin de fenêtre (22:15 Paris ou 15:59 Chicago, sortie « Fin de séance ») est repris au marché à la clôture de la PREMIÈRE bougie de la fenêtre suivante : même sens, même stop et même objectif d'origine, seulement si la clôture est encore entre les deux et qu'aucun trade n'est ouvert. Les bougies déjà passées en position comptent pour la sortie au temps. Une seule reprise par trade. Commentaire « [reprise] » dans la liste des trades, alertes préfixées REPRISE.")
 x_tBar_in = input.int(0, "Sortie après N bougies en position (0 = jamais)", group=grp_x, minval=0,
      tooltip="Ferme au marché à l'ouverture qui suit la clôture de la N-ième bougie en position (bougie d'entrée comprise). 8 en 15 min = 2 h.")
 x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
@@ -1901,6 +1906,17 @@ var string tr_slNom  = ""
 var string tr_tpNom  = ""
 var string tr_tp2Nom = ""
 var int    nb_saute  = 0      // trades non pris faute de niveau au bon ratio
+// Reprise après fin de fenêtre (x_repOn)
+var bool   tr_rep    = false  // le trade en cours est une reprise ?
+var int    tr_repEl  = 0      // bougies déjà passées en position avant la reprise
+var bool   rp_arme   = false  // reprise en attente de la fenêtre suivante
+var int    rp_dir    = 0
+var float  rp_stop   = na
+var float  rp_tp     = na
+var int    rp_el     = 0
+var int    rp_q      = 0
+var string rp_slNom  = ""
+var string rp_tpNom  = ""
 
 // Dessins : 3 boîtes, 1 ligne, 4 étiquettes par trade (na si inutile).
 var array<box>   dr_boxes  = array.new_box()
@@ -1944,6 +1960,8 @@ if tr_dir != 0 and not tr_fixe
         ouvert = pos != 0
         tr_entry := ouvert ? strategy.position_avg_price : strategy.closedtrades.entry_price(tr_ct0)
         tr_bar0  := ouvert ? strategy.opentrades.entry_bar_index(0) : strategy.closedtrades.entry_bar_index(tr_ct0)
+        if tr_rep
+            tr_bar0 := tr_bar0 - tr_repEl   // les bougies d'avant la fin de fenêtre comptent
         // Recalage sur le vrai prix d'entrée : stop sur niveau gardé tel quel,
         // sinon distance du stop conservée ; objectif en R recalculé.
         if not tr_slAbs
@@ -2028,9 +2046,13 @@ if tr_dir != 0 and tr_fixe and pos == 0
             label.set_textcolor(dr_lbX, pnl >= 0 ? c_gain : c_risk)
         if not na(dr_lbS) and tr_stop != tr_stop0
             label.set_text(dr_lbS, "SL : " + tr_slNom + " (" + f_px(tr_stop0) + ")\nstop final " + f_px(tr_stop))
+    // reprise seulement si le trade s'est vraiment terminé par la fin de fenêtre (pas un stop à l'ouverture)
+    if rp_arme and xc != "Fin de séance"
+        rp_arme := false
     tr_dir  := 0
     tr_fixe := false
     tr_dess := false
+    tr_rep  := false
 
 // 3. Position ouverte : gestion du stop, de l'objectif et des sorties.
 if pos != 0
@@ -2090,8 +2112,19 @@ if pos != 0
     else if fin_apres
         strategy.close_all(comment="Fin de séance")
         sortie_marq := true
+        // reprise possible : une seule par trade, s'il reste des bougies avant la sortie au temps
+        el = na(tr_bar0) ? 0 : bar_index - tr_bar0 + 1
+        if x_repOn and not tr_rep and not tr_part and not na(tr_tp) and (x_tBar == 0 or el < x_tBar)
+            rp_arme  := true
+            rp_dir   := tr_dir
+            rp_stop  := tr_stop0
+            rp_tp    := tr_tp
+            rp_el    := el
+            rp_q     := tr_q
+            rp_slNom := tr_slNom
+            rp_tpNom := tr_tpNom
         if al_on
-            alert(syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
+            alert((tr_rep ? "REPRISE · " : "") + syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
     else if tr_dir > 0 and oppL
         strategy.close("L", comment="Signal opposé")
         sortie_marq := true
@@ -2102,7 +2135,7 @@ if pos != 0
         strategy.close_all(comment="Temps (" + str.tostring(x_tBar) + " bougies)")
         sortie_marq := true
         if al_on
-            alert(syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
+            alert((tr_rep ? "REPRISE · " : "") + syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
     // dessin du trade en cours, prolongé jusqu'à la bougie courante
     if tr_dess
         box.set_right(dr_bR, bar_index)
@@ -2206,6 +2239,61 @@ var array<label> fi_labels = array.new_label()
 // 4. À plat : nouvelle entrée (au marché, ouverture de la bougie suivante).
 bool entree_L = false
 bool entree_S = false
+// 4 bis. Reprise après fin de fenêtre : décidée à la clôture de la 1re bougie de la fenêtre
+// suivante (bougie close, vrais prix), une seule tentative, prioritaire sur un nouveau signal.
+if rp_arme and not fin_apres and not na(r_c)
+    rp_arme := false
+    dedans = rp_dir > 0 ? (r_c > rp_stop and r_c < rp_tp) : (r_c < rp_stop and r_c > rp_tp)
+    if x_repOn and pos == 0 and tr_dir == 0 and dedans
+        d = rp_dir
+        tr_dir    := d
+        tr_fixe   := false
+        tr_entry  := r_c
+        tr_stop   := rp_stop
+        tr_stop0  := rp_stop
+        tr_slAbs  := true          // mêmes niveaux qu'à l'origine, pas de recalage
+        tr_slNom  := rp_slNom
+        tr_dist   := math.abs(r_c - rp_stop)
+        tr_risk   := tr_dist
+        tr_tp     := rp_tp
+        tr_tpRk   := na
+        tr_tpNom  := rp_tpNom
+        tr_part   := false
+        tr_p1     := false
+        tr_tp2    := na
+        tr_q      := rp_q
+        tr_q1     := rp_q
+        tr_ct0    := nCT
+        tr_best   := r_c
+        tr_be     := false
+        tr_dess   := false
+        tr_rep    := true
+        tr_repEl  := rp_el
+        dr_bR  := na
+        dr_bT  := na
+        dr_bT2 := na
+        dr_lE  := na
+        strategy.entry(d > 0 ? "L" : "S", d > 0 ? strategy.long : strategy.short, qty=rp_q,
+             comment="[reprise] " + (d > 0 ? "L " : "S ") + str.tostring(rp_q) + " · " + str.tostring(rp_el) + " bougies déjà faites")
+        if d > 0
+            entree_L := true
+        else
+            entree_S := true
+        if a_trades
+            label.new(bar_index, d > 0 ? low : high, "REPRISE", style=d > 0 ? label.style_label_up : label.style_label_down,
+                 color=c_none, textcolor=c_txt, size=size.small)
+        if al_on
+            tSort = time_close + (x_tBar - rp_el) * timeframe.in_seconds() * 1000
+            alert("REPRISE · " + syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " au marché maintenant" +
+                 "\nReprise du trade fermé par la fin de fenêtre (" + str.tostring(rp_el) + " bougies déjà faites)" +
+                 "\nEntrée ≈ " + f_px(r_c) +
+                 "\nStop " + f_px(rp_stop) + " (" + str.tostring(math.abs(r_c - rp_stop), "0.00") + " pts)" +
+                 "\nObjectif " + f_px(rp_tp) + " (" + str.tostring(math.abs(rp_tp - r_c), "0.00") + " pts)" +
+                 (x_tBar > 0 ? "\nSortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris) si ni stop ni objectif" : "") +
+                 "\n" + str.tostring(rp_q) + " contrat(s) dans le backtest", alert.freq_once_per_bar_close)
+        ex_go   := true
+        ex_stop := rp_stop
+        ex_tp1  := rp_tp
 if pos == 0 and tr_dir == 0 and (go_long or go_short) and fi_ok and ga_ok
     d  = go_long ? 1 : -1
     e0 = r_c
@@ -2426,4 +2514,4 @@ if al_on and strategy.closedtrades > strategy.closedtrades[1]
     kx = strategy.closedtrades - 1
     cx = strategy.closedtrades.exit_comment(kx)
     if str.startswith(cx, "Obj") or str.startswith(cx, "Stop")
-        alert(syminfo.ticker + " · trade terminé : " + (str.startswith(cx, "Obj") ? "OBJECTIF touché" : "STOP touché") + " à " + f_px(strategy.closedtrades.exit_price(kx)) + " · P&L " + str.tostring(strategy.closedtrades.profit(kx), "#,##0") + " $", alert.freq_once_per_bar_close)
+        alert((str.contains(strategy.closedtrades.entry_comment(kx), "[reprise]") ? "REPRISE · " : "") + syminfo.ticker + " · trade terminé : " + (str.startswith(cx, "Obj") ? "OBJECTIF touché" : "STOP touché") + " à " + f_px(strategy.closedtrades.exit_price(kx)) + " · P&L " + str.tostring(strategy.closedtrades.profit(kx), "#,##0") + " $", alert.freq_once_per_bar_close)
