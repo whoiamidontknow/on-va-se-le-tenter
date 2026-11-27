@@ -10,6 +10,10 @@
 // 27/11 : « Reprendre après fin de fenêtre » (décoché par défaut) : un trade fermé par la fin de
 // fenêtre est repris à la 1re bougie de la fenêtre suivante, mêmes niveaux, compteur de bougies
 // conservé, une fois ; commentaire « [reprise] ». P&L des alertes FERMER net des commissions.
+// 27/11 : menu « Rattrapage » (Désactivé par défaut : liste de trades identique) : trades du 56
+// nés après coup, règle CORRIGÉE de KAIROS (labo5669/HYPOTHESES.md, fiable/rattrapage.py) ;
+// modes a / b / c comme le labo, d = mêmes distances en points que le trade d'origine.
+// Commentaire « [rattrapage a/b/c/d] », alertes préfixées RATTRAPAGE.
 // 25/11 : « Graphique = alertes » (décoché par défaut) : le trade n'est pris que si le 56
 // est aussi vrai avec le Dashator 1 h / 4 h en cours (go56b) : le graphique ne garde que
 // les trades que le direct aurait pris.
@@ -360,6 +364,9 @@ x_fenOn   = input.bool(true, "Fenêtre de trading autorisée (heure de Paris)", 
 x_fen     = input.session("0020-2215", "", group=grp_x, inline="fen")
 x_repOn   = input.bool(false, "Reprendre après fin de fenêtre", group=grp_x,
      tooltip="27/11 (test). Un trade fermé par la fin de fenêtre (22:15 Paris ou 15:59 Chicago, sortie « Fin de séance ») est repris au marché à la clôture de la PREMIÈRE bougie de la fenêtre suivante : même sens, même stop et même objectif d'origine, seulement si la clôture est encore entre les deux et qu'aucun trade n'est ouvert. Les bougies déjà passées en position comptent pour la sortie au temps. Une seule reprise par trade. Commentaire « [reprise] » dans la liste des trades, alertes préfixées REPRISE.")
+rt_mode   = input.string("Désactivé", "Rattrapage", group=grp_x,
+     options=["Désactivé", "a · stop / objectif recalculés depuis l'entrée", "b · comme a, si écart à l'entrée d'origine < 1 ATR", "c · stop / objectif d'origine (prix absolus)", "d · mêmes distances en points que l'origine"],
+     tooltip="27/11 (test, verdict du labo : NON). Bougie d'origine = le reste du 56 est vrai mais la décision est fausse avec le Dashator 1 h / 4 h EN COURS (pas d'alerte), sans condition sur la couleur finale. À la clôture de la 1re bougie suivante où cette décision devient vraie avec ce qui est connu à cet instant (bougie 1 h / 4 h de l'origine : en cours si on y est encore, sinon sa valeur à sa clôture), entrée au marché à l'ouverture suivante, même sens. a : 3 ATR / 0,6667 R recalculés depuis l'entrée (ATR de cette bougie). b : comme a, seulement si la clôture est à moins de 1 ATR (ATR de l'origine) de l'entrée d'origine (ouverture qui suit l'origine). c : stop et objectif d'un trade entré à l'ouverture qui suit l'origine, en prix absolus, seulement si la clôture est encore entre les deux. d : mêmes distances en points que ce trade d'origine (3 ATR / 2 ATR de l'origine), reposées depuis l'entrée. Sortie au temps après 16 − (bougies écoulées depuis l'origine) ; fin de fenêtre comme le 56 ; une position à la fois, le 56 d'abord. Fait pour être lu avec « Graphique = alertes » coché.")
 x_tBar_in = input.int(0, "Sortie après N bougies en position (0 = jamais)", group=grp_x, minval=0,
      tooltip="Ferme au marché à l'ouverture qui suit la clôture de la N-ième bougie en position (bougie d'entrée comprise). 8 en 15 min = 2 h.")
 x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
@@ -1917,6 +1924,8 @@ var int    rp_el     = 0
 var int    rp_q      = 0
 var string rp_slNom  = ""
 var string rp_tpNom  = ""
+// Rattrapage (rt_mode)
+var bool   tr_rat    = false  // le trade en cours est un rattrapage ? (bougies écoulées dans tr_repEl)
 
 // Dessins : 3 boîtes, 1 ligne, 4 étiquettes par trade (na si inutile).
 var array<box>   dr_boxes  = array.new_box()
@@ -1960,8 +1969,8 @@ if tr_dir != 0 and not tr_fixe
         ouvert = pos != 0
         tr_entry := ouvert ? strategy.position_avg_price : strategy.closedtrades.entry_price(tr_ct0)
         tr_bar0  := ouvert ? strategy.opentrades.entry_bar_index(0) : strategy.closedtrades.entry_bar_index(tr_ct0)
-        if tr_rep
-            tr_bar0 := tr_bar0 - tr_repEl   // les bougies d'avant la fin de fenêtre comptent
+        if tr_rep or tr_rat
+            tr_bar0 := tr_bar0 - tr_repEl   // les bougies d'avant la fin de fenêtre (ou depuis l'origine) comptent
         // Recalage sur le vrai prix d'entrée : stop sur niveau gardé tel quel,
         // sinon distance du stop conservée ; objectif en R recalculé.
         if not tr_slAbs
@@ -2010,6 +2019,7 @@ if tr_dir != 0 and not tr_fixe
                     label.delete(array.shift(dr_labels))
     else
         tr_dir := 0   // entrée non exécutée (ne devrait pas arriver)
+        tr_rat := false
         // speed : zones de la bougie signal supprimées
         box.delete(dr_bR), box.delete(dr_bT), box.delete(dr_bT2), line.delete(dr_lE)
         dr_bR := na
@@ -2053,6 +2063,7 @@ if tr_dir != 0 and tr_fixe and pos == 0
     tr_fixe := false
     tr_dess := false
     tr_rep  := false
+    tr_rat  := false
 
 // 3. Position ouverte : gestion du stop, de l'objectif et des sorties.
 if pos != 0
@@ -2124,7 +2135,7 @@ if pos != 0
             rp_slNom := tr_slNom
             rp_tpNom := tr_tpNom
         if al_on
-            alert((tr_rep ? "REPRISE · " : "") + syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
+            alert((tr_rep ? "REPRISE · " : tr_rat ? "RATTRAPAGE · " : "") + syminfo.ticker + " · FERMER la position maintenant : fin de la fenêtre de trading" + f_finTxt(), alert.freq_once_per_bar_close)
     else if tr_dir > 0 and oppL
         strategy.close("L", comment="Signal opposé")
         sortie_marq := true
@@ -2135,7 +2146,7 @@ if pos != 0
         strategy.close_all(comment="Temps (" + str.tostring(x_tBar) + " bougies)")
         sortie_marq := true
         if al_on
-            alert((tr_rep ? "REPRISE · " : "") + syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
+            alert((tr_rep ? "REPRISE · " : tr_rat ? "RATTRAPAGE · " : "") + syminfo.ticker + " · FERMER la position maintenant : " + str.tostring(x_tBar) + " bougies écoulées (ni stop ni objectif)" + f_finTxt(), alert.freq_once_per_bar_close)
     // dessin du trade en cours, prolongé jusqu'à la bougie courante
     if tr_dess
         box.set_right(dr_bR, bar_index)
@@ -2404,6 +2415,144 @@ if pos == 0 and tr_dir == 0 and (go_long or go_short) and fi_ok and ga_ok
         ex_tp1  := na(tpRk) ? tp0 : na
         ex_prof := na(tpRk) ? na : math.max(1, math.round(tpRk * dist / tick))
 
+// 4 ter. Rattrapage (rt_mode, 27/11, test) : trade du 56 né après coup, règle CORRIGÉE de KAIROS
+// (HYPOTHESES.md, fiable/rattrapage.py). Origine i = reste du 56 vrai, décision fausse avec le
+// Dashator 1 h / 4 h en cours (pas d'alerte), sans condition sur la couleur finale. Décision j
+// (j − i < 16) = 1re clôture où la décision de i devient vraie avec ce qui est connu alors :
+// bougie 1 h / 4 h de i en cours (fi1b / fi4b) si j y est encore, sinon sa valeur à la clôture
+// de sa dernière bougie du graphique. Une origine ne sert qu'une fois (même si la position est
+// prise) ; à décision simultanée : longs d'abord, puis la plus ancienne ; le 56 passe avant.
+rt_on = rt_mode != "Désactivé"
+rt_v  = str.substring(rt_mode, 0, 1)
+rt_nb = x_tBar > 0 ? x_tBar : 16
+var int rt_n1 = 0              // n° de la bougie 1 h / 4 h en cours
+var int rt_n4 = 0
+if timeframe.change("60")
+    rt_n1 += 1
+if timeframe.change("240")
+    rt_n4 += 1
+// sens du Dashator 1 h / 4 h à la clôture de la bougie précédente du graphique
+rt_p1U = gb_up4[1]
+rt_p1D = gb_dn4[1]
+rt_p4U = gb_up5[1]
+rt_p4D = gb_dn5[1]
+var array<int>   rt_i  = array.new_int()
+var array<int>   rt_d  = array.new_int()
+var array<int>   rt_k1 = array.new_int()     // n° de la bougie 1 h de l'origine
+var array<int>   rt_k4 = array.new_int()
+var array<int>   rt_f1 = array.new_int()     // sa valeur finale dans le sens : 1 oui, 0 non, -1 pas encore close
+var array<int>   rt_f4 = array.new_int()
+var array<float> rt_at = array.new_float()   // ATR de l'origine
+var array<float> rt_o1 = array.new_float()   // ouverture qui suit l'origine
+if rt_on
+    int   rg = 0         // sens du rattrapage retenu sur cette bougie
+    int   rEl = 0
+    float rAt = na
+    float rS = na
+    float rT = na
+    for pass = 0 to 1
+        dd = pass == 0 ? 1 : -1
+        int k = 0
+        while k < array.size(rt_i)
+            if array.get(rt_d, k) != dd
+                k += 1
+                continue
+            el = bar_index - array.get(rt_i, k)
+            if na(array.get(rt_o1, k))
+                array.set(rt_o1, k, r_o)
+            if rt_n1 > array.get(rt_k1, k) and array.get(rt_f1, k) < 0
+                array.set(rt_f1, k, (dd > 0 ? rt_p1U : rt_p1D) ? 1 : 0)
+            if rt_n4 > array.get(rt_k4, k) and array.get(rt_f4, k) < 0
+                array.set(rt_f4, k, (dd > 0 ? rt_p4U : rt_p4D) ? 1 : 0)
+            ok1 = not f_dsh60 or (rt_n1 == array.get(rt_k1, k) ? (dd > 0 ? gb_up4 : gb_dn4) : array.get(rt_f1, k) == 1)
+            ok4 = not f_dsh240 or (rt_n4 == array.get(rt_k4, k) ? (dd > 0 ? gb_up5 : gb_dn5) : array.get(rt_f4, k) == 1)
+            bool fini = el >= rt_nb
+            if not fini and ok1 and ok4
+                fini := true
+                atI = array.get(rt_at, k)
+                o1  = array.get(rt_o1, k)
+                if not fin_apres and not na(r_atr) and not na(r_c)
+                    F  = o1 + dd * tick
+                    st = F - dd * math.ceil(x_atrK * atI / tick - 1e-9) * tick
+                    tp = F + dd * math.ceil(x_tpR * x_atrK * atI / tick - 1e-9) * tick
+                    okv = rt_v == "b" ? math.abs(r_c - o1) < atI : rt_v == "c" ? (r_c > math.min(st, tp) and r_c < math.max(st, tp)) : true
+                    if okv and rg == 0
+                        rg  := dd
+                        rEl := el
+                        rAt := rt_v == "d" ? atI : r_atr
+                        rS  := st
+                        rT  := tp
+            if fini
+                array.remove(rt_i, k), array.remove(rt_d, k), array.remove(rt_k1, k), array.remove(rt_k4, k)
+                array.remove(rt_f1, k), array.remove(rt_f4, k), array.remove(rt_at, k), array.remove(rt_o1, k)
+            else
+                k += 1
+    if rg != 0 and pos == 0 and tr_dir == 0
+        d    = rg
+        nAbs = rt_v == "c"
+        dist = nAbs ? math.abs(r_c - rS) : x_atrK * rAt
+        q    = f_qty(dist)
+        if q >= 1 and dist > 0
+            s0  = nAbs ? rS : r_c - d * dist
+            tp0 = nAbs ? rT : r_c + d * x_tpR * dist
+            tr_dir    := d
+            tr_fixe   := false
+            tr_entry  := r_c
+            tr_stop   := s0
+            tr_stop0  := s0
+            tr_slAbs  := nAbs
+            tr_slNom  := nAbs ? "stop d'origine" : "ATR × " + str.tostring(x_atrK) + (rt_v == "d" ? " (ATR de l'origine)" : "")
+            tr_dist   := dist
+            tr_risk   := dist
+            tr_tp     := tp0
+            tr_tpRk   := nAbs ? na : x_tpR
+            tr_tpNom  := nAbs ? "objectif d'origine" : str.tostring(x_tpR) + " R"
+            tr_part   := false
+            tr_p1     := false
+            tr_tp2    := na
+            tr_q      := q
+            tr_q1     := q
+            tr_ct0    := nCT
+            tr_best   := r_c
+            tr_be     := false
+            tr_dess   := false
+            tr_rat    := true
+            tr_repEl  := rEl
+            dr_bR  := na
+            dr_bT  := na
+            dr_bT2 := na
+            dr_lE  := na
+            strategy.entry(d > 0 ? "L" : "S", d > 0 ? strategy.long : strategy.short, qty=q,
+                 comment="[rattrapage " + rt_v + "] " + (d > 0 ? "L " : "S ") + str.tostring(q) + " · origine il y a " + str.tostring(rEl) + " bougies")
+            if d > 0
+                entree_L := true
+            else
+                entree_S := true
+            if a_trades
+                label.new(bar_index, d > 0 ? low : high, "RATTRAPAGE " + rt_v, style=d > 0 ? label.style_label_up : label.style_label_down,
+                     color=c_none, textcolor=c_txt, size=size.small)
+            if al_on
+                tSort = time_close + (rt_nb - rEl) * timeframe.in_seconds() * 1000
+                alert("RATTRAPAGE · " + syminfo.ticker + " · " + (d > 0 ? "ACHAT (long)" : "VENTE (short)") + " au marché maintenant" +
+                     "\nTrade du 56 né après coup (origine il y a " + str.tostring(rEl) + " bougies, mode " + rt_v + ")" +
+                     "\nEntrée ≈ " + f_px(r_c) +
+                     "\nStop " + f_px(s0) + " (" + str.tostring(math.abs(r_c - s0), "0.00") + " pts)" +
+                     "\nObjectif " + f_px(tp0) + " (" + str.tostring(math.abs(tp0 - r_c), "0.00") + " pts)" +
+                     (x_tBar > 0 ? "\nSortie au plus tard " + str.format_time(tSort, "HH:mm", "Europe/Paris") + " (Paris) si ni stop ni objectif" : "") +
+                     "\n" + str.tostring(q) + " contrat(s) dans le backtest", alert.freq_once_per_bar_close)
+            ex_go   := true
+            ex_stop := nAbs ? rS : na
+            ex_loss := nAbs ? na : math.max(1, math.round(dist / tick))
+            ex_tp1  := nAbs ? rT : na
+            ex_prof := nAbs ? na : math.max(1, math.round(x_tpR * dist / tick))
+    // origine sur cette bougie : reste du 56 vrai, décision fausse avec la bougie 1 h / 4 h en cours
+    rsL = (not f_eOn or (not na(jr_e) and jr_e <= f_eMax)) and bi_okL and sens_okL and sig_long and not sig_short and commun_ok and feu_okL and tr_okL and ema_okL and det_okL and clx_okL
+    rsS = (not f_eOn or (not na(jr_e) and jr_e >= -f_eMax)) and bi_okS and sens_okS and sig_short and not sig_long and commun_ok and feu_okS and tr_okS and ema_okS and det_okS and clx_okS
+    for dd in array.from(1, -1)
+        if (dd > 0 ? rsL and not x2b_okL : rsS and not x2b_okS)
+            array.push(rt_i, bar_index), array.push(rt_d, dd), array.push(rt_k1, rt_n1), array.push(rt_k4, rt_n4)
+            array.push(rt_f1, -1), array.push(rt_f4, -1), array.push(rt_at, r_atr), array.push(rt_o1, na)
+
 // 5. Envoi des ordres de sortie (bracket stop + objectif ; 2 brackets si sortie partielle).
 if ex_go
     lg = tr_dir > 0
@@ -2514,4 +2663,5 @@ if al_on and strategy.closedtrades > strategy.closedtrades[1]
     kx = strategy.closedtrades - 1
     cx = strategy.closedtrades.exit_comment(kx)
     if str.startswith(cx, "Obj") or str.startswith(cx, "Stop")
-        alert((str.contains(strategy.closedtrades.entry_comment(kx), "[reprise]") ? "REPRISE · " : "") + syminfo.ticker + " · trade terminé : " + (str.startswith(cx, "Obj") ? "OBJECTIF touché" : "STOP touché") + " à " + f_px(strategy.closedtrades.exit_price(kx)) + " · P&L " + str.tostring(strategy.closedtrades.profit(kx), "#,##0") + " $", alert.freq_once_per_bar_close)
+        ec = strategy.closedtrades.entry_comment(kx)
+        alert((str.contains(ec, "[reprise]") ? "REPRISE · " : str.contains(ec, "[rattrapage") ? "RATTRAPAGE · " : "") + syminfo.ticker + " · trade terminé : " + (str.startswith(cx, "Obj") ? "OBJECTIF touché" : "STOP touché") + " à " + f_px(strategy.closedtrades.exit_price(kx)) + " · P&L " + str.tostring(strategy.closedtrades.profit(kx), "#,##0") + " $", alert.freq_once_per_bar_close)
