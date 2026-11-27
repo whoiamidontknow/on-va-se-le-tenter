@@ -405,3 +405,11 @@ candidats), plateau : (a, b) stop {2 ; 3 ; 4} ATR × objectif {0,5 ; 0,6667 ; 1}
 lecture alertes : 56 seul contre 56 + rattrapage, une position à la fois, priorité au trade déjà ouvert.
 **Contrôle anti-fuite** : sur 20 rattrapages tirés au hasard, vérifier que l'ouverture de j + 1 est postérieure à la
 clôture de toutes les bougies lues (bougie j, et dernière bougie de la bougie 1 h / 4 h de i quand sa valeur finale est lue).
+**CORRECTION de la définition (27/11, avant la mesure de la version corrigée).** La définition ci-dessus FUIT : exiger
+que la décision soit vraie en lecture o à la bougie i, c'est filtrer sur la couleur FINALE des bougies 1 h / 4 h, encore
+inconnue au moment du rattrapage tant que ces bougies ne sont pas closes (les rattrapages où la couleur redevient
+défavorable ensuite, donc perdants, étaient retirés d'avance). Le contrôle anti-fuite prévu (heures des bougies lues) ne
+pouvait pas le voir. Une première passe a été faite avec la définition fautive : 5 « candidats » sur 12 sur H1, sans valeur.
+**Définition corrigée** : bougie d'origine i = reste du 56 vrai et décision fausse en lecture b (pas d'alerte), SANS
+condition sur la lecture o ; le reste (instant j, variantes a / b / c, durée, hasard, critères) est inchangé. La mesure
+corrigée est la seule qui compte. Correction aussi de la référence « 56 seul » (décisions non triées par bougie).
