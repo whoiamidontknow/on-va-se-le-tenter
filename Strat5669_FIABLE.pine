@@ -362,11 +362,6 @@ x_finM    = input.int(45, "min", group=grp_x, inline="fin", minval=0, maxval=59)
 x_fenOn   = input.bool(true, "Fenêtre de trading autorisée (heure de Paris)", group=grp_x, inline="fen",
      tooltip="Règle de Jeremy (17/10) : trader seulement de 00:20 à 22:15 heure de Paris (UTC+2 en été). Aucune entrée hors fenêtre ; position fermée à la clôture de la bougie qui finit à 22:15 ou après. S'applique à TOUS les préréglages.")
 x_fen     = input.session("0020-2215", "", group=grp_x, inline="fen")
-x_repOn   = input.bool(false, "Reprendre après fin de fenêtre", group=grp_x,
-     tooltip="27/11 (test). Un trade fermé par la fin de fenêtre (22:15 Paris ou 15:59 Chicago, sortie « Fin de séance ») est repris au marché à la clôture de la PREMIÈRE bougie de la fenêtre suivante : même sens, même stop et même objectif d'origine, seulement si la clôture est encore entre les deux et qu'aucun trade n'est ouvert. Les bougies déjà passées en position comptent pour la sortie au temps. Une seule reprise par trade. Commentaire « [reprise] » dans la liste des trades, alertes préfixées REPRISE.")
-rt_mode   = input.string("Désactivé", "Rattrapage", group=grp_x,
-     options=["Désactivé", "a · stop / objectif recalculés depuis l'entrée", "b · comme a, si écart à l'entrée d'origine < 1 ATR", "c · stop / objectif d'origine (prix absolus)", "d · mêmes distances en points que l'origine"],
-     tooltip="27/11 (test, verdict du labo : NON). Bougie d'origine = le reste du 56 est vrai mais la décision est fausse avec le Dashator 1 h / 4 h EN COURS (pas d'alerte), sans condition sur la couleur finale. À la clôture de la 1re bougie suivante où cette décision devient vraie avec ce qui est connu à cet instant (bougie 1 h / 4 h de l'origine : en cours si on y est encore, sinon sa valeur à sa clôture), entrée au marché à l'ouverture suivante, même sens. a : 3 ATR / 0,6667 R recalculés depuis l'entrée (ATR de cette bougie). b : comme a, seulement si la clôture est à moins de 1 ATR (ATR de l'origine) de l'entrée d'origine (ouverture qui suit l'origine). c : stop et objectif d'un trade entré à l'ouverture qui suit l'origine, en prix absolus, seulement si la clôture est encore entre les deux. d : mêmes distances en points que ce trade d'origine (3 ATR / 2 ATR de l'origine), reposées depuis l'entrée. Sortie au temps après 16 − (bougies écoulées depuis l'origine) ; fin de fenêtre comme le 56 ; une position à la fois, le 56 d'abord. Fait pour être lu avec « Graphique = alertes » coché.")
 x_tBar_in = input.int(0, "Sortie après N bougies en position (0 = jamais)", group=grp_x, minval=0,
      tooltip="Ferme au marché à l'ouverture qui suit la clôture de la N-ième bougie en position (bougie d'entrée comprise). 8 en 15 min = 2 h.")
 x_pfOn_in = input.bool(false, "À plat avant 15:59 Chicago (règle propfirm Tradeify)", group=grp_x,
@@ -1478,6 +1473,26 @@ ses_asSes = input.session("0900-1530", "Asie (heure de Tokyo)",    group=grp_ses
 ses_ldSes = input.session("0800-1630", "Londres (heure de Londres)", group=grp_ses)
 ses_usSes = input.session("0930-1600", "US (heure de New York)",   group=grp_ses)
 
+// ══════════════════════════════════════════════════════════════
+// ★ AJOUTS depuis Strat5669 (27/11) : tous les réglages ajoutés, regroupés en bas des paramètres.
+// Titres inchangés. Sans réglage : zones stop / objectif figées dès l'alerte (speed, 24/11) et
+// prix + P&L net dans les alertes FERMER (24/10, 27/11).
+// ══════════════════════════════════════════════════════════════
+grp_fi = "★ Ajouts — Fiabilité et Graphique = alertes"
+fi_min = input.float(0, "Fiabilité minimum (%)", group=grp_fi, minval=0, maxval=100, step=5,
+     tooltip="Ne prend un signal que si sa fiabilité (chance que les couleurs du Dashator 1 h / 4 h en cours ne changent plus) atteint ce seuil. Tables MNQ / MES en 15 et 5 min ; ailleurs « — » (inconnue, aucun trade si > 0). Défaut : 0 = aucun filtre.")
+fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi,
+     tooltip="Affiche « Fiabilité xx % » sur la bougie de chaque entrée. Affichage seulement. Défaut : coché.")
+ga_on  = input.bool(false, "Graphique = alertes", group=grp_fi,
+     tooltip="Ne garde que les trades que le direct aurait pris : le 56 doit être vrai aussi avec le Dashator 1 h / 4 h EN COURS. Retire les trades fantômes de l'historique ; en direct, rien ne change. Défaut : décoché.")
+grp_rep = "★ Ajouts — Reprendre après fin de fenêtre"
+x_repOn   = input.bool(false, "Reprendre après fin de fenêtre", group=grp_rep,
+     tooltip="Un trade fermé par la fin de fenêtre (22:15 Paris ou 15:59 Chicago) est repris à la clôture de la 1re bougie de la fenêtre suivante : même sens, même stop, même objectif, si le prix est encore entre les deux. Bougies déjà faites comptées pour la sortie au temps ; une fois par trade ; « [reprise] » dans la liste, alertes REPRISE. Défaut : décoché.")
+grp_rat = "★ Ajouts — Rattrapage"
+rt_mode   = input.string("Désactivé", "Rattrapage", group=grp_rat,
+     options=["Désactivé", "a · stop / objectif recalculés depuis l'entrée", "b · comme a, si écart à l'entrée d'origine < 1 ATR", "c · stop / objectif d'origine (prix absolus)", "d · mêmes distances en points que l'origine"],
+     tooltip="Prend après coup un trade du 56 resté sans alerte, à la 1re clôture (dans les 16 bougies) où sa décision devient vraie avec ce qui est connu alors ; sortie au temps après le reste des 16 bougies. a : 3 ATR / 0,6667 R depuis l'entrée ; b : comme a si à moins de 1 ATR de l'entrée d'origine ; c : stop et objectif d'origine si le prix est encore entre ; d : mêmes distances en points que l'origine. « [rattrapage x] » dans la liste, alertes RATTRAPAGE. Labo (a, b, c) : NON. Défaut : Désactivé.")
+
 var int ses_dayN = 0
 if ta.change(time("D")) != 0
     ses_dayN += 1
@@ -2162,12 +2177,6 @@ if pos != 0
             label.set_textcolor(dr_lbX, strategy.openprofit >= 0 ? c_gain : c_risk)
 
 // FIABILITÉ : bougie 1 h / 4 h en cours reconstituée (vrais prix), calculée à chaque bougie
-grp_fi = "=== 6. FIABILITÉ ==="
-fi_min = input.float(0, "Fiabilité minimum (%)", group=grp_fi, minval=0, maxval=100, step=5,
-     tooltip="0 = aucun filtre (mêmes trades que Strat5669). Au-dessus, un signal dont la fiabilité est sous ce seuil (ou inconnue) n'est pas pris. Tables mesurées en 15 min et en 5 min sur MNQ et MES : sur une autre unité, la fiabilité est « — » (inconnue), donc aucun trade n'est pris si ce seuil est au-dessus de 0.")
-fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi)
-ga_on  = input.bool(false, "Graphique = alertes", group=grp_fi,
-     tooltip="Coché : un trade n'est pris que si la décision du 56 est AUSSI vraie avec le Dashator 1 h / 4 h de la bougie EN COURS (reconstituée, comme en direct). En direct, rien ne change ; en historique, les trades apparus après coup (que le direct n'aurait pas pris) disparaissent du graphique.")
 f_fiForming(simple string tf, float haO, float haCp, float atrP) =>
     var float fo = na
     var float fh = na

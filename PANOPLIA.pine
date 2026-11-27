@@ -2218,12 +2218,14 @@ if pos != 0
             label.set_textcolor(dr_lbX, strategy.openprofit >= 0 ? c_gain : c_risk)
 
 // FIABILITÉ : bougie 1 h / 4 h en cours reconstituée (vrais prix), calculée à chaque bougie
-grp_fi = "=== 6. FIABILITÉ ==="
+// ★ AJOUTS de FIABLE depuis Strat5669 : regroupés en bas des paramètres (titres inchangés).
+grp_fi = "★ Ajouts — Fiabilité et Graphique = alertes"
 fi_min = input.float(0, "Fiabilité minimum (%)", group=grp_fi, minval=0, maxval=100, step=5,
-     tooltip="0 = aucun filtre (mêmes trades que Strat5669). Au-dessus, un signal dont la fiabilité est sous ce seuil (ou inconnue) n'est pas pris. Tables mesurées en 15 min et en 5 min sur MNQ et MES : sur une autre unité, la fiabilité est « — » (inconnue), donc aucun trade n'est pris si ce seuil est au-dessus de 0.")
-fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi)
+     tooltip="Ne prend un signal que si sa fiabilité (chance que les couleurs du Dashator 1 h / 4 h en cours ne changent plus) atteint ce seuil. Tables MNQ / MES en 15 et 5 min ; ailleurs « — » (inconnue, aucun trade si > 0). Défaut : 0 = aucun filtre.")
+fi_lbl = input.bool(true, "Étiquette « Fiabilité » sur la bougie signal", group=grp_fi,
+     tooltip="Affiche « Fiabilité xx % » sur la bougie de chaque entrée. Affichage seulement. Défaut : coché.")
 ga_on  = input.bool(false, "Graphique = alertes", group=grp_fi,
-     tooltip="Coché : un trade n'est pris que si la décision du 56 est AUSSI vraie avec le Dashator 1 h / 4 h de la bougie EN COURS (reconstituée, comme en direct). En direct, rien ne change ; en historique, les trades apparus après coup (que le direct n'aurait pas pris) disparaissent du graphique.")
+     tooltip="Ne garde que les trades que le direct aurait pris : le 56 doit être vrai aussi avec le Dashator 1 h / 4 h EN COURS. Retire les trades fantômes de l'historique ; en direct, rien ne change. Défaut : décoché.")
 f_fiForming(simple string tf, float haO, float haCp, float atrP) =>
     var float fo = na
     var float fh = na
