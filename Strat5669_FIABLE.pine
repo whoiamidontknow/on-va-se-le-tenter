@@ -1922,7 +1922,8 @@ c_none = color.new(color.white, 100)
 f_px(float v) => str.tostring(v, format.mintick)
 // Prix et P&L estimés d'une sortie au marché (clôture réelle de la bougie), pour que le journal
 // d'alertes garde le résultat de chaque trade tel qu'il a été vécu en direct.
-f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring((r_c - strategy.position_avg_price) * strategy.position_size * syminfo.pointvalue, "#,##0") + " $"
+// 27/11 : P&L net des commissions (1,25 $ par contrat et par côté, comme le testeur et « trade terminé »).
+f_finTxt() => strategy.position_size == 0 ? "" : " · prix ≈ " + f_px(r_c) + " · P&L ≈ " + str.tostring((r_c - strategy.position_avg_price) * strategy.position_size * syminfo.pointvalue - 2 * 1.25 * math.abs(strategy.position_size), "#,##0") + " $"
 f_sgn(float v, string fmt) => (v >= 0 ? "+" : "") + str.tostring(v, fmt)
 
 pos = strategy.position_size
