@@ -413,3 +413,9 @@ pouvait pas le voir. Une première passe a été faite avec la définition fauti
 **Définition corrigée** : bougie d'origine i = reste du 56 vrai et décision fausse en lecture b (pas d'alerte), SANS
 condition sur la lecture o ; le reste (instant j, variantes a / b / c, durée, hasard, critères) est inchangé. La mesure
 corrigée est la seule qui compte. Correction aussi de la référence « 56 seul » (décisions non triées par bougie).
+**Résultat RATTRAPAGE corrigé (27/11).** Anti-fuite : 20/20 dans chaque cas (bougies lues toutes closes avant l'entrée).
+**Aucun candidat sur H1** (0 sur 12). 9 cas sur 12 perdent sur H1 ; le meilleur, 15 min MES (b), H1 +2 488 $ (112 trades,
+R +0,10 ± 0,12), p_A 0,012 / p_B 0,015 / p_L 0,016 pour un seuil de 0,0042. Sur H2 (descriptif, aucun candidat), R moyen entre
+−0,15 et +0,06. Apport au 56 en alertes (56 + rattrapage − 56 seul) : de signe changeant d'une moitié à l'autre (ex.
+15 min MNQ (a) −4 685 $ sur H1, +5 657 $ sur H2), négatif sur les deux moitiés en 5 min MES. Avec la définition fautive,
+le même calcul donnait 5 « candidats » : tout l'effet venait du filtre sur la couleur finale.
